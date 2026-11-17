@@ -1,6 +1,5 @@
 # Sørpedia locally: docker compose up -d, then http://localhost:8080
 # Ollama runs on your machine (not in Docker): ollama pull deepseek-r1:8b
-# Other model: set OLLAMA_MODEL (for example gemma3:4b, which is faster but weaker).
 services:
   app:
     build: { context: ., dockerfile: docker/Dockerfile }

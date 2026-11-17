@@ -44,16 +44,12 @@ Without Docker you need PHP 8.4 with `pdo_mysql` and a MariaDB with the database
 
 ## 2. Settings
 
-There is no config file. Everything is controlled by environment variables with sensible defaults. The first three can be set in a `.env` file next to `docker-compose.yml` (it is in `.gitignore`), or directly on the command line:
-
-```
-OLLAMA_MODEL=gemma3:4b PORT=8090 docker compose up -d
-```
+There is no config file, and nothing needs to be set: the defaults already run the demo with DeepSeek-R1 8B on port 8080. To change something, put the variable in a `.env` file next to `docker-compose.yml` (it is in `.gitignore`), for example `PORT=8090` if port 8080 is taken. The first three variables work this way.
 
 | Variable | Default | What it does |
 |---|---|---|
 | `PORT` | `8080` | The port on your machine |
-| `OLLAMA_MODEL` | `deepseek-r1:8b` | The language model Søren uses. `gemma3:4b` is faster but weaker |
+| `OLLAMA_MODEL` | `deepseek-r1:8b` | The language model Søren uses |
 | `SOREN_NUM_CTX` | `8192` | The model's working memory in tokens. Lower it to `6144` if the GPU runs out of memory |
 | `SOREN_FIRST_TOKEN_S` | `20` | Seconds Søren waits for the first word before the rule engine takes over |
 | `SOREN_MAX_ANSWER_S` | `150` | Longest time a full answer may take |
