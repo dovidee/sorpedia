@@ -22,8 +22,6 @@ docker compose exec app php scripts/import.php   # rebuild the database
 docker compose down -v                           # delete the database
 ```
 
-On Linux, if the container can't reach Ollama, start Ollama with `OLLAMA_HOST=0.0.0.0`. This opens Ollama to your whole network.
-
 ## Test users
 
 All have the password `admin`. Email goes to the demo inbox at `/innboks`.
