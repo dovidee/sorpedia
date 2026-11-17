@@ -1,0 +1,321 @@
+{
+    "about": "Golden dataset for Sørpedia. Expected results come from the acceptance criteria in specs/README.md and from the relations Sør-Tre documents (level dokumentert). Run: php evals/run.php",
+    "catalog": {
+        "feature": "001, 002",
+        "products": 496,
+        "themes": 7,
+        "stores": 12,
+        "every_sortre_image_is_local": true
+    },
+    "search": [
+        {
+            "feature": "004",
+            "query": "hammmer",
+            "first_hit_contains": "hammer"
+        },
+        {
+            "feature": "004",
+            "query": "henge opp bilde",
+            "first_hit_contains": "bildehempe"
+        },
+        {
+            "feature": "004",
+            "query": "lomelykt",
+            "first_hit_contains": "lommelykt"
+        }
+    ],
+    "guide": {
+        "feature": "003",
+        "max_suggestions": 3,
+        "tasks": [
+            "lys",
+            "bygg",
+            "maling",
+            "balkong",
+            "kjetting",
+            "skog",
+            "tur"
+        ]
+    },
+    "documented_relations": {
+        "feature": "011",
+        "pairs": [
+            {
+                "a": "ledlenser-batteri-21700-h7r-core-og-p7r-core",
+                "b": "ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-batteri-21700-h7r-core-og-p7r-core",
+                "b": "ledlenser-p7r-core-1400-lumen-oppladbar",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-batteri-21700x2-h15r-core-og-h19r-core",
+                "b": "ledlenser-h15r-core-2500-lumen-oppladbar-hodelykt",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-h15r-core-2500-lumen-oppladbar-hodelykt",
+                "b": "ledlenser-batteri-21700x2-h15r-core-og-h19r-core",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-h5r-core-500-lumen-oppladbar-hodelykt",
+                "b": "ledlenser-ladekabel-usb-magnetisk-lading-h-hf-og-p-core",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+                "b": "ledlenser-batteri-21700-h7r-core-og-p7r-core",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-ladekabel-usb-magnetisk-lading-h-hf-og-p-core",
+                "b": "ledlenser-h5r-core-500-lumen-oppladbar-hodelykt",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-p7r-core-1400-lumen-oppladbar",
+                "b": "ledlenser-batteri-21700-h7r-core-og-p7r-core",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "osean-arbeidslampe-led-7000-7000-lumen-oppladbar",
+                "b": "osean-arbeidslampe-led-7000-m-stativ-7000-lumen-oppladbar",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "osean-arbeidslampe-led-7000-7000-lumen-oppladbar",
+                "b": "osean-tripod-stativ-til-arbeidslampe",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "osean-arbeidslampe-led-7000-m-stativ-7000-lumen-oppladbar",
+                "b": "osean-arbeidslampe-led-7000-7000-lumen-oppladbar",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "osean-arbeidslys-led-strip-15m-180w-19000-lumen-12w-m-dimbar-m-fjernkont",
+                "b": "osean-arbeidslys-led-strip-25m-300w-32000-lumen-12w-m-dimbar-m-fjernkont",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "osean-arbeidslys-led-strip-25m-300w-32000-lumen-12w-m-dimbar-m-fjernkont",
+                "b": "osean-arbeidslys-led-strip-15m-180w-19000-lumen-12w-m-dimbar-m-fjernkont",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "osean-tripod-stativ-til-arbeidslampe",
+                "b": "osean-arbeidslampe-led-7000-7000-lumen-oppladbar",
+                "kind": "passer_sammen",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-h15r-core-2500-lumen-oppladbar-hodelykt",
+                "b": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-h15r-core-2500-lumen-oppladbar-hodelykt",
+                "b": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-h5r-core-500-lumen-oppladbar-hodelykt",
+                "b": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-h5r-core-500-lumen-oppladbar-hodelykt",
+                "b": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+                "b": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+                "b": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-hf4r-core-300-lumen-oppladbar-hodelykt",
+                "b": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-hf4r-core-300-lumen-oppladbar-hodelykt",
+                "b": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-hf6r-core-500-lumen-oppladbar-hodelykt",
+                "b": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-hf6r-core-500-lumen-oppladbar-hodelykt",
+                "b": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-hf8r-core-900-lumen-oppladbar-hodelykt",
+                "b": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-hf8r-core-900-lumen-oppladbar-hodelykt",
+                "b": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "b": "ledlenser-h15r-core-2500-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "b": "ledlenser-h5r-core-500-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "b": "ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "b": "ledlenser-hf4r-core-300-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "b": "ledlenser-hf6r-core-500-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "b": "ledlenser-hf8r-core-900-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "b": "ledlenser-p5r-core-500-lumen-oppladbar",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "b": "ledlenser-p7r-core-1400-lumen-oppladbar",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-p5r-core-500-lumen-oppladbar",
+                "b": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-p5r-core-500-lumen-oppladbar",
+                "b": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-p7r-core-1400-lumen-oppladbar",
+                "b": "ledlenser-ladekabel-usb-magnetisk-lading-mh-serie-nb-passer-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "ledlenser-p7r-core-1400-lumen-oppladbar",
+                "b": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "b": "ledlenser-h15r-core-2500-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "b": "ledlenser-h5r-core-500-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "b": "ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "b": "ledlenser-hf4r-core-300-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "b": "ledlenser-hf6r-core-500-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "b": "ledlenser-hf8r-core-900-lumen-oppladbar-hodelykt",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "b": "ledlenser-p5r-core-500-lumen-oppladbar",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            },
+            {
+                "a": "oppladbar-batteripakke-for-h7r2-ledlenser-hodelykt-ikke-core",
+                "b": "ledlenser-p7r-core-1400-lumen-oppladbar",
+                "kind": "passer_ikke",
+                "level": "dokumentert"
+            }
+        ]
+    }
+}

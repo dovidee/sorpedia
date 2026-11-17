@@ -80,7 +80,7 @@ final class CatalogIntent
         if (!$by) {
             $facts[] = $scope ? "Ingen av produktene som passer «{$scope}» har monteringsveiledning." : 'Butikken har ingen monteringsveiledninger.';
         } else {
-            $facts[] = ($scope ? "Blant produktene som passer «{$scope}» har " . count($ids) . ' produkter monteringsveiledning.' : 'Butikken har ' . count($by) . ' monteringsveiledninger, skrevet av IS-219 gruppe 4.')
+            $facts[] = ($scope ? "Blant produktene som passer «{$scope}» har " . count($ids) . ' produkter monteringsveiledning.' : 'Butikken har ' . count($by) . ' monteringsveiledninger (demo, ikke fra produsenten).')
                 . ' Hver veiledning gjelder flere produkter:';
             foreach (array_values($by) as $i => $g) {
                 $ex = array_slice(array_map(fn($id) => $names[$id] ?? '', $g['ids']), 0, 3);
@@ -118,10 +118,10 @@ final class CatalogIntent
         $lines = [];
         foreach ($cards as $i => $c) {
             $rating = $c['rating'] !== null ? number_format((float) $c['rating'], 1, ',', '') . " av 5 ({$c['n_reviews']} anmeldelser)" : 'ingen anmeldelser';
-            $facts[] = ($i + 1) . ". [{$c['id']}] {$c['name']}: " . kr((int) $c['price_ore']) . ", $rating.";
+            $facts[] = ($i + 1) . ". [{$c['id']}] {$c['name']}: " . ProductRef::price((int) $c['id']) . ", $rating.";
             $lines[] = in_array($kind, ['best', 'verst'], true)
                 ? t('{name} ({r} av 5 fra {n} kjøpere)', ['name' => $c['name'], 'r' => number_format((float) $c['rating'], 1, lang() === 'en' ? '.' : ',', ''), 'n' => $c['n_reviews']])
-                : t('{name} ({price})', ['name' => $c['name'], 'price' => kr((int) $c['price_ore'])]);
+                : t('{name} ({price})', ['name' => $c['name'], 'price' => ProductRef::price((int) $c['id'])]); // filled in when shown
         }
         if (!$cards) {
             $facts[] = in_array($kind, ['best', 'verst'], true) ? 'Ingen av disse produktene har anmeldelser ennå.' : 'Fant ingen produkter.';

@@ -16,6 +16,7 @@ session_start(['cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_se
 Privacy::ensure();
 Guide::ensure();
 Auth::ensure();
+ChatHistory::ensure();
 Errors::cleanInput();  // "?q[]=" and the like give 400, not a crash
 
 // Security headers: no MIME sniffing, no framing on other sites, no addresses in Referer to other sites
@@ -209,7 +210,8 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/meld-feil')) {
     if (!$v) {
         $answer(false, 'Fant ikke verdien du meldte fra om.');
     }
-    if ($reason === '' || ($why = Moderation::reason($reason) ?? Guard::injectionInProse($reason))) {
+    $why = $reason === '' ? null : (Moderation::reason($reason) ?? Guard::injectionInProse($reason));
+    if ($reason === '' || $why) {
         $answer(false, $reason === '' ? 'Skriv kort hva som er feil.' : "Meldingen ble ikke sendt fordi den $why.");
     }
     $st = db()->prepare('INSERT IGNORE INTO spec_reports (product_id, `key`, value_text, revision_id, reason, session_id, user_id) VALUES (?,?,?,?,?,?,?)');
@@ -448,13 +450,17 @@ if (route('POST', '/logg-inn') !== null) {
         redirect('/logg-inn');
     }
     session_regenerate_id(true);
-    // Keep the cart from before login
+    // Keep the cart from before login. Another account's chat history never follows into this one.
+    if (isset($_SESSION['uid']) && (int) $_SESSION['uid'] !== (int) $u['id']) {
+        ChatHistory::forget();
+    }
     $_SESSION['uid'] = (int) $u['id'];
     redirect(safe_back($_POST['back'] ?? '/'));
 }
 
 if (route('POST', '/logg-ut') !== null) {
     unset($_SESSION['uid']);
+    ChatHistory::forget();
     session_regenerate_id(true);
     redirect('/');
 }
@@ -718,6 +724,7 @@ if (route('POST', '/innstillinger/slett') !== null) {
     $pdo->commit();
     Privacy::deleteAvatar($u['avatar']);
     unset($_SESSION['uid']);
+    ChatHistory::forget();
     session_regenerate_id(true);
     flash('Kontoen din er slettet. Bidrag i den åpne versjonen står igjen som «Slettet bruker».');
     redirect('/');
@@ -911,15 +918,19 @@ if (route('POST', '/api/chat/warm') !== null) {
 
 if (route('POST', '/api/chat') !== null) {
     $in = json_decode(file_get_contents('php://input') ?: '{}', true) ?: [];
-    $messages = array_values(array_filter(array_map(fn($m) => [
-        'role' => ($m['role'] ?? '') === 'assistant' ? 'assistant' : 'user',
-        'content' => mb_substr((string) ($m['content'] ?? ''), 0, 1500),
-    ], array_slice((array) ($in['messages'] ?? []), -8)), fn($m) => $m['content'] !== ''));
+    // The browser sends only the new message. Earlier messages and their roles come from the server (src/ChatHistory.php).
+    $question = ChatHistory::input($in);
+    if ($question === '') {
+        json_out(['error' => 'empty'], 400);
+    }
+    $owner = ChatHistory::owner();
+    $conv = ChatHistory::current(!empty($in['fresh']));
+    $messages = [...ChatHistory::forModel($conv, $owner), ['role' => 'user', 'content' => $question]];
     // Only the address comes from the browser. The context is built on the server from a fixed list of public pages.
     $page = PageContext::resolve(is_string($in['page'] ?? null) ? $in['page'] : null);
-    // The product guide the customer took earlier in the session (the last three hours) follows along to other pages
+    // The product guide the customer took earlier follows along to other pages: three hours, until a new conversation
     $g = $_SESSION['guide'] ?? null;
-    if ($page['kind'] !== 'guide' && is_array($g) && time() - (int) $g['at'] < 3 * 3600) {
+    if ($page['kind'] !== 'guide' && ChatHistory::carriesGuide($g)) {
         $page['guide'] = $g['a'];
         $page['text'] = trim($page['text'] . "\n\n" . Guide::brief($g['a'], $page['product'], false));
     }
@@ -940,15 +951,10 @@ if (route('POST', '/api/chat') !== null) {
     sse('page', ['kind' => $page['kind'], 'label' => $page['label']]);
     // Protection before the model: self harm, profanity and attempts to override Søren get a fixed answer. The model is not asked.
     $q = Chat::lastUser($messages);
-    $blocked = match (true) {
-        Chat::crisis($q) => ['krise', Chat::crisisReply()],
-        Chat::violence($q) => ['vold', Chat::violenceReply()],
-        !Moderation::clean($q) => ['banning', t('Jeg svarer ikke på meldinger med banning eller stygge ord. Spør gjerne på nytt.')],
-        Guard::chatInjection($q) => ['overstyring', t('Jeg kan bare hjelpe med produkter og prosjekter hos Sør-Tre.')],
-        default => null,
-    };
+    $blocked = Chat::blocked($q);
     if ($blocked) {
         sse('token', $blocked[1]);
+        ChatHistory::record($conv, $owner, $q, $blocked[1], false); // kept for customer service, never sent to the model
         track('chat', ['product' => $page['product'], 'page' => $page['kind'], 'llm' => false, 'intent' => $blocked[0], 'lang' => Chat::$lang]);
         sse('done', true);
         exit;
@@ -972,9 +978,11 @@ if (route('POST', '/api/chat') !== null) {
         }));
         $answer = trim($intent['answer'] ?? Chat::fallback($cardIds, Chat::lastUser($messages), $page));
         if ($answer !== '') {
-            sse('token', $answer);
+            sse('token', ProductRef::resolve($answer)); // stored with references, shown with today's price
         }
     }
+    // Saved only when there is an answer, so a failed request leaves no question without an answer
+    ChatHistory::record($conv, $owner, $q, (string) $answer);
     track('chat', ['product' => $page['product'], 'page' => $page['kind'], 'llm' => $ok, 'found' => count($ids), 'intent' => $kind ?: null, 'lang' => Chat::$lang]);
     sse('done', true);
     exit;
@@ -983,7 +991,9 @@ if (route('POST', '/api/chat') !== null) {
 // ---------- Customer service: escalation from Søren to a human (feature 006) ----------
 if (route('POST', '/api/support') !== null) {
     $in = json_decode(file_get_contents('php://input') ?: '{}', true) ?: [];
-    $log = array_slice((array) ($in['log'] ?? []), -20);
+    // The conversation comes from the server, not from the browser
+    $log = isset($_SESSION['chat_conv']) ? array_slice(ChatHistory::log((int) $_SESSION['chat_conv'], ChatHistory::owner()), -20) : [];
+    $log = array_map(fn($m) => ['role' => $m['role'], 'content' => ProductRef::resolve($m['content'])], $log);
     $first = '';
     foreach ($log as $m) {
         if (($m['role'] ?? '') === 'user') {

@@ -1,0 +1,10 @@
+# Static analysis. Install with scripts/tools.sh, run with: php -d memory_limit=1G tools/phpstan.phar analyse
+# Level 3 passes with no baseline. Raise the level one step at a time and fix what it finds.
+parameters:
+    level: 3
+    paths:
+        - src
+        - public/index.php
+        - scripts
+        - tests
+        - evals

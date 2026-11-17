@@ -3,3 +3,9 @@
 
 # Python bytecode
 __pycache__/
+
+# Development tools downloaded by scripts/tools.sh
+tools/
+
+# Working files from scripts/manuals.php (LibreOffice PDF export)
+data/manuals-tmp/

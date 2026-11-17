@@ -81,6 +81,34 @@ final class Search
             $fixed[] = $best ?? $w;
             $changed = $changed || ($best !== null && $best !== $w);
         }
+        // A corrected word can be a synonym ("hammmer" becomes "hammar", which means "hammer"): expand it as well
+        if ($changed) {
+            $fixedQ = implode(' ', $fixed);
+            foreach (db()->query('SELECT * FROM search_synonyms ORDER BY CHAR_LENGTH(term) DESC') as $s) {
+                if (in_array($s, $matched, true) || !preg_match('/(^|\s)' . preg_quote($s['term'], '/') . '($|\s)/u', $fixedQ)) {
+                    continue;
+                }
+                $matched[] = $s;
+                // One word for one word, and the word is in no product name: use the catalog's word, so the customer
+                // sees "hammer", not "hammar". "lommelykt" is in product names and stays.
+                $i = array_search($s['term'], $fixed, true);
+                if ($i !== false && !str_contains($s['expands'], ' ') && !str_starts_with($s['expands'], 'tema:')
+                    && !str_contains(self::names($rows), $s['term'])) {
+                    $fixed[$i] = $s['expands'];
+                    continue;
+                }
+                foreach (explode(' ', $s['expands']) as $e) {
+                    if (str_starts_with($e, 'tema:')) {
+                        if ($s['kind'] === 'bruksomrade') {
+                            $boost[] = substr($e, 5);
+                        }
+                        $themes[] = substr($e, 5);
+                    } else {
+                        $terms[] = $e;
+                    }
+                }
+            }
+        }
         $terms = array_merge($fixed, $terms);
 
         // 3. Score per product

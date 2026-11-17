@@ -2,7 +2,7 @@
 <p class="crumbs"><a href="/"><?= t('Forsiden') ?></a> / <a href="/tema/<?= h($man['theme']) ?>"><?= h(theme_name($man['theme'])) ?></a> / <?= t('Veiledning') ?></p>
 <div class="manual">
   <h1><?= h($man['title']) ?></h1>
-  <p class="demo-tag"><?= t('Veiledning skrevet av IS-219 gruppe 4, ikke fra produsenten. Følg alltid produsentens anvisning.') ?><?= lang() === 'en' ? ' ' . t('Veiledningen finnes bare på norsk.') : '' ?></p>
+  <p class="demo-tag"><?= t('Demoveiledning, ikke fra produsenten. Følg alltid produsentens anvisning.') ?><?= lang() === 'en' ? ' ' . t('Veiledningen finnes bare på norsk.') : '' ?></p>
   <p><?= h($man['intro']) ?></p>
   <p><b><?= t('Du trenger') ?>:</b> <?= h($man['tools']) ?></p>
   <p><?php if ($man['pdf_path']): ?><a class="btn small" href="/<?= h($man['pdf_path']) ?>" download><?= t('Last ned PDF') ?></a><?php endif ?>

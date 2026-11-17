@@ -34,7 +34,7 @@ $withImages = !in_array('--no-images', $argv, true);
 @mkdir($imgDir, 0775, true);
 
 $ctx = stream_context_create(['http' => [
-    'header' => "User-Agent: IS219-gruppe4-demo/1.0\r\nAccept: application/json\r\n",
+    'header' => "User-Agent: Sorpedia-demo/1.0\r\nAccept: application/json\r\n",
     'timeout' => 30,
 ]]);
 

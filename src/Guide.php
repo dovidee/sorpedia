@@ -318,7 +318,7 @@ final class Guide
             $res = self::recommend($a);
             $lines = ['PRODUKTGUIDEN: ' . ($here ? 'Kunden ser på forslagene fra produktguiden.' : 'Kunden tok produktguiden tidligere.') . ' Kunden svarte: ' . self::chosen($a)];
             foreach ($res['picks'] as $i => $c) {
-                $lines[] = 'Forslag ' . ($i + 1) . ": [{$c['id']}] {$c['name']}, " . kr((int) $c['price_ore']) . '. Grunner: ' . ($c['why'] ? implode('; ', $c['why']) : 'populær i kategorien') . '.'
+                $lines[] = 'Forslag ' . ($i + 1) . ": [{$c['id']}] {$c['name']}, " . ProductRef::price((int) $c['id']) . '. Grunner: ' . ($c['why'] ? implode('; ', $c['why']) : 'populær i kategorien') . '.'
                     . ($focus === (int) $c['id'] ? ' (Kunden står på denne produktsiden nå.)' : '');
             }
             $lines[] = 'Slik ble de valgt: ' . implode(' ', $res['trace']);

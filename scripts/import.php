@@ -93,7 +93,7 @@ foreach ($raw as $p) {
     }
     foreach ($specs as $s) {
         if (!isset(Extract::KEYS[$s['key']])) { // new property from Sør-Tre's text: new row in spec_keys
-            $newKey->execute([$s['key'], $s['label'] ?? $s['key'], $s['unit'], $s['num'] !== null ? 'number' : 'text', 0, $p['_theme'], 90]);
+            $newKey->execute([$s['key'], $s['label'] ?? $s['key'], $s['unit'] ?? null, $s['num'] !== null ? 'number' : 'text', 0, $p['_theme'], 90]);
         }
     }
     foreach ($specs as $s) {

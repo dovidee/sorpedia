@@ -4,7 +4,7 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS spec_reports, analytics_events, mail_outbox, events, support_messages, support_tickets,
+DROP TABLE IF EXISTS chat_messages, chat_conversations, spec_reports, analytics_events, mail_outbox, events, support_messages, support_tickets,
   manual_steps, manuals, relations, reviews, order_items, orders, cart_items, users,
   stock, warehouses, spec_values, spec_revisions, spec_keys, product_images,
   product_categories, categories, search_synonyms, products;
@@ -236,6 +236,31 @@ CREATE TABLE support_messages (
   body       TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Conversations with the mascot. The server owns the history; the browser only sends the new message (feature 015).
+-- owner is a hash of a random token in the PHP session, so a conversation is only reachable from its own session.
+CREATE TABLE chat_conversations (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  owner       CHAR(64) NOT NULL,
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  expires_at  TIMESTAMP NOT NULL,
+  KEY (owner),
+  KEY (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- for_model = 0: answered by a fixed safety reply. Kept for customer service, never sent to the model.
+CREATE TABLE chat_messages (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  conversation_id INT UNSIGNED NOT NULL,
+  seq             INT UNSIGNED NOT NULL,
+  role            ENUM('user','assistant') NOT NULL,
+  content         TEXT NOT NULL,
+  for_model       TINYINT(1) NOT NULL DEFAULT 1,
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY in_order (conversation_id, seq),
+  FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Transactional outbox for live updates (ADR-004). The SSE endpoint reads from here.

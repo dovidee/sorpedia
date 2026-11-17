@@ -14,7 +14,7 @@ Chosen so that every group has technical specifications to filter on, natural ac
 | Forest and safety | Motorsag (7070, 11), Hogsttilbehør (7079, 8), Arbeidshansker (7088, 35), Hørselvern (7087, 4) | Power, bar length. Safety gear as a strongly recommended accessory |
 | Outdoors | Kikkerter (7246, 11), Grill og kokeutstyr (7258, 25) | Magnification and objective size for comparison. Grills need assembly |
 
-About 480 products in total. The import takes at most 40 per subcategory, about 350 products.
+The demo has 496 products: at most 40 per subcategory, plus single products from other categories needed for "goes well with".
 
 ## Filter facets (spec_keys with facet = 1)
 

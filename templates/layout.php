@@ -40,7 +40,7 @@ $flag = $en
 <script src="/assets/app.js?v=<?= filemtime(APP_ROOT . '/public/assets/app.js') ?>" defer></script>
 </head>
 <body>
-<div class="demo-bar"><span><?= t('Demo laget av IS-219 gruppe 4. Produkter og bilder er hentet fra sor-tre.no. Lager, brukere, anmeldelser og ordrer er oppdiktet. Ingen ekte betaling.') ?></span>
+<div class="demo-bar"><span><?= t('Demo. Produkter og bilder er hentet fra sor-tre.no. Lager, brukere, anmeldelser og ordrer er oppdiktet. Ingen ekte betaling.') ?></span>
   <a class="lang-flag" href="/sprak/<?= $en ? 'no' : 'en' ?>?back=<?= urlencode($here) ?>" hreflang="<?= $en ? 'nb' : 'en' ?>" lang="<?= $en ? 'nb' : 'en' ?>" title="<?= $en ? 'Bytt til norsk' : 'Switch to English' ?>"><?= $flag ?><span><?= $en ? 'Norsk' : 'English' ?></span></a></div>
 <header class="top">
   <div class="wrap top-row">
@@ -98,7 +98,7 @@ $flag = $en
 <?php if ($msg): ?><div class="wrap"><div class="flash"><?= h(t($msg)) ?></div></div><?php endif ?>
 <main class="wrap"><?= $content ?></main>
 <footer class="wrap foot">
-  <p><?= t('Sørpedia er en prototype for faget IS-219 ved Universitetet i Agder. Ikke tilknyttet Sør-Tre AS. Spesifikasjoner merket «Utledet» eller «Kjøper» er ikke kontrollert av Sør-Tre.') ?></p>
+  <p><?= t('Sørpedia er en prototype. Ikke tilknyttet Sør-Tre AS. Spesifikasjoner merket «Utledet» eller «Kjøper» er ikke kontrollert av Sør-Tre.') ?></p>
 </footer>
 <button class="soren-fab" id="soren-open" aria-label="<?= t('Spør Søren') ?>"><span class="av" data-soren="head"></span><span><?= t('Spør Søren') ?></span></button>
 </body>

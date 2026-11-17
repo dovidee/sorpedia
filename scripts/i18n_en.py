@@ -8,10 +8,10 @@ T = {
 "Vises som": "Shown as", "Verifisert kjøper": "Verified buyer", "varer": "items", "Produktguide": "Product guide", "Spør Søren": "Ask Søren",
 "Søk etter produkt eller hva du skal gjøre, f.eks. «male tak»": "Search for a product or a task, e.g. “paint ceiling”",
 "Trykk Tab for å fullføre det grå forslaget.": "Press Tab to complete the grey suggestion.",
-"Demo laget av IS-219 gruppe 4. Produkter og bilder er hentet fra sor-tre.no. Lager, brukere, anmeldelser og ordrer er oppdiktet. Ingen ekte betaling.":
-  "Demo made by IS-219 group 4. Products and images come from sor-tre.no. Stock, users, reviews and orders are made up. No real payment.",
-"Sørpedia er en prototype for faget IS-219 ved Universitetet i Agder. Ikke tilknyttet Sør-Tre AS. Spesifikasjoner merket «Utledet» eller «Kjøper» er ikke kontrollert av Sør-Tre.":
-  "Sørpedia is a prototype for the course IS-219 at the University of Agder. Not affiliated with Sør-Tre AS. Specifications marked “Derived” or “Buyer” are not checked by Sør-Tre.",
+"Demo. Produkter og bilder er hentet fra sor-tre.no. Lager, brukere, anmeldelser og ordrer er oppdiktet. Ingen ekte betaling.":
+  "Demo. Products and images come from sor-tre.no. Stock, users, reviews and orders are made up. No real payment.",
+"Sørpedia er en prototype. Ikke tilknyttet Sør-Tre AS. Spesifikasjoner merket «Utledet» eller «Kjøper» er ikke kontrollert av Sør-Tre.":
+  "Sørpedia is a prototype. Not affiliated with Sør-Tre AS. Specifications marked “Derived” or “Buyer” are not checked by Sør-Tre.",
 "Forsiden": "Home", "Sammenlign": "Compare", "Send": "Send", "Avbryt": "Cancel", "Lagre": "Save", "Fjern": "Remove", "og": "and", "til": "to", "fra": "from",
 "Fra": "From", "Til": "To", "Obs": "Note", "Sum": "Total", "Ingen": "None", "Ukjent": "Unknown", "ukjent": "unknown", "Kilde": "Source",
 "Veiledning": "Guide", "Har monteringsveiledning": "Has an assembly guide", "Monteringsveiledning": "Assembly guide",
@@ -167,7 +167,7 @@ T = {
 "Prototypen sender ikke ekte e-post. Alt som ville blitt sendt til deg havner her.": "The prototype doesn't send real email. Everything that would be sent to you ends up here.",
 "E-postene er på norsk.": "The emails are in Norwegian.", "for å se e-posten din.": "to see your email.", "Ingen e-post ennå.": "No email yet.",
 # Guides and compare
-"Veiledning skrevet av IS-219 gruppe 4, ikke fra produsenten. Følg alltid produsentens anvisning.": "Guide written by IS-219 group 4, not by the manufacturer. Always follow the manufacturer's instructions.",
+"Demoveiledning, ikke fra produsenten. Følg alltid produsentens anvisning.": "Demo guide, not from the manufacturer. Always follow the manufacturer's instructions.",
 "Veiledningen finnes bare på norsk.": "The guide is only available in Norwegian.", "Du trenger": "You need", "Skriv ut": "Print", "Produkter denne veiledningen gjelder": "Products this guide covers",
 "Velg minst to produkter med «Sammenlign» på produktkortene.": "Choose at least two products with “Compare” on the product cards.",
 "Kjøpere": "Buyers", "Lager her": "Stock here", "Ikke inne": "Not in stock",

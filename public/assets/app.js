@@ -247,16 +247,17 @@ document.addEventListener('submit', async (e) => {
 });
 
 // ---------- Søren chat ----------
-// The conversation is stored in the browser, so it survives page changes and closing the panel. Deleted on logout
-// or with "Ny samtale" (new conversation). Each message only sends the address of the page you are on; the server decides
-// what Søren gets to see (only public product pages, never account, cart, orders or login).
+// The server owns the conversation (src/ChatHistory.php). The browser keeps only what it shows, so the panel survives
+// page changes. Each message sends the new text and the address of the page you are on; the server adds the earlier
+// messages and decides what Søren gets to see (only public product pages, never account, cart, orders or login).
+// "Ny samtale" (new conversation), a language switch and logout start a new conversation on the server too.
 window.Soren = (() => {
-  const KEY = 'sorpedia-chat-v2';
+  const KEY = 'sorpedia-chat-v3';
   const pageLabel = () => document.querySelector('meta[name=soren-page]')?.content || '';
   const pageUrl = () => location.pathname + location.search;
-  let st = store.get(KEY, null) || { open: false, items: [], history: [], ticket: null, since: 0, ctx: null, lang: LANG };
+  let st = store.get(KEY, null) || { open: false, items: [], ticket: null, since: 0, ctx: null, lang: LANG };
   // Switched language with the flag: new conversation in the new language
-  if ((st.lang || 'no') !== LANG) st = { open: st.open, items: [], history: [], ticket: null, since: 0, ctx: null, lang: LANG };
+  if ((st.lang || 'no') !== LANG) st = { open: st.open, items: [], ticket: null, since: 0, ctx: null, lang: LANG, fresh: true };
   let panel, log, es, busy = false;
   let mascot = { set() {}, wave() {}, gust() {}, happy() {}, sad() {}, surprised() {}, state: 'idle' };
 
@@ -370,7 +371,7 @@ window.Soren = (() => {
   const close = () => { panel.hidden = true; document.body.classList.remove('chat-open'); st.open = false; persist(); };
   const reset = () => {
     es?.close(); es = null;
-    st = { open: true, items: [], history: [], ticket: null, since: 0, ctx: null, lang: LANG };
+    st = { open: true, items: [], ticket: null, since: 0, ctx: null, lang: LANG, fresh: true };
     log.innerHTML = ''; liveIt = null; mascot = NOOP; intro(); noteContext(); mascot.gust(4);
   };
 
@@ -409,7 +410,6 @@ window.Soren = (() => {
   };
   const finish = (it) => {
     it.pending = false; it.wait = ''; draw(it);
-    if (it.text) st.history.push({ role: 'assistant', content: it.text });
     mascot.set('idle');
     it.fellBack ? mascot.sad() : mascot.happy();
     status(''); busy = false; persist();
@@ -424,12 +424,12 @@ window.Soren = (() => {
     busy = true;
     noteContext();
     push({ t: 'me', text });
-    st.history.push({ role: 'user', content: text });
     const it = push({ t: 'bot', text: '', think: '', note: '', cards: [], pending: true });
     mascot.set('think'); status(tr('tenker …'));
     try {
       const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': CSRF },
-        body: JSON.stringify({ messages: st.history.slice(-8), page: pageUrl() }) });
+        body: JSON.stringify({ message: text, page: pageUrl(), fresh: !!st.fresh }) });
+      st.fresh = false; persist();
       if (!r.ok || !r.body) throw new Error('http ' + r.status);
       await consume(it, r);
       finish(it);
@@ -462,7 +462,7 @@ window.Soren = (() => {
   const human = async () => {
     if (st.ticket) return push({ t: 'sys', text: `Du er allerede koblet til kundeservice (sak #${st.ticket}).` });
     const r = await fetch('/api/support', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': CSRF },
-      body: JSON.stringify({ log: st.history, product: null }) }).then((r) => r.json()).catch(() => null);
+      body: JSON.stringify({ product: null }) }).then((r) => r.json()).catch(() => null);
     if (!r) return push({ t: 'sys', text: tr('Kunne ikke kontakte kundeservice.') });
     st.ticket = r.ticket;
     push({ t: 'sys', text: `Sak #${r.ticket} er opprettet. En fra kundeservice ser hele samtalen og svarer her.` });

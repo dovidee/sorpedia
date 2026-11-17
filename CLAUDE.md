@@ -1,4 +1,4 @@
-# Sørpedia: demo web store for Sør-Tre (IS-219 group 4)
+# Sørpedia: demo web store for Sør-Tre
 
 Digital product guide and knowledge base ("Wikipedia for products") built as a demo of Sør-Tre's web store. Customers should get the same guidance and confidence online as in the store.
 
@@ -9,6 +9,7 @@ Digital product guide and knowledge base ("Wikipedia for products") built as a d
 3. Make a plan before changes across several files. Implement one task at a time.
 4. Try the change in the browser and compare the result with the acceptance criteria.
 5. Write briefly in `specs/NNN-*/verification.md` what was tested, what was rejected and known weaknesses.
+6. Report each change with how it was verified, and keep the levels apart: inspected, implemented, syntax checked, tested, run in the app, not verified. Never report a check that was not run.
 
 ## Non-negotiable rules
 
@@ -31,7 +32,7 @@ Digital product guide and knowledge base ("Wikipedia for products") built as a d
 | Architecture and data model | `docs/architecture/architecture.md` |
 | Principles | `docs/governance/constitution.md` |
 | Features and acceptance criteria | `specs/README.md` |
-| Work process (from the prototype roadmap) | `docs/process/workflow.md` |
+| Work process | `docs/process/workflow.md` |
 
 ## Commands
 
@@ -39,4 +40,9 @@ Digital product guide and knowledge base ("Wikipedia for products") built as a d
 php scripts/scrape.php          # fetches products from sor-tre.no into data/raw/
 php scripts/import.php          # builds the database from data/raw + seed data
 php -S localhost:8080 -t public # development server
+php tests/run.php               # unit tests (needs the database)
+php evals/run.php               # golden dataset and the chat's fixed safety replies
+php evals/soren.php             # conversation cases against Ollama, answers written out for review
+sh scripts/tools.sh             # installs PHPStan into tools/ (not in git)
+php -d memory_limit=1G tools/phpstan.phar analyse   # static analysis, level 3
 ```
