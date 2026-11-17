@@ -1,12 +1,12 @@
 """
-Sporer maskoten (public/assets/mascot.png) til SVG, så Søren ser ut akkurat som tegningen, men kan animeres.
+Traces the mascot (public/assets/mascot.png) to SVG, so Søren looks exactly like the drawing but can be animated.
 
-Bildet deles i fargelag (k-means) og i deler som skal kunne bevege seg hver for seg: krone (hvert blad
-eller bladklump), løse blader, kropp, øyne, vinkende arm, hengende arm, støvler og skygge. Hvert fargelag
-i hver del spores med potrace og lagres som paths med OKLCH-farger i public/assets/soren-art.js.
+The image is split into color layers (k-means) and into parts that can move separately: crown (each leaf
+or clump of leaves), loose leaves, body, eyes, waving arm, hanging arm, boots and shadow. Each color layer
+in each part is traced with potrace and saved as paths with OKLCH colors in public/assets/soren-art.js.
 
-Krever: pip install pillow numpy opencv-python-headless potracer
-Kjør:   python scripts/trace_soren.py
+Requires: pip install pillow numpy opencv-python-headless potracer
+Run:      python scripts/trace_soren.py
 """
 import json, math, os, sys
 import numpy as np, cv2, potrace
@@ -15,14 +15,14 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'public/assets/mascot.png')
 OUT = os.path.join(ROOT, 'public/assets/soren-art.js')
-X0, Y0, X1, Y1 = 395, 8, 632, 334     # utsnitt rundt Søren i originalbildet
-S = 4                                  # sporer i 4x oppløsning for glatte kanter
-K = 12                                 # antall fargelag
+X0, Y0, X1, Y1 = 395, 8, 632, 334     # crop around Søren in the original image
+S = 4                                  # traces at 4x resolution for smooth edges
+K = 12                                 # number of color layers
 
 img = np.array(Image.open(SRC).convert('RGB'))[Y0:Y1, X0:X1].astype(np.int32)
 H, W = img.shape[:2]
 
-# --- Figuren: alt som ikke er bakgrunn sett utenfra (også hvit kropp innenfor omrisset)
+# --- The figure: everything that isn't background seen from outside (including the white body inside the outline)
 near_white = (np.abs(img - 255).sum(-1) < 36).astype(np.uint8)
 flood = near_white.copy()
 ff = np.zeros((H + 2, W + 2), np.uint8)
@@ -30,9 +30,9 @@ cv2.floodFill(flood, ff, (0, 0), 2)
 figure = flood != 2
 figure = cv2.morphologyEx(figure.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
 
-# Hvite hull mellom bladene er bakgrunn, ikke kropp: de er omgitt av røde blader, mens kroppen har grått omriss
+# White holes between the leaves are background, not body: they are surrounded by red leaves, while the body has a grey outline
 _r, _g = img[..., 0], img[..., 1]
-_red = (_r - _g > 15)  # også rosa kantpiksler: hull mellom blader har rosa kant, kroppen har grå
+_red = (_r - _g > 15)  # also pink edge pixels: holes between leaves have a pink edge, the body has grey
 _white = near_white.astype(bool) & figure & ~_red
 n, cc = cv2.connectedComponents(_white.astype(np.uint8))
 for i in range(1, n):
@@ -43,7 +43,7 @@ for i in range(1, n):
     if grey < 0.3 * max(1, grey + red):
         figure[comp] = False
 
-# --- Fargelag
+# --- Color layers
 pix = img[figure].astype(np.float32)
 crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 60, 0.5)
 _, lab, centers = cv2.kmeans(pix, K, None, crit, 6, cv2.KMEANS_PP_CENTERS)
@@ -72,7 +72,7 @@ def oklch(rgb):
 
 colors = [oklch(c) for c in centers]
 
-# --- Deler (koordinater i originalbildet)
+# --- Parts (coordinates in the original image)
 def poly(points):
     m = np.zeros((H, W), np.uint8)
     cv2.fillPoly(m, [np.array([(x - X0, y - Y0) for x, y in points], np.int32)], 1)
@@ -82,11 +82,11 @@ yy, xx = np.mgrid[0:H, 0:W]
 Y = yy + Y0
 X = xx + X0
 red_px = figure & ((img[..., 0] - img[..., 1]) > 95)
-# Rosa kantpiksler (blad blandet med hvit bakgrunn) er verken blad eller kropp: de blir gjennomsiktige
-figure_full = figure.copy()  # med kantpikslene, til utklippet
+# Pink edge pixels (leaf mixed with white background) are neither leaf nor body: they become transparent
+figure_full = figure.copy()  # with the edge pixels, for the cutout
 figure &= ~(((img[..., 0] - img[..., 1]) > 15) & ~red_px)
 
-# Øyne: mørke flekker midt i ansiktet
+# Eyes: dark spots in the middle of the face
 dark = figure & (img.sum(-1) < 260) & (Y > 130) & (Y < 180)
 n, cc, stats, cent = cv2.connectedComponentsWithStats(dark.astype(np.uint8))
 eyes_boxes = sorted([stats[i] for i in range(1, n) if stats[i][4] > 40], key=lambda s: s[0])[:2]
@@ -102,7 +102,7 @@ shadow = figure & ~red_px & (Y >= 313) & ~boots
 arm_l = poly([(416, 178), (468, 186), (484, 214), (482, 247), (446, 250), (414, 236)]) & figure & ~red_px
 arm_r = poly([(558, 226), (594, 222), (598, 298), (560, 298), (560, 262)]) & figure & ~red_px & (Y < 313)
 
-# Løse blader: røde klumper under kronen som ikke er støvler
+# Loose leaves: red clumps under the crown that aren't boots
 n, cc, stats, cent = cv2.connectedComponentsWithStats(red_px.astype(np.uint8))
 loose = np.zeros((H, W), bool)
 crown_red = np.zeros((H, W), bool)
@@ -120,11 +120,11 @@ def with_holes(m):
     cnts, _ = cv2.findContours(filled, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     cv2.drawContours(filled, cnts, -1, 1, cv2.FILLED)
     return filled.astype(bool)
-# Årene i bladene er lyse rosa streker. Der de når kanten av bladet blir de ikke hull, så de lukkes her:
-# bare rosa piksler (ikke hvit bakgrunn mellom bladene) tas med. Årene tegnes oppå i sin egen farge.
+# The veins in the leaves are light pink lines. Where they reach the leaf edge they don't become holes, so they are closed here:
+# only pink pixels (not white background between the leaves) are included. The veins are drawn on top in their own color.
 _pink = (img[..., 0] - img[..., 1]) > 15
 def leaf_fill(m):
-    """Hvert blad lukkes for seg, så nabobladene ikke vokser sammen. Gir maske og nummer per blad."""
+    """Each leaf is closed separately, so neighboring leaves don't grow together. Gives a mask and a number per leaf."""
     n, cc = cv2.connectedComponents(m.astype(np.uint8))
     lab = np.zeros((H, W), np.int32)
     for i in range(1, n):
@@ -137,23 +137,23 @@ crown_red, crown_lab = leaf_fill(crown_red)
 loose, loose_lab = leaf_fill(loose)
 boots = leaf_fill(boots)[0]
 
-# Under øynene: fyll med kroppens farge rundt, så det ikke blir et hull når øynene blunker eller blir glade
+# Under the eyes: fill with the surrounding body color, so there is no hole when the eyes blink or look happy
 ring = cv2.dilate(eyes.astype(np.uint8), np.ones((7, 7), np.uint8)).astype(bool) & ~eyes & figure
 ring_labels = labels[ring]
 fill_label = int(np.bincount(ring_labels[ring_labels >= 0]).argmax())
 labels_eye_filled = labels.copy()
-labels_eye_filled[cv2.dilate(eyes.astype(np.uint8), np.ones((9, 9), np.uint8)).astype(bool) & ~red_px] = fill_label  # øynene tegnes som ellipser oppå
+labels_eye_filled[cv2.dilate(eyes.astype(np.uint8), np.ones((9, 9), np.uint8)).astype(bool) & ~red_px] = fill_label  # the eyes are drawn as ellipses on top
 for k in range(K):
     if reddish[k]:
         labels_eye_filled[(labels_eye_filled == k) & ~red_px] = fill_label
 body = figure & ~boots & ~shadow & ~crown_red & ~loose
-body = with_holes(body)  # ingen hull inne i kroppen (bakgrunnen skinte gjennom over øynene)
-# Kroppen går litt inn under bladene, så det ikke blir sprekker mellom kropp og krone
+body = with_holes(body)  # no holes inside the body (the background showed through above the eyes)
+# The body goes a little under the leaves, so there are no cracks between body and crown
 body |= cv2.dilate(body.astype(np.uint8), np.ones((7, 7), np.uint8)).astype(bool) & (crown_red | loose)
-# Armene overlapper kroppen litt ved skulderen, så det ikke blir sprekker når de beveger seg
+# The arms overlap the body a little at the shoulder, so there are no cracks when they move
 body_wo_arms = body & ~(arm_l & (X < 470)) & ~(arm_r & (X > 563))
 
-# --- Sporing
+# --- Tracing
 def trace(mask, dilate=1):
     if not mask.any():
         return ''
@@ -173,10 +173,10 @@ def trace(mask, dilate=1):
     return ''.join(out)
 
 def layers(mask, base=True, only_red=False, lab=None):
-    """Hvit grunnflate for hele delen, så hvert fargelag fra lyst til mørkt oppå."""
+    """White base shape for the whole part, then each color layer from light to dark on top."""
     parts = []
     if only_red:
-        # Blader: én rød grunnflate (uten lyse kantpiksler), så de mørkere røde nyansene oppå
+        # Leaves: one red base shape (without light edge pixels), then the darker red shades on top
         reds = [k for k in range(K) if reddish[k]]
         basek = max(reds, key=lambda k: int(np.sum((labels == k) & mask)))
         parts.append(f'<path d="{trace(mask, 0)}" fill="{colors[basek]}"/>')
@@ -185,7 +185,7 @@ def layers(mask, base=True, only_red=False, lab=None):
                 d = trace(mask & red_px & (labels == k), 0)
                 if d:
                     parts.append(f'<path d="{d}" fill="{colors[k]}" fill-rule="evenodd"/>')
-        # Lyse årer i bladene
+        # Light veins in the leaves
         inner = cv2.erode(mask.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)
         vein = inner & ~red_px
         if vein.sum() >= 4:
@@ -202,9 +202,9 @@ def layers(mask, base=True, only_red=False, lab=None):
     return ''.join(parts)
 
 def leaf_groups(mask, min_px=8, lab=None):
-    """Hver bladklump for seg, så de kan blafre og blåse av."""
+    """Each clump of leaves separately, so they can flutter and blow off."""
     n, cc, stats, cent = cv2.connectedComponentsWithStats(mask.astype(np.uint8))
-    if lab is not None:  # bladene slik de var før årene ble lukket
+    if lab is not None:  # the leaves as they were before the veins were closed
         n = int(lab.max()) + 1
         cc = lab
         stats = np.zeros((n, 5), int)
@@ -240,34 +240,34 @@ art = {
     'skin': colors[int(np.argmax(lum))],
     'edge': colors[sorted(range(K), key=lambda k: -lum[k])[2]],
 }
-# Øyne: mørkt og glans for seg
+# Eyes: dark part and highlight separately
 eye_dark = eyes & (img.sum(-1) < 330)
 eye_glint = eyes & (img.sum(-1) > 690) & ~eye_dark
-# Øynene er ovaler i tegningen: tilpass en ellipse til hver mørke pupill, og en sirkel til glansen
+# The eyes are ovals in the drawing: fit an ellipse to each dark pupil, and a circle to the highlight
 eye_parts = []
 n, cc, stats, cent = cv2.connectedComponentsWithStats(eye_dark.astype(np.uint8))
 for i in sorted(range(1, n), key=lambda i: -stats[i][4])[:2]:
     comp = (cc == i)
-    filled = with_holes(comp)  # glansen er et hull i pupillen
+    filled = with_holes(comp)  # the highlight is a hole in the pupil
     cnts, _ = cv2.findContours(filled.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     (ex, ey), (ew, eh), ang = cv2.fitEllipse(max(cnts, key=cv2.contourArea))
-    # Pilleform som i tegningen: rett side, runde ender. Bredde og høyde fra pupillen selv.
+    # Pill shape as in the drawing: straight sides, round ends. Width and height from the pupil itself.
     ys, xs = np.nonzero(filled)
     pw, ph = xs.max() - xs.min() + 1, ys.max() - ys.min() + 1
     eye_parts.append(f'<rect x="{xs.min() + X0:.1f}" y="{ys.min() + Y0:.1f}" width="{pw:.1f}" height="{ph:.1f}" rx="{pw / 2:.1f}" fill="{oklch(img[comp].mean(0))}"/>')
     oval = np.zeros((H, W), np.uint8)
     cv2.ellipse(oval, ((ex, ey), (ew, eh), ang), 1, -1)
-    oval = cv2.erode(oval, np.ones((5, 5), np.uint8))  # ikke kanten av ovalen
-    glint = oval.astype(bool) & ~comp & (img.sum(-1) > 450)  # lyse piksler inne i ovalen
+    oval = cv2.erode(oval, np.ones((5, 5), np.uint8))  # not the edge of the oval
+    glint = oval.astype(bool) & ~comp & (img.sum(-1) > 450)  # light pixels inside the oval
     if glint.sum() >= 2:
         gy, gx = np.nonzero(glint)
         eye_parts.append(f'<circle cx="{gx.mean() + X0 + .5:.1f}" cy="{gy.mean() + Y0 + .5:.1f}" r="{max(1.2, math.sqrt(glint.sum() / math.pi)):.1f}" fill="oklch(100% 0 0)"/>')
 art['eyesSvg'] = ''.join(eye_parts)
 art['eyeColor'] = oklch(img[eye_dark].mean(0))
-# Ett blad til ikonet: det øverste bladet
-# ---------- Utklipp: delene er bitene av selve tegningen, ikke sporede flater ----------
-# Hver piksel får fargen fra tegningen. Kantpiksler (blandet med hvit bakgrunn) får nøyaktig den
-# gjennomsiktigheten de har mot hvitt, regnet ut fra fargen innenfor kanten. Da blir det ingen hvit kant i mørk modus.
+# One leaf for the icon: the top leaf
+# ---------- Cutout: the parts are pieces of the drawing itself, not traced shapes ----------
+# Every pixel gets the color from the drawing. Edge pixels (mixed with white background) get exactly the
+# transparency they have against white, computed from the color inside the edge. Then there is no white edge in dark mode.
 import base64, io
 F = img.astype(np.float32)
 core = cv2.erode(figure_full.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
@@ -280,23 +280,23 @@ den = (d_in ** 2).sum(-1)
 a_edge = np.where(den > 300, (d_px * d_in).sum(-1) / np.maximum(den, 1), 1.0).clip(0, 1)
 alpha = np.where(core, 1.0, np.where(zone, a_edge, 0.0))
 fg = np.where(edge[..., None] & (den[..., None] > 300), inner_col, F)
-# Gjennomsiktigheten kommer fra verktøyene (Segment Anything + BiRefNet), se scripts/cutout_soren.py.
-# Kantpiksler har hvit bakgrunn blandet inn. Den fjernes med vanlig formel, siden bakgrunnen er kjent hvit:
-# farge = (piksel - (1 - alfa) * hvit) / alfa
+# The transparency comes from the tools (Segment Anything + BiRefNet), see scripts/cutout_soren.py.
+# Edge pixels have white background mixed in. It is removed with the usual formula, since the background is known to be white:
+# color = (pixel - (1 - alpha) * white) / alpha
 tool_a = np.array(Image.open(os.path.join(ROOT, 'public/assets/mascot-alpha.png')))[Y0:Y1, X0:X1].astype(np.float32) / 255
 alpha = tool_a
 fg = np.where(tool_a[..., None] > 0.05, (F - (1 - tool_a[..., None]) * 255) / np.maximum(tool_a[..., None], 0.05), F).clip(0, 255)
-# Svake kantpiksler gir støy i formelen (deler på liten alfa): de får fargen til nærmeste hele piksel (OpenCV inpaint)
+# Weak edge pixels give noise in the formula (dividing by a small alpha): they get the color of the nearest full pixel (OpenCV inpaint)
 _faint = (tool_a < 0.6).astype(np.uint8)
 _solid = cv2.inpaint(fg.astype(np.uint8), _faint, 3, cv2.INPAINT_TELEA).astype(np.float32)
 fg = np.where(_faint[..., None] > 0, _solid, fg)
 zone = tool_a > 0.02
-# Skyggen: lys grå på hvitt blir svart med lav dekning, så den ser ut som skygge også på mørk bakgrunn
+# The shadow: light grey on white becomes black with low coverage, so it looks like a shadow on a dark background too
 sh = shadow | (cv2.dilate(shadow.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool) & zone & (Y >= 313) & ~boots)
 alpha = np.where(sh, ((255 - F.min(-1)) / 255).clip(0, 1), alpha)
 fg[sh] = 0
 
-# Hver piksel i figuren hører til én del. Kantpiksler får delen til nærmeste del-piksel.
+# Every pixel in the figure belongs to one part. Edge pixels get the part of the nearest part pixel.
 part = np.zeros((H, W), np.int32)
 masks = {1: shadow, 2: boots, 3: body_wo_arms, 4: arm_l & ~boots, 5: arm_r & ~boots}
 for k, m in masks.items():
@@ -310,18 +310,18 @@ for _ in range(4):
 part[sh & (part == 0)] = 1
 
 skin_rgb = np.median(F[body & core & (F.min(-1) > 235)], axis=0)
-eye_hole = cv2.dilate(eyes.astype(np.uint8), np.ones((11, 11), np.uint8)).astype(bool) & ~red_px  # med kantpikslene rundt øyet
+eye_hole = cv2.dilate(eyes.astype(np.uint8), np.ones((11, 11), np.uint8)).astype(bool) & ~red_px  # with the edge pixels around the eye
 
 def png(rgba, x0, y0, w, h):
-    im = Image.fromarray(rgba.round().astype(np.uint8), 'RGBA')  # originaloppløsning: nettleseren skalerer jevnt, uten skjøter
+    im = Image.fromarray(rgba.round().astype(np.uint8), 'RGBA')  # original resolution: the browser scales smoothly, without seams
     b = io.BytesIO()
     im.save(b, 'PNG', optimize=True)
     return (f'<image href="data:image/png;base64,{base64.b64encode(b.getvalue()).decode()}" x="{x0 + X0}" y="{y0 + Y0}" '
             f'width="{w}" height="{h}" preserveAspectRatio="none"/>')
 
 def cut(sel, under=None, inpaint=None, keep=None):
-    """Utklipp av delen sel. under: piksler som fylles med kroppsfarge (kroppen under bladene).
-    keep: piksler under delen som beholder fargen fra tegningen (kroppen under armene, så det ikke blir skjøt)."""
+    """Cutout of the part sel. under: pixels filled with body color (the body under the leaves).
+    keep: pixels under the part that keep the color from the drawing (the body under the arms, so there is no seam)."""
     m = sel | (under if under is not None else False) | (keep if keep is not None else False)
     if not m.any():
         return ''
@@ -359,8 +359,8 @@ body_sel = part == 3
 near_body = cv2.dilate(body_sel.astype(np.uint8), np.ones((9, 9), np.uint8)).astype(bool)
 under_body = near_body & (part > LEAF0) & body
 keep_body = near_body & ((part == 4) | (part == 5))
-art['body'] = cut(body_sel, under=under_body, inpaint=eye_hole & body_sel, keep=keep_body)  # øynene tegnes oppå, så hullet fylles med kropp
-# Armene overlapper kroppen med to piksler, så skjøten ikke synes
+art['body'] = cut(body_sel, under=under_body, inpaint=eye_hole & body_sel, keep=keep_body)  # the eyes are drawn on top, so the hole is filled with body
+# The arms overlap the body by two pixels, so the seam doesn't show
 grow = lambda k: (part == k) | (cv2.dilate((part == k).astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool) & (part == 3))
 art['armL'] = cut(grow(4))
 art['armR'] = cut(grow(5))

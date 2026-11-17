@@ -1,47 +1,47 @@
-# Produktutvalg, filtre og "passer sammen"
+# Product selection, filters and "goes well with"
 
-## Valgte underkategorier (fra sor-tre.no, november 2026)
+## Chosen subcategories (from sor-tre.no, November 2026)
 
-Valgt slik at hver gruppe har tekniske spesifikasjoner å filtrere på, naturlige tilbehør, og noe som kan monteres eller trenger veiledning. Tallene er antall produkter hos Sør-Tre.
+Chosen so that every group has technical specifications to filter on, natural accessories, and something that needs assembly or guidance. The numbers are product counts at Sør-Tre.
 
-| Tema (guide) | Underkategorier (ID, antall) | Hvorfor |
+| Theme (guide) | Subcategories (ID, count) | Why |
 |---|---|---|
-| Lys og rekkevidde | Lykt (7111, 18), Lykter og batterier (7129, 12), Lyskilder (7117, 25), Arbeidslys (7160, 5) | Kjerneproblem P1: lumen, rekkevidde i meter, batteritid, IP-klasse. Hodelykt passer med batteri (dokumentert i Sør-Tre sin egen tekst: "Passer blant annet Ledlenser H7R") |
-| Bygg og feste | Hammer og slegge (7207, 5), Spiker (7137, 23), Skruer stål (7138, 45), Beslag (7663, 28), Skyvelær og tommestokk (7118, 6), Kapp og slipeskive (7128, 16) | Hammer og spiker. Filter på lengde, diameter, materiale, overflate |
-| Maling | Rulle og pensel (7364, 72), Sparkel (7179, 32), Maskering (7193, 11), Skrape og stålbørste (7206, 13), Sandpapir (7253, 6) | Persona Ingrid er maler. Komplett "male et rom"-pakke |
-| Balkong og montering | Balkongskjerming glass (7678, 12), stendere (7680, 12), dekklist (7679, 6) | Kundereisen nevner glassrekkverk. Monteringsveiledning steg for steg, mål i mm, materialer |
-| Kjetting og løft | Sjakkel (7499, 37), Kjetting (7504, 33), Kroker (7220, 17) | Tekniske tall (WLL, dimensjon), galvanisert eller syrefast |
-| Skog og sikkerhet | Motorsag (7070, 11), Hogsttilbehør (7079, 8), Arbeidshansker (7088, 35), Hørselvern (7087, 4) | Effekt, sverdlengde. Sikkerhetsutstyr som obligatorisk anbefalt tilbehør |
-| Tur | Kikkerter (7246, 11), Grill og kokeutstyr (7258, 25) | Forstørrelse og objektiv for sammenligning. Grill må monteres |
+| Light and range | Lykt (7111, 18), Lykter og batterier (7129, 12), Lyskilder (7117, 25), Arbeidslys (7160, 5) | Core problem P1: lumen, range in meters, battery life, IP rating. Headlamp goes with battery (documented in Sør-Tre's own text: "Passer blant annet Ledlenser H7R") |
+| Building and fastening | Hammer og slegge (7207, 5), Spiker (7137, 23), Skruer stål (7138, 45), Beslag (7663, 28), Skyvelær og tommestokk (7118, 6), Kapp og slipeskive (7128, 16) | Hammer and nails. Filters on length, diameter, material, finish |
+| Painting | Rulle og pensel (7364, 72), Sparkel (7179, 32), Maskering (7193, 11), Skrape og stålbørste (7206, 13), Sandpapir (7253, 6) | Persona Ingrid is a painter. Complete "paint a room" kit |
+| Balcony and assembly | Balkongskjerming glass (7678, 12), stendere (7680, 12), dekklist (7679, 6) | The customer journey mentions glass railings. Step by step assembly guide, measurements in mm, materials |
+| Chain and lifting | Sjakkel (7499, 37), Kjetting (7504, 33), Kroker (7220, 17) | Technical numbers (WLL, dimension), galvanized or acid proof |
+| Forest and safety | Motorsag (7070, 11), Hogsttilbehør (7079, 8), Arbeidshansker (7088, 35), Hørselvern (7087, 4) | Power, bar length. Safety gear as a strongly recommended accessory |
+| Outdoors | Kikkerter (7246, 11), Grill og kokeutstyr (7258, 25) | Magnification and objective size for comparison. Grills need assembly |
 
-Totalt cirka 480 produkter. Importen tar maks 40 per underkategori, cirka 350 produkter.
+About 480 products in total. The import takes at most 40 per subcategory, about 350 products.
 
-## Filterfasetter (spec_keys med facet = 1)
+## Filter facets (spec_keys with facet = 1)
 
-| Nøkkel | Enhet | Gjelder | Hvordan den fylles |
+| Key | Unit | Applies to | How it is filled |
 |---|---|---|---|
-| pris | kr | alle | Sør-Tre |
-| materiale | tekst | alle | Utledet fra tittel og tekst (stål, rustfri, syrefast, galvanisert, aluminium, tre, plast, gummi, glass, nylon) |
-| farge | tekst | alle | Utledet (svart, hvit, rød, grønn, blå, gul, oransje, grå, transparent) |
-| lengde_mm, diameter_mm, bredde_mm | mm | feste, maling, balkong | Utledet fra mønstre som 4,0x75 mm, 50 mm, 1000 mm |
-| lysstyrke_lm | lumen | lys | Utledet ("2500 Lumen") |
-| rekkevidde_m | meter | lys | Oftest ukjent. Fylles av verifiserte kjøpere i åpen versjon (demo-eksempel) |
-| batteri | tekst | lys, verktøy | Utledet (oppladbar, AA, AAA, 21700, Li-ion) |
-| ip_klasse | tekst | lys, el | Utledet (IPX4, IP67) |
-| effekt_w, sverdlengde_cm | W, cm | skog, el | Utledet |
-| arbeidslast_kg | kg | kjetting | Utledet (WLL) |
-| forstorrelse | x | kikkert | Utledet (10x42) |
-| merke | tekst | alle | Utledet fra tittel (Ledlenser, Einhell, Osean, Husqvarna osv.) |
-| bruksomrade | tekst | alle | Regel per underkategori (innendørs, utendørs, marint, verksted) |
+| pris | kr | all | Sør-Tre |
+| materiale | text | all | Derived from title and text (steel, stainless, acid proof, galvanized, aluminium, wood, plastic, rubber, glass, nylon) |
+| farge | text | all | Derived (black, white, red, green, blue, yellow, orange, grey, transparent) |
+| lengde_mm, diameter_mm, bredde_mm | mm | fastening, painting, balcony | Derived from patterns like 4,0x75 mm, 50 mm, 1000 mm |
+| lysstyrke_lm | lumen | light | Derived ("2500 Lumen") |
+| rekkevidde_m | meter | light | Usually unknown. Filled in by verified buyers in the open version (demo example) |
+| batteri | text | light, tools | Derived (rechargeable, AA, AAA, 21700, Li-ion) |
+| ip_klasse | text | light, electrical | Derived (IPX4, IP67) |
+| effekt_w, sverdlengde_cm | W, cm | forest, electrical | Derived |
+| arbeidslast_kg | kg | chain | Derived (WLL) |
+| forstorrelse | x | binoculars | Derived (10x42) |
+| merke | text | all | Derived from the title (Ledlenser, Einhell, Osean, Husqvarna etc.) |
+| bruksomrade | text | all | Rule per subcategory (indoor, outdoor, marine, workshop) |
 
-Hver utledet verdi lagres med kilde `utledet` og tekstutdraget den kom fra, slik at kunden ser "Utledet fra produkttekst: '2500 Lumen'".
+Every derived value is stored with the source `utledet` and the text snippet it came from, so the customer sees "Derived from product text: '2500 Lumen'".
 
-## "Passer sammen"-regler
+## "Goes well with" rules
 
-| Nivå | Betydning | Eksempel |
+| Level | Meaning | Example |
 |---|---|---|
-| Dokumentert | Står eksplisitt i produkttekst hos Sør-Tre | Batteri 21700 "passer Ledlenser H7R" |
-| Regelutledet | Deterministisk regel mellom kategorier og fasetter | Hammer til spiker. Rulle til sparkel og maskering. Motorsag til hansker og hørselvern. Sjakkel til kjetting med samme dimensjon. Glass til stender og dekklist |
-| Antatt | Kjøpt sammen av andre (demo-ordrer) | Kikkert og grill |
+| Documented | Stated explicitly in Sør-Tre's product text | Battery 21700 "passer Ledlenser H7R" |
+| Rule based | Deterministic rule between categories and facets | Hammer to nails. Roller to filler and masking tape. Chainsaw to gloves and hearing protection. Shackle to chain of the same dimension. Glass to posts and cover strip |
+| Assumed | Bought together by others (demo orders) | Binoculars and grill |
 
-Antatt vises som "Andre kjøpte også", aldri som "passer".
+Assumed is shown as "Others also bought", never as "goes well with".

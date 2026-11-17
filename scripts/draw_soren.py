@@ -1,14 +1,14 @@
 """
-Tegner Søren som ny, ren vektorfigur til public/assets/soren-art.js.
+Draws Søren as a new, clean vector figure into public/assets/soren-art.js.
 
-Ingen piksler fra bildet havner i figuren. Tegningen (public/assets/mascot.png) og utklippsmasken
-(public/assets/mascot-alpha.png) brukes bare til å måle formene, så omriss, proporsjoner og plassering
-er de samme: tykk stamme, greiner, korte bein, eik- og lønneblader. Hver del tegnes som én glatt flate
-med én farge: hvit stamme med myk skyggekant (ikke omriss) og barkstreker, røde blader med lys midtnerve, røde støvler, pilleøyne og en myk skygge.
+No pixels from the image end up in the figure. The drawing (public/assets/mascot.png) and the cutout mask
+(public/assets/mascot-alpha.png) are only used to measure the shapes, so outline, proportions and placement
+are the same: thick trunk, branches, short legs, oak and maple leaves. Each part is drawn as one smooth shape
+with one color: white trunk with a soft shadow edge (no outline) and bark lines, red leaves with a light midrib, red boots, pill eyes and a soft shadow.
 
-Delene holdes hver for seg, så soren.js kan animere dem (krone, løse blader, armer, øyne).
-Krever: pip install pillow numpy opencv-python-headless
-Kjør:   python scripts/draw_soren.py
+The parts are kept separate, so soren.js can animate them (crown, loose leaves, arms, eyes).
+Requires: pip install pillow numpy opencv-python-headless
+Run:      python scripts/draw_soren.py
 """
 import json, math, os
 import numpy as np, cv2
@@ -18,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'public/assets/soren-art.js')
 X0, Y0, X1, Y1 = 395, 8, 632, 334
 W, H = X1 - X0, Y1 - Y0
-S = 4  # målingene gjøres i 4x for glatte omriss
+S = 4  # measurements are made at 4x for smooth outlines
 
 SKIN, SHADE, BARK = 'oklch(98.5% 0.003 250)', 'oklch(86% 0.012 250)', 'oklch(86% 0.01 250)'
 RED, RED_DARK, VEIN = 'oklch(60% 0.21 25)', 'oklch(50% 0.19 25)', 'oklch(86% 0.07 20)'
@@ -46,7 +46,7 @@ def poly(points):
 
 
 def path(mask, eps=0.6, min_area=6):
-    """Glatt omriss av en maske som SVG-sti (Catmull-Rom gjennom forenklede punkter)."""
+    """Smooth outline of a mask as an SVG path (Catmull-Rom through simplified points)."""
     m = cv2.resize(mask.astype(np.uint8) * 255, (W * S, H * S), interpolation=cv2.INTER_LINEAR)
     m = (cv2.GaussianBlur(m, (0, 0), S * 0.7) > 127).astype(np.uint8)
     cnts, hier = cv2.findContours(m, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
@@ -70,25 +70,25 @@ def path(mask, eps=0.6, min_area=6):
     return ''.join(out)
 
 
-# ---------- Deler målt fra tegningen ----------
+# ---------- Parts measured from the drawing ----------
 shadow_px = alpha & ~red & (Y >= 316)
 boots = fill_holes(cv2.morphologyEx((red & (Y >= 286)).astype(np.uint8), cv2.MORPH_CLOSE, k(3)).astype(bool))
 figure = fill_holes(cv2.morphologyEx((alpha & ~shadow_px).astype(np.uint8), cv2.MORPH_CLOSE, k(5)).astype(bool)) | boots
 leaves_px = red & ~boots
-# Kroppen: alt som ikke er blad, støvle eller skygge, lukket der bladene overlapper kanten
+# The body: everything that isn't a leaf, boot or shadow, closed where the leaves overlap the edge
 body_all = fill_holes(cv2.morphologyEx((figure & ~leaves_px & ~boots).astype(np.uint8), cv2.MORPH_OPEN, k(3)).astype(bool))
 body_all = fill_holes(cv2.morphologyEx(body_all.astype(np.uint8), cv2.MORPH_CLOSE, k(7)).astype(bool)) & ~boots
 arm_l = poly([(416, 178), (468, 186), (484, 214), (482, 247), (446, 250), (414, 236)]) & body_all
 arm_r = poly([(558, 226), (594, 222), (598, 298), (560, 298), (560, 262)]) & body_all & (Y < 313)
 body = body_all & ~(arm_l & (X < 472)) & ~(arm_r & (X > 562))
-# Barkstreker og omrisslinjer inne i kroppen: grå piksler godt inne i figuren
+# Bark lines and outline strokes inside the body: grey pixels well inside the figure
 inner = cv2.erode(body_all.astype(np.uint8), k(5)).astype(bool)
 bark = inner & (img.min(-1) < 222) & (img.min(-1) > 120) & ~cv2.dilate(red.astype(np.uint8), k(5)).astype(bool)
-bark &= ~poly([(486, 140), (546, 140), (546, 176), (486, 176)])  # ikke rundt øynene
+bark &= ~poly([(486, 140), (546, 140), (546, 176), (486, 176)])  # not around the eyes
 
 
 def part(mask, fill, lines=None):
-    # Ingen omriss: en myk skyggeflate litt forskjøvet bak den hvite formen gir kant mot lys bakgrunn
+    # No outline: a soft shadow shape slightly offset behind the white shape gives an edge against a light background
     d = path(mask)
     s = f'<path d="{d}" transform="translate(1.6 2.2)" fill="{SHADE}"/><path d="{d}" fill="{fill}"/>'
     if lines is not None and lines.any():
@@ -96,11 +96,11 @@ def part(mask, fill, lines=None):
     return s
 
 
-# ---------- Blader ----------
+# ---------- Leaves ----------
 def leaf_svg(comp):
-    """Ett blad eller en bladklump: rød flate, mørkere kant og en lys midtnerve per blad."""
+    """One leaf or a clump of leaves: red shape, darker edge and a light midrib per leaf."""
     s = f'<path d="{path(comp, eps=0.45, min_area=4)}" fill="{RED}" stroke="{RED_DARK}" stroke-width=".8" stroke-linejoin="round"/>'
-    # Midtnerve: langs den lengste aksen til hver del av klumpen som ligner ett blad
+    # Midrib: along the longest axis of each part of the clump that looks like one leaf
     n, cc, st, _ = cv2.connectedComponentsWithStats(cv2.erode(comp.astype(np.uint8), k(3)))
     for i in range(1, n):
         if st[i][4] < 25:
@@ -138,8 +138,8 @@ crown = np.zeros((H, W), bool)
 for i in range(1, n):
     (loose if cent[i][1] + Y0 > 200 else crown)[cc == i] = True
 
-# ---------- Øyne: piller med glans, målt fra pupillene ----------
-dark = alpha & (img.sum(-1) < 330) & (Y > 130) & (Y < 180) & (X > 485) & (X < 548)  # bare ansiktet
+# ---------- Eyes: pills with a highlight, measured from the pupils ----------
+dark = alpha & (img.sum(-1) < 330) & (Y > 130) & (Y < 180) & (X > 485) & (X < 548)  # only the face
 n, cc, st, _ = cv2.connectedComponentsWithStats(dark.astype(np.uint8))
 eyes, eye_svg = [], ''
 for i in sorted(range(1, n), key=lambda i: -st[i][4])[:2]:
@@ -151,7 +151,7 @@ for i in sorted(range(1, n), key=lambda i: -st[i][4])[:2]:
                 f'<circle cx="{x + w * .62:.1f}" cy="{y + h * .3:.1f}" r="{w * .2:.1f}" fill="oklch(100% 0 0)"/>')
 eyes.sort(key=lambda e: e['cx'])
 
-# ---------- Skygge: en myk ellipse under støvlene ----------
+# ---------- Shadow: a soft ellipse under the boots ----------
 ys, xs = np.nonzero(shadow_px)
 shadow = (f'<ellipse cx="{(xs.min() + xs.max()) / 2 + X0:.1f}" cy="{ys.mean() + Y0 + 1:.1f}" rx="{(xs.max() - xs.min()) / 2:.1f}" '
           f'ry="{max(4, (ys.max() - ys.min()) / 2):.1f}" fill="oklch(0% 0 0 / .14)"/>')

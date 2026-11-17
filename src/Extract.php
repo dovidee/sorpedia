@@ -2,12 +2,12 @@
 declare(strict_types=1);
 
 /**
- * Henter spesifikasjoner ut av Sør-Tre sin produkttittel og -tekst.
+ * Extracts specifications from Sør-Tre's product title and text.
  *
- * Kildenivå (constitution punkt 2):
- *   sortre  = tallet eller verdien står eksplisitt hos Sør-Tre (f.eks. "2500 Lumen"). Lagres i Verifisert.
- *   utledet = vår tolkning (f.eks. "vf" betyr varmforsinket, farge, bruksområde). Lagres i Åpen.
- * Alle verdier får et tekstutdrag som evidens. Ukjent er et gyldig svar: finner vi ikke noe, lagres ingenting.
+ * Source level (constitution point 2):
+ *   sortre  = the number or value is stated explicitly by Sør-Tre (e.g. "2500 Lumen"). Stored in Verified.
+ *   utledet = our interpretation (e.g. "vf" means hot dip galvanized, color, use case). Stored in Open.
+ * Every value gets a text snippet as evidence. Unknown is a valid answer: if we find nothing, nothing is stored.
  */
 final class Extract
 {
@@ -79,7 +79,7 @@ final class Extract
                 'unit' => $unit,
             ];
         };
-        // Kjører regex mot navn først, så tekst. Callback får matcher og returnerer [tekst, tall] eller null.
+        // Runs the regex against the name first, then the text. The callback gets the matches and returns [text, number] or null.
         $rule = function (string $key, string $re, callable $fn, string $src = 'sortre', bool $textToo = true)
             use ($name, $text, $add): void {
             foreach ($textToo ? [$name, $text] : [$name] as $hay) {
@@ -98,13 +98,13 @@ final class Extract
         $is = fn(string ...$themes): bool => in_array($theme, $themes, true);
         $lname = mb_strtolower($name);
 
-        // Sør-Tre sine egne tabeller («Egenskap | Verdi»), «Nøkkel: verdi»-linjer og punktlister. Kjøres først, så de går foran tolkningene under.
+        // Sør-Tre's own tables ("Egenskap | Verdi"), "Key: value" lines and bullet lists. Run first, so they take precedence over the interpretations below.
         self::pairs(self::tableText($html), $add, $n, $fmt);
         self::pairs($text, $add, $n, $fmt);
         self::fromName($name, $add, $n, $fmt);
         self::included($text, $add);
 
-        // Merke (tolket fra tittel)
+        // Brand (interpreted from the title)
         foreach (self::BRANDS as $needle => $brand) {
             if (preg_match('/(^|[\s(])' . preg_quote((string) $needle, '/') . '($|[\s,)])/iu', $name, $m, PREG_OFFSET_CAPTURE)) {
                 $add('merke', $brand, null, 'utledet', $name, $m[0][1], strlen($m[0][0]));
@@ -142,7 +142,7 @@ final class Extract
             $rule('objektiv_mm', '/\b\d{1,2}\s*[x×]\s*(\d{2})(?!\d)/u', fn($m) => [$m[1], (float) $m[1]]);
         }
         if ($is('bygg')) {
-            // 4,0x40 (skrue) eller 28-75 / 2,0-35 (spiker og stift: diameter i tidels mm eller med komma)
+            // 4,0x40 (screw) or 28-75 / 2,0-35 (nails and staples: diameter in tenths of a mm or with a comma)
             $rule('diameter_mm', '/\b(\d{1,2}(?:,\d)?)\s*[x×]\s*(\d{2,3})\b/u', fn($m) => $n($m[1]) <= 12 ? [$fmt($n($m[1])), $n($m[1])] : null, 'sortre', false);
             $rule('lengde_mm', '/\b\d{1,2}(?:,\d)?\s*[x×]\s*(\d{2,3})\b/u', fn($m) => [$m[1], (float) $m[1]], 'sortre', false);
             if (preg_match('/spiker|stift|murstift|tacks/u', $lname)) {
@@ -178,7 +178,7 @@ final class Extract
         });
         $rule('pakning_stk', '/\b(\d{1,4})\s*(?:stk|pk)\b\.?/iu', fn($m) => (int) $m[1] > 1 ? [$m[1], (float) $m[1]] : null, 'sortre', false);
 
-        // Utledet: materiale (første treff i prioritert liste, tittel før tekst)
+        // Derived: material (first hit in a prioritized list, title before text)
         $materials = [
             '/syrefast|\bA4\b/iu' => 'Syrefast stål',
             '/rustfri|\bA2\b/iu' => 'Rustfritt stål',
@@ -200,16 +200,16 @@ final class Extract
             '/gummi/iu' => 'Gummi',
             '/\bstål\b|herdet/iu' => 'Stål',
         ];
-        // Tittel: prioritert rekkefølge. Tekst: det materialet som nevnes først, fordi
-        // senere treff ofte gjelder tilbehør ("leveres med skruer i A2 rustfritt").
+        // Title: prioritized order. Text: the material mentioned first, because
+        // later hits often concern accessories ("leveres med skruer i A2 rustfritt").
         foreach ([$name, $text] as $hay) {
-            $best = null; // [materiale, posisjon, lengde]
+            $best = null; // [material, position, length]
             foreach ($materials as $re => $mat) {
-                // "el" og "MS" er bare trygge som forkortelser i jernvaretitler
+                // "el" and "MS" are only safe as abbreviations in hardware titles
                 if (($mat === 'Elforsinket stål' || $mat === 'Messing') && ($hay !== $name || !$is('bygg', 'kjetting'))) {
                     continue;
                 }
-                if ($mat === 'Tre' && $hay !== $name && !preg_match('/treskaft|hickory|\bbjørk/iu', $hay)) { // «tre» er ofte tallet tre
+                if ($mat === 'Tre' && $hay !== $name && !preg_match('/treskaft|hickory|\bbjørk/iu', $hay)) { // "tre" (wood) is often the number three
                     continue;
                 }
                 if (preg_match($re, $hay, $m, PREG_OFFSET_CAPTURE)) {
@@ -229,7 +229,7 @@ final class Extract
             }
         }
 
-        // Utledet: farge (bare fra tittel, for å unngå tilfeldige ord i teksten)
+        // Derived: color (only from the title, to avoid random words in the text)
         $colors = [
             'hvit' => 'Hvit', 'svart' => 'Svart', 'sort' => 'Svart', 'rød' => 'Rød', 'blå' => 'Blå',
             'grønn' => 'Grønn', 'gul' => 'Gul', 'oransje' => 'Oransje', 'grå' => 'Grå',
@@ -242,7 +242,7 @@ final class Extract
             }
         }
 
-        // Utledet: bruksområde fra nøkkelord, ellers fra tema
+        // Derived: use case from keywords, otherwise from the theme
         $uses = [
             '/\bINNE\b|innendørs|interiør/iu' => 'Innendørs',
             '/\bUTE\b|utendørs|terrasse|fasade|balkong/iu' => 'Utendørs',
@@ -262,7 +262,7 @@ final class Extract
             'balkong' => 'Utendørs', 'kjetting' => 'Løft og sikring', 'skog' => 'Skog og hage', 'tur' => 'Tur og friluft'];
         $add('bruksomrade', $themeUse[$theme] ?? 'Annet', null, 'utledet', "Kategori: $theme", 0, 0);
 
-        // Pakning i tittelen (P6) er mer presis enn «Antall i pakke: 1» som står i mange tekster
+        // Pack size in the title (P6) is more precise than "Antall i pakke: 1", which appears in many texts
         if (preg_match('/\bP(\d{1,4})\b/u', $name, $pm) && (int) $pm[1] > 1) {
             $out['pakning_stk'] = ['key' => 'pakning_stk', 'text' => $pm[1], 'num' => (float) $pm[1], 'source' => 'sortre',
                 'evidence' => $name, 'label' => null, 'unit' => null];
@@ -270,7 +270,7 @@ final class Extract
         return array_values($out);
     }
 
-    /** Synonymer i Sør-Tre sin tekst => vår nøkkel og hvordan verdien leses. */
+    /** Synonyms in Sør-Tre's text => our key and how the value is read. */
     private const SYNONYMS = [
         'vekt' => 'vekt_g', 'vekt inkl. koffert' => 'vekt_g', 'hovedmateriale' => 'materiale', 'materiale' => 'materiale',
         'batteri' => 'batteri', 'batteritype' => 'batteri', 'lysstyrke' => 'lysstyrke_lm', 'effekt' => 'effekt_w',
@@ -283,18 +283,18 @@ final class Extract
         'produkttype' => 'x_produkttype', 'senterhull' => 'x_senterhull',
         'merke' => 'merke', 'bruksområde' => 'bruksomrade', 'bruksområder' => 'bruksomrade', 'sokkel' => 'sokkel', 'brenntid' => 'brenntid_t', 'brukstid pr oppladning' => 'brenntid_t',
     ];
-    /** Forkortelser Sør-Tre bruker for materiale. */
+    /** Abbreviations Sør-Tre uses for materials. */
     private const MATERIAL_ABBR = ['mess' => 'Messing', 'ms' => 'Messing', 'el' => 'Elforsinket stål', 'elf' => 'Elforsinket stål',
         'vf' => 'Varmforsinket stål', 'fzv' => 'Varmforsinket stål', 'rf' => 'Rustfritt stål', 'a2' => 'Rustfritt stål', 'a4' => 'Syrefast stål'];
 
-    /** Linjer som ikke er egenskaper ved produktet. */
+    /** Lines that aren't properties of the product. */
     private const SKIP = ['kort sagt', 'artikkelnummer', 'ean', 'varenummer', 'pris', 'obs', 'nb', 'tips', 'merk', 'les mer',
         'tekniske spesifikasjoner', 'spesifikasjoner', 'brukstips', 'egenskap', 'produsent', 'produktfamilie'];
 
-    /** «Maks effekt: 2,5 kW», «Vekt: 2087 gram», «– Piezo tenning». Alt Sør-Tre skriver om produktet blir egenskaper. */
+    /** "Maks effekt: 2,5 kW", "Vekt: 2087 gram", dash bullets like "Piezo tenning". Everything Sør-Tre writes about the product becomes properties. */
     private static function pairs(string $text, callable $add, callable $n, callable $fmt): void
     {
-        // Finn alle «Nøkkel:» først, også når teksten er limt sammen («4tDim: 48x78mm»). Verdien er teksten fram til neste nøkkel.
+        // Find every "Key:" first, also when the text is glued together ("4tDim: 48x78mm"). The value is the text up to the next key.
         $start = '(?:^|(?<=[\s–•.;)])|(?<=[\d\p{Ll}])(?=[A-ZÆØÅ][a-zæøå]{2}))';
         preg_match_all('/' . $start . '([A-ZÆØÅ](?:[\p{Ll} ,\/()-]|(?<=[\s(\/-])\p{Lu}){1,34}?):(?!\/)\s*/u', $text, $keys, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
         $all = [];
@@ -302,23 +302,23 @@ final class Extract
             $from = $km[0][1] + strlen($km[0][0]);
             $to = isset($keys[$i + 1]) ? $keys[$i + 1][0][1] : strlen($text);
             $val = substr($text, $from, $to - $from);
-            // Verdien slutter ved setningsslutt, et frittstående tankestrek-punkt eller et nytt ord med stor forbokstav limt på
+            // The value ends at the end of a sentence, a standalone dash bullet, or a new capitalized word glued on
             $val = preg_split('/\.\s|\.$|\s[–•]\s|(?<=[\d\p{Ll}])(?=[A-ZÆØÅ][a-zæøå]{2})/u', $val)[0];
-            if (preg_match('/^\s*[\d.,]/u', $val)) { // tall med enhet: stopp før neste setning («16 mm Benyttes til …»)
+            if (preg_match('/^\s*[\d.,]/u', $val)) { // number with unit: stop before the next sentence ("16 mm Benyttes til ...")
                 $val = preg_split('/\s(?=[A-ZÆØÅ][a-zæøå]{2,})/u', $val)[0];
             }
             $all[] = [$km[0][1], $km[1][0], $val, strlen($km[0][0])];
         }
         foreach ($all as [$pos, $keyRaw, $val, $klen]) {
-            $m = [[str_repeat(' ', $klen)]]; // lengden på nøkkelen, for tekstutdraget
+            $m = [[str_repeat(' ', $klen)]]; // the length of the key, for the text snippet
             $val = trim($val, " ,;.");
             $label = trim(preg_replace('/\s+/u', ' ', $keyRaw) ?? '');
-            // «25mm Ø sokkel Sokkel»: bruk den siste delen med stor forbokstav hvis den er en kjent nøkkel
+            // "25mm Ø sokkel Sokkel": use the last capitalized part if it is a known key
             if (preg_match('/\s(\p{Lu}[\p{Ll}]+(?:\s[\p{Ll},\/()-]+)*)$/u', $label, $suf) && isset(self::SYNONYMS[mb_strtolower($suf[1])])) {
                 $label = $suf[1];
             }
             $k = mb_strtolower($label);
-            // «Øyeskrue antall i pakke», «CAL Sjakkel D materiale»: slutten av nøkkelen avgjør
+            // "Øyeskrue antall i pakke", "CAL Sjakkel D materiale": the end of the key decides
             if (preg_match('/antall (?:i pakke|i pakken|per pakke|batterier per pakke)$/u', $k)) {
                 $k = 'antall i pakke';
             } elseif (preg_match('/\bmateriale$/u', $k)) {
@@ -368,12 +368,12 @@ final class Extract
             if ($mapped !== null) {
                 $add($target, $mapped[0], $mapped[1], 'sortre', $text, $pos, strlen($m[0][0]));
             } else {
-                // Ny egenskap som en egen rad (constitution punkt 4: rader, ikke kolonner)
+                // New property as its own row (constitution point 4: rows, not columns)
                 $slug = 'x_' . trim((string) preg_replace('/[^a-z0-9]+/', '_', strtr($k, ['æ' => 'ae', 'ø' => 'o', 'å' => 'a'])), '_');
                 $add($slug, $val, $num, 'sortre', $text, $pos, strlen($m[0][0]), mb_strtoupper(mb_substr($label, 0, 1)) . mb_substr($label, 1), null);
             }
         }
-        // Punkter uten kolon: «– Piezo tenning», «– CE-godkjent». Samles som Egenskaper.
+        // Bullets without a colon, like "Piezo tenning" or "CE-godkjent". Collected as Properties.
         if (preg_match_all('/[–•]\s*([^:–•.]{4,60}?)(?=\s*[–•]|\.\s|$)/u', $text, $bm, PREG_OFFSET_CAPTURE)) {
             $items = [];
             foreach ($bm[1] as [$b]) {
@@ -388,7 +388,7 @@ final class Extract
         }
     }
 
-    /** Tabeller i HTML blir «Nøkkel: verdi.»-linjer, så pairs() kan lese dem. */
+    /** Tables in HTML become "Key: value." lines, so pairs() can read them. */
     private static function tableText(string $html): string
     {
         if (!preg_match_all('/<tr[^>]*>(.*?)<\/tr>/isu', $html, $rows)) {
@@ -405,7 +405,7 @@ final class Extract
         return implode(' ', $out);
     }
 
-    /** Egenskaper som står i produktnavnet, for alle temaer: størrelse, volum, mål, lengde, nummer, vekt. */
+    /** Properties in the product name, for all themes: size, volume, dimensions, length, number, weight. */
     private static function fromName(string $name, callable $add, callable $n, callable $fmt): void
     {
         $try = function (string $key, string $re, callable $fn, ?string $label = null, ?string $unit = null) use ($name, $add): void {
@@ -435,7 +435,7 @@ final class Extract
         $try('bredde_mm', '/(?<![x×\d])(\d{2,3})\s*mm\b(?!\s*[x×])/u', fn($m) => [$m[1], (float) $m[1]]);
     }
 
-    /** Hva som følger med og ikke, og hvordan produktet lades. Viktig for hva kunden må kjøpe i tillegg. */
+    /** What is and isn't included, and how the product is charged. Important for what the customer must buy in addition. */
     private static function included(string $text, callable $add): void
     {
         $sent = '[^.!?–•:]';
@@ -448,7 +448,7 @@ final class Extract
             || preg_match("/([A-ZÆØÅ]$sent{2,70}?)\s+(?:medfølger|følger med)(?!\s+ikke)/u", $text, $m, PREG_OFFSET_CAPTURE)) {
             $add('folger_med', trim($m[1][0]), null, 'sortre', $text, $m[0][1], strlen($m[0][0]), 'Følger med', null);
         }
-        // Lading: setningen som sier hvordan den lades (USB-C, magnetisk kabel, solcelle)
+        // Charging: the sentence that says how it is charged (USB-C, magnetic cable, solar cell)
         if (preg_match("/($sent*\b(?:lades|lading|ladekabel|ladbar|oppladbar)\b$sent*)/iu", $text, $m, PREG_OFFSET_CAPTURE)
             && preg_match('/usb|magnet|solcelle|kabel|ladestasjon|ladeboks/iu', $m[1][0])) {
             $add('lading', trim(mb_substr(trim((string) preg_replace('/^\S*?(?=[A-ZÆØÅ][a-zæøå])/u', '', trim($m[1][0]))), 0, 110)), null, 'sortre', $text, $m[0][1], strlen($m[0][0]), 'Lading', null);
@@ -457,7 +457,7 @@ final class Extract
 
     public static function plain(string $html): string
     {
-        // Sør-Tre sin HTML mangler ofte linjeskift mellom feltene. Legg inn mellomrom ved tagger.
+        // Sør-Tre's HTML often lacks line breaks between fields. Add spaces at tags.
         $t = preg_replace('/<[^>]+>/', ' ', $html) ?? '';
         $t = html_entity_decode($t, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         return trim(preg_replace('/\s+/u', ' ', $t) ?? '');
@@ -467,7 +467,7 @@ final class Extract
     {
         $start = max(0, $bytePos - 30);
         $s = substr($hay, $start, $byteLen + 60);
-        $s = mb_convert_encoding($s, 'UTF-8', 'UTF-8'); // klipp bort halve tegn
+        $s = mb_convert_encoding($s, 'UTF-8', 'UTF-8'); // cut off half characters
         return ($start > 0 ? '…' : '') . trim($s) . (strlen($hay) > $start + $byteLen + 60 ? '…' : '');
     }
 }

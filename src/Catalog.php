@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/** Spørringer mot produktkatalogen. All pris og lager kommer herfra (constitution punkt 1). */
+/** Queries against the product catalog. All prices and stock come from here (constitution point 1). */
 final class Catalog
 {
     public const THEMES = [
@@ -14,7 +14,7 @@ final class Catalog
         'tur' => ['Tur og friluft', 'Kikkerter, grill og kokeutstyr'],
     ];
 
-    /** Kort-data for en liste med produkt-ID-er, i samme rekkefølge. */
+    /** Card data for a list of product IDs, in the same order. */
     public static function cards(array $ids): array
     {
         if (!$ids) {
@@ -54,7 +54,7 @@ final class Catalog
         return $st->fetchAll();
     }
 
-    /** Spesifikasjoner gruppert per nøkkel med begge versjoner: [key => [label, unit, verifisert, apen]] */
+    /** Specifications grouped per key with both versions: [key => [label, unit, verifisert, apen]] */
     public static function specs(int $id): array
     {
         $st = db()->prepare('SELECT v.*, k.label, k.unit, k.datatype, k.created_by key_creator, ' . Privacy::sql() . ' author
@@ -70,7 +70,7 @@ final class Catalog
         return $out;
     }
 
-    /** Effektiv verdi: Verifisert hvis den finnes, ellers Åpen. */
+    /** Effective value: Verified if it exists, otherwise Open. */
     public static function effective(array $spec): ?array
     {
         return $spec['verifisert'] ?? $spec['apen'];
@@ -98,7 +98,7 @@ final class Catalog
                 $out[$k][$r['id']] = $r;
             }
         }
-        // Variasjon: ikke åtte nesten like spikre. Maks to fra samme underkategori i "passer".
+        // Variety: not eight nearly identical nails. At most two from the same subcategory in "goes well with".
         $out['passer'] = self::diversify($out['passer'], 4);
         foreach ($out as $k => $rows) {
             $cards = self::cards(array_keys($rows));
@@ -139,7 +139,7 @@ final class Catalog
         return $st->fetchAll();
     }
 
-    /** Fasetter for et tema: tekstverdier med antall, og min/maks for tall. */
+    /** Facets for a theme: text values with counts, and min/max for numbers. */
     public static function facets(string $theme, array $productIds): array
     {
         $st = db()->prepare("SELECT * FROM spec_keys WHERE is_facet = 1 AND (themes IS NULL OR FIND_IN_SET(?, themes)) ORDER BY sort");
@@ -168,7 +168,7 @@ final class Catalog
         return $out;
     }
 
-    /** Produkt-ID-er i et tema etter filtre og sortering. */
+    /** Product IDs in a theme after filters and sorting. */
     public static function filter(string $theme, array $f, string $sort): array
     {
         $where = ['p.theme = ?'];
@@ -234,10 +234,10 @@ final class Catalog
         return array_map('intval', db()->query($sql)->fetchAll(PDO::FETCH_COLUMN));
     }
 
-    /** Veiledninger som gjelder produktet, etter match_rule: "cat:7678,7680" eller "re:sagkjede|rundfil". */
+    /** Guides that apply to the product, by match_rule: "cat:7678,7680" or "re:sagkjede|rundfil". */
     /**
-     * Alle produkter som har minst én monteringsveiledning: [produkt-ID => [veiledning, ...]].
-     * Samme regler som manualsFor, men regnet ut én gang for hele katalogen.
+     * All products that have at least one assembly guide: [product ID => [guide, ...]].
+     * Same rules as manualsFor, but computed once for the whole catalog.
      */
     public static function manualIds(): array
     {
@@ -270,8 +270,8 @@ final class Catalog
     }
 
     /**
-     * Rangerte lister for spørsmål om hele katalogen («best vurdert», «billigst»). Fakta fra databasen, ikke modellen.
-     * $within begrenser til en liste produkt-ID-er (for eksempel et tema eller søketreff).
+     * Ranked lists for questions about the whole catalog ("best rated", "cheapest"). Facts from the database, not the model.
+     * $within limits it to a list of product IDs (for example a theme or search hits).
      */
     public static function ranked(string $what, int $n = 5, ?array $within = null): array
     {

@@ -2,9 +2,9 @@
 declare(strict_types=1);
 
 /**
- * Språkvakt for Søren. DeepSeek-R1 resonnerer gjerne på engelsk selv om vi ber om norsk,
- * så vi sjekker teksten i koden i stedet for å stole på instruksen. Enkel og forklarbar:
- * vi teller vanlige småord på engelsk og norsk.
+ * Language guard for Søren. DeepSeek-R1 likes to reason in English even when we ask for Norwegian,
+ * so we check the text in code instead of trusting the instruction. Simple and explainable:
+ * we count common small words in English and Norwegian.
  */
 final class Lang
 {
@@ -17,7 +17,7 @@ final class Lang
         'hvis', 'fordi', 'derfor', 'kanskje', 'spør', 'spørsmålet', 'svare', 'svar', 'butikken', 'ikkje', 'dette', 'denne',
         'hvordan', 'hvorfor', 'mer', 'men', 'bare', 'ingen', 'noe', 'mitt', 'min', 'sin', 'sier', 'vet', 'gjelder', 'første'];
 
-    /** 'no', 'en' eller null (for lite tekst til å avgjøre). */
+    /** 'no', 'en' or null (too little text to decide). */
     public static function detect(string $text, int $minWords = 12): ?string
     {
         $words = preg_split('/[^\p{L}\']+/u', mb_strtolower($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -29,7 +29,7 @@ final class Lang
             $en += in_array($w, self::EN, true) ? 1 : 0;
             $no += in_array($w, self::NO, true) ? 1 : 0;
         }
-        // Æ, ø og å finnes ikke i engelsk
+        // Æ, ø and å don't exist in English
         $no += preg_match_all('/[æøå]/u', mb_strtolower($text)) > 2 ? 2 : 0;
         if ($en === 0 && $no === 0) {
             return null;
@@ -38,8 +38,8 @@ final class Lang
     }
 
     /**
-     * Ord som bare finnes på engelsk. Ord som også er norske («is», «and», «i», «to», «so», «do», «for», «hammer», «manual»)
-     * er med vilje utelatt, så blandingsspråk ikke vippes over til engelsk.
+     * Words that only exist in English. Words that are also Norwegian ("is", "and", "i", "to", "so", "do", "for", "hammer", "manual")
+     * are left out on purpose, so mixed language isn't tipped over to English.
      */
     private const Q_EN = ['the', 'what', 'which', 'does', 'have', 'has', 'how', 'why', 'where', 'need', 'want', 'show', 'find', 'any',
         'you', 'your', 'my', 'me', 'are', 'can', 'will', 'should', 'would', 'could', 'there', 'this', 'that', 'these', 'those', 'with',
@@ -51,9 +51,9 @@ final class Lang
         'av', 'om', 'billigst', 'dyrest', 'beste', 'veiledning', 'produkter', 'passer', 'hei', 'takk', 'bør', 'må', 'gjerne', 'sammen'];
 
     /**
-     * Språket i en melding fra kunden: 'en' bare når det tydelig er engelsk, 'no' når det tydelig er norsk.
-     * Ellers (ett ord, produktnavn, blandingsspråk) brukes $fallback, som er språket kunden har valgt med flagget, ellers norsk.
-     * Æ, ø og å teller lite, fordi engelske spørsmål ofte nevner norske produktnavn («Does the Øyeskrue have …»).
+     * The language of a message from the customer: 'en' only when it is clearly English, 'no' when it is clearly Norwegian.
+     * Otherwise (one word, product names, mixed language) $fallback is used, which is the language the customer chose with the flag, otherwise Norwegian.
+     * Æ, ø and å count little, because English questions often mention Norwegian product names ("Does the Øyeskrue have ...").
      */
     public static function question(string $text, string $fallback = 'no'): string
     {

@@ -2,14 +2,14 @@
 declare(strict_types=1);
 
 /**
- * Spørsmål om hele katalogen: «hvilke produkter har manual?», «best vurdert», «billigst lommelykt».
- * Et søk på ordene i spørsmålet finner ikke svaret på slike spørsmål, så modellen fikk tilfeldige produkter
- * og gjettet. Her svarer databasen: vi finner listen i koden, gir den til Søren som fasit og viser riktige kort.
- * Svaret i fallback() brukes også hvis modellen ikke svarer, så demoen aldri ender med et tilfeldig «beste treff».
+ * Questions about the whole catalog: "which products have a manual?", "best rated", "cheapest flashlight".
+ * A search on the words in the question doesn't find the answer to such questions, so the model got random products
+ * and guessed. Here the database answers: we find the list in code, give it to Søren as the answer key and show the right cards.
+ * The answer in fallback() is also used if the model doesn't answer, so the demo never ends with a random "best hit".
  */
 final class CatalogIntent
 {
-    /** Mønstre på norsk og engelsk. Rekkefølgen betyr noe: «dårligst vurdert» skal ikke bli «best». */
+    /** Patterns in Norwegian and English. The order matters: "dårligst vurdert" (worst rated) must not become "best". */
     private const PATTERNS = [
         'manual' => '/\b(manual\w*|manuell\w*|veiledning\w*|bruksanvisning\w*|monteringsanvisning\w*|instruks\w*|instructions?|how[- ]?to|assembly guides?|user guides?|guide til montering)\b/iu',
         'verst' => '/\b(dårligst\w*|lavest (vurdert|rangert|karakter)|verst\w*|minst populær\w*|worst|lowest[- ]rated|poorly rated|badly rated|least popular|dårlige anmeldelser|bad reviews)\b/iu',
@@ -30,7 +30,7 @@ final class CatalogIntent
 
     /**
      * @return array{kind:string, ids:int[], facts:string, answer:string, scope:?string}
-     *   ids: produktene som vises som kort, facts: fasit til Søren (norsk), answer: ferdig svar på kundens språk
+     *   ids: the products shown as cards, facts: the answer key for Søren (Norwegian), answer: a finished answer in the customer's language
      */
     public static function build(string $kind, string $q, array $page): array
     {
@@ -41,7 +41,7 @@ final class CatalogIntent
         };
     }
 
-    /** Begrens til ordene som er igjen i spørsmålet («billigst lommelykt»), ellers kategorien kunden står i, ellers alt. */
+    /** Limit to the words left in the question ("billigst lommelykt"), otherwise the category the customer is in, otherwise everything. */
     private static function scope(string $kind, string $q, array $page): array
     {
         $rest = trim((string) preg_replace(self::PATTERNS[$kind], ' ', $q));
@@ -63,7 +63,7 @@ final class CatalogIntent
     {
         $all = Catalog::manualIds();
         $ids = $within === null ? array_keys($all) : array_values(array_filter($within, fn($id) => isset($all[$id])));
-        // Grupper per veiledning: hvilke produkter gjelder hver av dem
+        // Group per guide: which products each of them applies to
         $by = [];
         foreach ($ids as $id) {
             foreach ($all[$id] as $m) {
@@ -88,7 +88,7 @@ final class CatalogIntent
             }
             $facts[] = 'Produkter med veiledning har merket «Veiledning» på produktkortet. På kategorisidene kan kunden huke av «Har monteringsveiledning».';
         }
-        // Kort: ett produkt per veiledning først, så kunden ser bredden
+        // Cards: one product per guide first, so the customer sees the range
         $cards = array_values(array_unique(array_merge(array_map(fn($g) => $g['ids'][0], $by), $ids)));
 
         if (!$by) {

@@ -2,9 +2,9 @@
 declare(strict_types=1);
 
 /**
- * Søren svarer ferdig selv om kunden bytter side. Hvert spørsmål blir en jobb: hendelsene (tanker, tekst, kort)
- * skrives til en logg mens de strømmes, og en ny side kan lese videre fra der den forrige slapp (GET /api/chat/{id}).
- * Konteksten (siden spørsmålet ble stilt på) er låst da spørsmålet ble stilt. Bare samme økt kan lese jobben.
+ * Søren finishes his answer even if the customer changes page. Every question becomes a job: the events (thoughts, text, cards)
+ * are written to a log as they stream, and a new page can keep reading from where the previous one left off (GET /api/chat/{id}).
+ * The context (the page the question was asked on) is locked when the question is asked. Only the same session can read the job.
  */
 final class ChatJob
 {
@@ -36,7 +36,7 @@ final class ChatJob
 
     public static function start(): string
     {
-        // Rydd bort jobber eldre enn en time
+        // Clean up jobs older than an hour
         foreach (glob(self::dir() . '/*.jsonl') ?: [] as $f) {
             if (@filemtime($f) < time() - 3600) {
                 @unlink($f);
@@ -56,8 +56,8 @@ final class ChatJob
     }
 
     /**
-     * Strømmer hendelsene fra nummer $from (0 = første etter eierlinjen) og følger loggen til «done».
-     * Gir false hvis jobben ikke finnes eller tilhører en annen økt.
+     * Streams the events from number $from (0 = first after the owner line) and follows the log until "done".
+     * Returns false if the job doesn't exist or belongs to another session.
      */
     public static function follow(string $id, int $from, callable $emit, int $maxSeconds = 300): bool
     {
@@ -78,12 +78,12 @@ final class ChatJob
             $line = fgets($fh);
             if ($line === false) {
                 usleep(150_000);
-                fseek($fh, 0, SEEK_CUR); // nullstill EOF så nye linjer leses
+                fseek($fh, 0, SEEK_CUR); // reset EOF so new lines are read
                 continue;
             }
             $partial .= $line;
             if (!str_ends_with($partial, "\n")) {
-                continue; // linjen skrives fortsatt
+                continue; // the line is still being written
             }
             [$event, $data] = json_decode($partial, true) ?? [null, null];
             $partial = '';

@@ -2,13 +2,13 @@
 declare(strict_types=1);
 
 /**
- * Hvilken side kunden står på når de spør Søren. Leses på nytt ved hvert spørsmål.
+ * Which page the customer is on when they ask Søren. Read again on every question.
  *
- * Sikkerhet: nettleseren sender bare adressen (sti og spørrestreng), aldri sideinnhold, skjemafelt
- * eller informasjonskapsler. Vi slår adressen opp mot en fast liste med offentlige sidetyper og
- * bygger konteksten selv fra produktkatalogen. Alt som ikke står på listen (innlogging, registrering,
- * innboks, handlekurv, kasse, ordre, ansatt, kundeservice, admin) gir ingen kontekst i det hele tatt,
- * så Søren kan ikke se passord, kontoinnstillinger, adresser eller ordrer.
+ * Security: the browser only sends the address (path and query string), never page content, form fields
+ * or cookies. We look the address up in a fixed list of public page types and
+ * build the context ourselves from the product catalog. Everything not on the list (login, registration,
+ * inbox, cart, checkout, orders, staff, customer service, admin) gives no context at all,
+ * so Søren can't see passwords, account settings, addresses or orders.
  */
 final class PageContext
 {

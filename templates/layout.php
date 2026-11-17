@@ -4,8 +4,8 @@ $u = current_user();
 $wh = warehouses();
 $msg = flash();
 $here = (string) ($_SERVER['REQUEST_URI'] ?? '/');
-if (str_starts_with($here, '/sprak')) { $here = '/'; } // feilside på /sprak: ikke legg lenken inni seg selv
-// Hvilken kategori kunden er i: /tema/x, eller kategorien til produktet på siden
+if (str_starts_with($here, '/sprak')) { $here = '/'; } // error page on /sprak: don't nest the link inside itself
+// Which category the customer is in: /tema/x, or the category of the product on the page
 $path = parse_url($here, PHP_URL_PATH) ?: '/';
 $activeTheme = null;
 if (preg_match('#^/tema/([a-z0-9_-]+)#', $path, $mm)) {
@@ -16,10 +16,10 @@ if (preg_match('#^/tema/([a-z0-9_-]+)#', $path, $mm)) {
     $activeTheme = $st->fetchColumn() ?: null;
 }
 $inGuide = str_starts_with($path, '/guide');
-// Lys eller mørk: personlig innstilling. Gjester og «Som enheten» følger operativsystemet.
+// Light or dark: a personal setting. Guests and "Som enheten" (match device) follow the operating system.
 $themeAttr = match ($u['theme'] ?? 'system') { 'lys' => ' data-theme="light"', 'mork' => ' data-theme="dark"', default => '' };
 $en = lang() === 'en';
-// Flagget viser språket du bytter TIL
+// The flag shows the language you switch TO
 $flag = $en
     ? '<svg viewBox="0 0 22 16" aria-hidden="true"><rect width="22" height="16" fill="oklch(50.3% .193 27)"/><rect x="6" width="4" height="16" fill="oklch(100% 0 0)"/><rect y="6" width="22" height="4" fill="oklch(100% 0 0)"/><rect x="7" width="2" height="16" fill="oklch(32% .12 264)"/><rect y="7" width="22" height="2" fill="oklch(32% .12 264)"/></svg>'
     : '<svg viewBox="0 0 60 30" aria-hidden="true"><clipPath id="uk-c"><rect width="60" height="30"/></clipPath><g clip-path="url(#uk-c)"><rect width="60" height="30" fill="oklch(30% .11 264)"/><path d="M0,0 60,30M60,0 0,30" stroke="oklch(100% 0 0)" stroke-width="6"/><path d="M0,0 60,30M60,0 0,30" stroke="oklch(50.3% .193 27)" stroke-width="2.5"/><path d="M30,0v30M0,15h60" stroke="oklch(100% 0 0)" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="oklch(50.3% .193 27)" stroke-width="6"/></g></svg>';

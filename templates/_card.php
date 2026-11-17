@@ -1,5 +1,5 @@
 <?php
-/** @var array $c  kort fra Catalog::cards, valgfritt $c['rel'] og $via */
+/** @var array $c  card from Catalog::cards, optional $c['rel'] and $via */
 $via ??= 'liste';
 ?>
 <article class="card">

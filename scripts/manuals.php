@@ -1,6 +1,6 @@
 <?php
-// Demo-monteringsveiledninger (feature 011). Tekstene er skrevet av gruppen som eksempler og er merket som demo.
-// Kjøres fra import.php. Lager også PDF-er med LibreOffice hvis det finnes.
+// Demo assembly guides (feature 011). The texts were written by the group as examples and are marked as demo.
+// Run from import.php. Also makes PDFs with LibreOffice if it is installed.
 
 declare(strict_types=1);
 
@@ -102,7 +102,7 @@ foreach ($manuals as $m) {
         $html = '<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;margin:30px}svg{width:300px;color:#1f6b3a}h2{margin-top:28px}.demo{color:#a23a2a}</style></head><body>'
             . '<h1>' . h($m['title']) . '</h1><p class="demo">Demo-veiledning laget av IS-219 gruppe 4. Ikke fra produsenten.</p><p>' . h($m['intro']) . '</p><p><b>Du trenger:</b> ' . h($m['tools']) . '</p>';
         foreach ($m['steps'] as $i => [$t, $b, $s]) {
-            // LibreOffice dropper innebygd SVG, så illustrasjonen legges som bildefil
+            // LibreOffice drops inline SVG, so the illustration is added as an image file
             $file = "{$m['slug']}-" . ($i + 1) . '.svg';
             file_put_contents("$tmp/$file", str_replace(['currentColor', '<svg '], ['#1f6b3a', '<svg width="360" height="210" '], $s));
             $html .= '<h2>' . ($i + 1) . '. ' . h($t) . '</h2><p>' . h($b) . '</p><img src="' . $file . '" width="360" height="210">';
@@ -114,7 +114,7 @@ foreach ($manuals as $m) {
         }
     }
     if (!$pdf && is_file("$pdfDir/{$m['slug']}.pdf")) {
-        $pdf = "media/manuals/{$m['slug']}.pdf"; // ferdig generert, f.eks. i Docker uten LibreOffice
+        $pdf = "media/manuals/{$m['slug']}.pdf"; // already generated, e.g. in Docker without LibreOffice
     }
     $insM->execute([$m['slug'], $m['title'], $m['theme'], $m['intro'], $m['tools'], $pdf, $m['match']]);
     $id = (int) $pdo->lastInsertId();

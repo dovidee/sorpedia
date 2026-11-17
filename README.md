@@ -1,129 +1,131 @@
 # Sørpedia
 
-Demo av en nettbutikk for Sør-Tre, laget av gruppe 4 i IS-219. Kunden skal få samme veiledning og trygghet på nett som i butikken. Sørpedia er en produktveileder og kunnskapsdatabase, en slags Wikipedia for produkter: hvert produkt har en kontrollert versjon fra Sør-Tre og en åpen versjon som verifiserte kjøpere kan fylle ut. Maskoten Søren svarer på spørsmål med en lokal språkmodell og viser hvordan han tenkte.
+Demo web store for Sør-Tre, a Norwegian hardware store, made by group 4 in IS-219. The goal is to give customers the same guidance and confidence online as they get in the store. Sørpedia is a product guide and knowledge base, a kind of Wikipedia for products: every product has a verified version from Sør-Tre and an open version that verified buyers can fill in. The mascot Søren answers questions with a local language model and shows how he reasoned.
 
-Pris, lagerstatus, produktnavn og produkt-ID kommer alltid fra databasen, aldri fra språkmodellen. Hver spesifikasjon har en kilde (Sør-Tre, utledet, kjøper eller ansatt), og «ukjent» er et gyldig svar.
+Price, stock, product name and product ID always come from the database, never from the language model. Every specification has a source (Sør-Tre, derived, buyer or staff), and "unknown" is a valid answer.
 
-Demoen kjører bare lokalt. Den inneholder Sør-Tre sine produkter, demo-anmeldelser og testbrukere, og skal ikke ligge åpent på nett (se `docs/architecture/architecture.md`, ADR-002).
+The store itself is in Norwegian, with an English toggle in the header.
 
-## 1. Oppsett
+The demo runs locally only. It contains Sør-Tre's products, demo reviews and test users, and should not be public on the internet (see `docs/architecture/architecture.md`, ADR-002).
 
-Du trenger Docker Desktop. Ollama er valgfritt: uten Ollama svarer Søren med en regelmotor i stedet for språkmodellen.
+## 1. Setup
+
+You need Docker Desktop. Ollama is optional: without it, Søren answers with a rule engine instead of the language model.
 
 ```
-ollama pull deepseek-r1:8b      # valgfritt, cirka 5 GB
+ollama pull deepseek-r1:8b      # optional, about 5 GB
 docker compose up -d --build
 ```
 
-Åpne http://localhost:8080. Første oppstart bygger databasen fra `data/raw` og tar et halvt minutt.
+Open http://localhost:8080. The first start builds the database from `data/raw` and takes about half a minute.
 
-Testbrukerne har passordet `admin`, og innloggingssiden lar deg klikke for å fylle dem inn.
+The test users all have the password `admin`, and the login page lets you click one to fill it in.
 
-| E-post | Rolle |
+| Email | Role |
 |---|---|
-| `admin@sorpedia.test` | Admin, ser KPI-dashbordet på `/admin` |
-| `ansatt@sorpedia.test` | Ansatt, godkjenner bidrag på `/ansatt` |
-| `support@sorpedia.test` | Kundeservice, svarer på saker fra Søren på `/support` |
-| `kunde@sorpedia.test` | Verifisert kjøper, kan redigere og skrive anmeldelser |
-| `ny@sorpedia.test` | Ny kunde uten bekreftet e-post og uten kjøp |
+| `admin@sorpedia.test` | Admin, sees the KPI dashboard at `/admin` |
+| `ansatt@sorpedia.test` | Staff, approves contributions at `/ansatt` |
+| `support@sorpedia.test` | Customer service, answers cases from Søren at `/support` |
+| `kunde@sorpedia.test` | Verified buyer, can edit product info and write reviews |
+| `ny@sorpedia.test` | New customer without a confirmed email and without purchases |
 
-E-post forlater aldri maskinen. Den havner i demo-innboksen på `/innboks`.
+Email never leaves your machine. It goes to the demo inbox at `/innboks`.
 
-Nyttige kommandoer:
+Useful commands:
 
 ```
-docker compose exec app php scripts/import.php   # bygg databasen på nytt
-docker compose down -v                           # slett databasen helt
+docker compose exec app php scripts/import.php   # rebuild the database
+docker compose down -v                           # delete the database completely
 ```
 
-Bruker du Linux og Ollama ikke svarer fra containeren, start Ollama med `OLLAMA_HOST=0.0.0.0`.
+On Linux, if the container can't reach Ollama, start Ollama with `OLLAMA_HOST=0.0.0.0`.
 
-Uten Docker trengs PHP 8.4 med `pdo_mysql` og en MariaDB med databasen og brukeren `sorpedia` (passord `sorpedia`). Da kjøres `php scripts/import.php` og så `PHP_CLI_SERVER_WORKERS=4 php -S localhost:8080 -t public public/index.php`. Flere arbeidere trengs fordi chatten og sanntidsoppdateringene holder en tilkobling åpen.
+Without Docker you need PHP 8.4 with `pdo_mysql` and a MariaDB with the database and user `sorpedia` (password `sorpedia`). Then run `php scripts/import.php` followed by `PHP_CLI_SERVER_WORKERS=4 php -S localhost:8080 -t public public/index.php`. Several workers are needed because the chat and the live updates keep a connection open.
 
-## 2. Innstillinger
+## 2. Settings
 
-Det finnes ingen konfigurasjonsfil. Alt styres med miljøvariabler som har fornuftige standardverdier. De tre første kan settes i en fil `.env` ved siden av `docker-compose.yml` (den er i `.gitignore`), eller rett på kommandolinjen:
+There is no config file. Everything is controlled by environment variables with sensible defaults. The first three can be set in a `.env` file next to `docker-compose.yml` (it is in `.gitignore`), or directly on the command line:
 
 ```
 OLLAMA_MODEL=gemma3:4b PORT=8090 docker compose up -d
 ```
 
-| Variabel | Standard | Hva den gjør |
+| Variable | Default | What it does |
 |---|---|---|
-| `PORT` | `8080` | Porten på din maskin |
-| `OLLAMA_MODEL` | `deepseek-r1:8b` | Språkmodellen Søren bruker. `gemma3:4b` er raskere, men svakere |
-| `SOREN_NUM_CTX` | `8192` | Modellens arbeidsminne i tokens. Sett ned til `6144` hvis grafikkortet går tom for minne |
-| `SOREN_FIRST_TOKEN_S` | `20` | Sekunder Søren venter på første ord før regelmotoren tar over |
-| `SOREN_MAX_ANSWER_S` | `150` | Lengste tid et helt svar får bruke |
-| `SOREN_NATIVE_THINK` | tom | `1` eller `0` sier om modellen tenker selv. Tom betyr at det gjettes fra modellnavnet |
-| `OLLAMA_URL` | `http://host.docker.internal:11434` | Hvor Ollama kjører |
-| `APP_DEBUG` | `0` | `1` viser feilmeldinger på siden. Bare for utvikling |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | `db`, `3306`, `sorpedia`, `sorpedia`, `sorpedia` | Databasetilkoblingen |
+| `PORT` | `8080` | The port on your machine |
+| `OLLAMA_MODEL` | `deepseek-r1:8b` | The language model Søren uses. `gemma3:4b` is faster but weaker |
+| `SOREN_NUM_CTX` | `8192` | The model's working memory in tokens. Lower it to `6144` if the GPU runs out of memory |
+| `SOREN_FIRST_TOKEN_S` | `20` | Seconds Søren waits for the first word before the rule engine takes over |
+| `SOREN_MAX_ANSWER_S` | `150` | Longest time a full answer may take |
+| `SOREN_NATIVE_THINK` | empty | `1` or `0` says whether the model reasons on its own. Empty means it is guessed from the model name |
+| `OLLAMA_URL` | `http://host.docker.internal:11434` | Where Ollama runs |
+| `APP_DEBUG` | `0` | `1` shows error messages on the page. Development only |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | `db`, `3306`, `sorpedia`, `sorpedia`, `sorpedia` | The database connection |
 
-De fem siste endres under `environment` i `docker-compose.yml`.
+The last five are changed under `environment` in `docker-compose.yml`.
 
-Appen svarer bare på denne maskinen. For å vise den til andre på samme nettverk, fjern `127.0.0.1:` foran porten i `docker-compose.yml`. Gjør det bare på et nettverk du stoler på, siden testbrukerne har passordet `admin`.
+The app only answers on your own machine. To show it to others on the same network, remove `127.0.0.1:` in front of the port in `docker-compose.yml`. Only do that on a network you trust, since the test users have the password `admin`.
 
-## 3. Teknologi
+## 3. Tech stack
 
-| Del | Valg |
+| Part | Choice |
 |---|---|
-| Server | PHP 8.4 uten rammeverk og uten Composer, på Apache (`php:8.4-apache`) |
+| Server | PHP 8.4 without a framework or Composer, on Apache (`php:8.4-apache`) |
 | Database | MariaDB 10.11 |
-| Nettleser | HTML, CSS og vanilla JavaScript, uten byggesteg. Ikoner fra Lucide ligger inne i koden |
-| Sanntid | Server-Sent Events og en hendelsestabell (MariaDB har ikke LISTEN/NOTIFY) |
-| Språkmodell | DeepSeek-R1 8B via Ollama på din egen maskin, med regelbasert reserve |
-| Kjøring | Docker Compose |
+| Browser | HTML, CSS and vanilla JavaScript, no build step. Lucide icons are inlined |
+| Live updates | Server-Sent Events and an event table (MariaDB has no LISTEN/NOTIFY) |
+| Language model | DeepSeek-R1 8B via Ollama on your own machine, with a rule-based fallback |
+| Runtime | Docker Compose |
 
-Ingen eksterne kall ved kjøretid unntatt Ollama. Bilder og monteringsveiledninger ligger lokalt i `public/media`.
+No external calls at runtime except Ollama. Images and assembly guides are stored locally in `public/media`.
 
-Mappene: `public/index.php` er frontkontrolleren med alle ruter, `src/` har logikken, `templates/` sidene, `db/schema.sql` databasen, `scripts/` henting og import av produkter, og `docs/` og `specs/` beskriver virksomheten, arkitekturen og kravene.
+Folders: `public/index.php` is the front controller with all routes, `src/` holds the logic, `templates/` the pages, `db/schema.sql` the database, `scripts/` scraping and importing products, and `docs/` and `specs/` describe the business, architecture and requirements.
 
-## 4. Funksjoner
+## 4. Features
 
-| Funksjon | Hva den gjør |
+| Feature | What it does |
 |---|---|
-| Produktkatalog | Cirka 350 produkter fra sor-tre.no i sju temaer, med lokale bilder |
-| Varehus og lager | Tolv varehus. Lager per varehus oppdateres live når noen handler |
-| Produktguide | Tre til fem spørsmål gir maks tre forslag og en komplett pakke med begrunnelse. Guiden lærer av hva kundene velger |
-| Søk | Forslag mens du skriver, retting av skrivefeil («hammmer» finner hammer) og bruksområder («henge opp bilde») |
-| Filtre | Pris, materiale, størrelse og tekniske egenskaper per tema. Utledede verdier er merket |
-| Sammenligning | Opptil fire produkter i en tabell med forskjellene uthevet og kilde per verdi |
-| Søren | Chat med synlig resonnement. Produktkort med pris og lager kommer fra databasen. «Snakk med et menneske» lager en sak som kundeservice ser live |
-| To versjoner av produktinfo | Kontrollert og åpen versjon side om side. Verifiserte kjøpere redigerer, ansatte godkjenner eller avviser, og historikken kan tilbakestilles |
-| Nye spesifikasjonstyper | Legges til som rader, uten endringer i databasestrukturen |
-| Anmeldelser | Bare fra verifiserte kjøpere av produktet |
-| Passer sammen | Tilbehør med nivå (dokumentert, regelutledet eller antatt) og begrunnelse. «Andre kjøpte også» holdes adskilt |
-| Monteringsveiledninger | Steg for steg, med PDF og «kjøp alt du trenger» |
-| Brukere og roller | Kunde, ansatt, kundeservice og admin. Verifisert kjøper betyr bekreftet e-post og minst ett betalt kjøp |
-| KPI-dashbord | Søk uten treff, andel tilbehør, eskaleringer og trakt |
-| Personvern | Bidrag vises som «Kjøper #a1b2c3» med mindre brukeren velger fornavn. Innsyn som JSON og sletting av konto |
-| Språk og utseende | Norsk og engelsk, lys og mørk modus |
+| Product catalog | About 350 products from sor-tre.no in seven themes, with local images |
+| Stores and stock | Twelve stores. Stock per store updates live when someone buys |
+| Product guide | Three to five questions give at most three suggestions and a complete kit with reasons. The guide learns from what customers pick |
+| Search | Suggestions as you type, typo correction ("hammmer" finds hammer) and use cases ("henge opp bilde", hang a picture) |
+| Filters | Price, material, size and technical properties per theme. Derived values are marked |
+| Compare | Up to four products in a table with the differences highlighted and a source for each value |
+| Søren | Chat with visible reasoning. Product cards with price and stock come from the database. "Talk to a human" creates a case that customer service sees live |
+| Two versions of product info | Verified and open version side by side. Verified buyers edit, staff approve or reject, and the history can be rolled back |
+| New specification types | Added as rows, without changing the database structure |
+| Reviews | Only from verified buyers of that product |
+| Goes well with | Accessories with a level (documented, rule based or assumed) and a reason. "Others also bought" is kept separate |
+| Assembly guides | Step by step, with a PDF and "buy everything you need" |
+| Users and roles | Customer, staff, customer service and admin. A verified buyer has a confirmed email and at least one paid purchase |
+| KPI dashboard | Searches with no results, accessory share, escalations and funnel |
+| Privacy | Contributions show as "Kjøper #a1b2c3" unless the user chooses their first name. Data export as JSON and account deletion |
+| Language and appearance | Norwegian and English, light and dark mode |
 
-## 5. Sikkerhet
+## 5. Security
 
-Hvert punkt viser til kategorien i OWASP Top 10:2025.
+Each point refers to its category in the OWASP Top 10:2025.
 
-**CSRF.** Alle skjemaer har en engangskode (`csrf_field()`). Alle POST-forespørsler sjekkes på ett sted i `public/index.php` med `check_csrf()`, som sammenligner med `hash_equals()`. Chatten sender koden i headeren `X-CSRF`. Mangler koden, svarer serveren 400. OWASP A01:2025 Broken Access Control.
+**CSRF.** Every form has a token (`csrf_field()`). All POST requests are checked in one place in `public/index.php` with `check_csrf()`, which compares using `hash_equals()`. The chat sends the token in the `X-CSRF` header. Without a valid token the server answers 400. OWASP A01:2025 Broken Access Control.
 
-**Tilgangskontroll.** Sidene for ansatte, kundeservice og admin sjekker rollen med `has_role()` på hver forespørsel. Redigering og anmeldelser krever `is_verified()`. Ordrer og profilbilder hentes alltid sammen med innlogget bruker, og en supportsak bare av økten som opprettet den, så ingen kan se andres ved å endre et tall i adressen. OWASP A01:2025 Broken Access Control.
+**Access control.** The staff, customer service and admin pages check the role with `has_role()` on every request. Editing and reviews require `is_verified()`. Orders and profile pictures are always fetched together with the logged in user, and a support case only by the session that created it, so nobody can see someone else's by changing a number in the URL. OWASP A01:2025 Broken Access Control.
 
-**SQL-injection.** Forberedte spørringer med PDO uten emulering (`PDO::ATTR_EMULATE_PREPARES => false`). De få spørringene som settes sammen som tekst, bruker bare tall som er gjort om med `(int)` eller verdier gjennom `quote()`. OWASP A05:2025 Injection.
+**SQL injection.** Prepared statements with PDO and emulation turned off (`PDO::ATTR_EMULATE_PREPARES => false`). The few queries built as text only use numbers cast with `(int)` or values passed through `quote()`. OWASP A05:2025 Injection.
 
-**XSS.** All tekst skrives ut med `h()`. Tekst fra brukere går gjennom `hc()`, som også fjerner stygge ord. Data til JavaScript skrives med `JSON_HEX_TAG`. OWASP A05:2025 Injection.
+**XSS.** All output is escaped with `h()`. Text from users goes through `hc()`, which also removes profanity. Data passed to JavaScript is encoded with `JSON_HEX_TAG`. OWASP A05:2025 Injection.
 
-**Prompt injection.** Søren har vern i flere lag (`src/Guard.php`). En spesifikasjon fra en kjøper skal være en verdi og ikke en ordre: tekst med ord som «ignorer», «system» eller «du er», lenker, kodetegn eller snakk om pris og lager avvises før den lagres. Triks som usynlige tegn, kyrilliske bokstaver som ligner latinske, `ign0re` og s p r e d t e bokstaver slås sammen før sjekken. Før modellen sjekkes alt fra kjøpere på nytt, kuttes og settes i anførselstegn så modellen ser at det er data. Meldinger i chatten som prøver å overstyre Søren, eller som handler om selvskading, vold eller banning, får et fast svar uten at modellen spørres. Søren får bare offentlig produktinfo, bygget på serveren fra en fast liste med sider, og ser aldri passord, konto, handlekurv eller ordrer. Produktkort med navn, pris og lager lages fra databasen, ikke fra teksten modellen skriver. OWASP A05:2025 Injection og OWASP LLM01:2025 Prompt Injection.
+**Prompt injection.** Søren is protected in several layers (`src/Guard.php`). A specification from a buyer must be a value, not an instruction: text with words like "ignore", "system" or "you are", links, code characters or talk about price and stock is rejected before it is saved. Tricks like invisible characters, Cyrillic letters that look Latin, `ign0re` and s p a c e d letters are normalized before the check. Before reaching the model, everything from buyers is checked again, shortened and put in quotes so the model sees it as data. Chat messages that try to override Søren, or that are about self harm, violence or profanity, get a fixed answer without asking the model. Søren only gets public product info, built on the server from a fixed list of pages, and never sees passwords, accounts, carts or orders. Product cards with name, price and stock are built from the database, not from the text the model writes. OWASP A05:2025 Injection and OWASP LLM01:2025 Prompt Injection.
 
-**Passord.** Argon2id (`password_hash()` med `PASSWORD_ARGON2ID`) og minst 8 tegn. OWASP A04:2025 Cryptographic Failures.
+**Passwords.** Argon2id (`password_hash()` with `PASSWORD_ARGON2ID`) and at least 8 characters. OWASP A04:2025 Cryptographic Failures.
 
-**Innlogging.** `session_regenerate_id(true)` ved innlogging, utlogging og bytte av passord, mot sesjonsfiksering. Sesjonscookien er `HttpOnly` og `SameSite=Lax`, `Secure` under HTTPS, og serveren godtar bare sesjons-ID-er den selv har laget (`use_strict_mode`). Fem feil passord på rad låser kontoen i 15 minutter (`src/Auth.php`). Ukjent e-post, feil passord og låst konto gir samme melding. OWASP A07:2025 Authentication Failures.
+**Login.** `session_regenerate_id(true)` on login, logout and password change, against session fixation. The session cookie is `HttpOnly` and `SameSite=Lax`, `Secure` under HTTPS, and the server only accepts session IDs it created itself (`use_strict_mode`). Five wrong passwords in a row lock the account for 15 minutes (`src/Auth.php`). Unknown email, wrong password and locked account all give the same message. OWASP A07:2025 Authentication Failures.
 
-**Videresending.** Etter POST sender `redirect()` 303 See Other (Post/Redirect/Get). Adresser fra skjemaer (`back`) går gjennom `safe_back()`, som bare godtar stier på dette nettstedet, så `//evil.no` ikke kan sende kunden videre. OWASP A01:2025 Broken Access Control.
+**Redirects.** After a POST, `redirect()` sends 303 See Other (Post/Redirect/Get). Addresses from forms (`back`) go through `safe_back()`, which only accepts paths on this site, so `//evil.no` can't send the customer elsewhere. OWASP A01:2025 Broken Access Control.
 
-**Oppsett.** Hver side sender `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` og `Referrer-Policy: same-origin`. Apache og PHP viser ikke versjonsnummer (`ServerTokens Prod`, `ServerSignature Off`, `expose_php = Off` i `docker/Dockerfile`). Appen lytter bare på `127.0.0.1`, og databasen er ikke åpen utenfor Docker. Ingen hemmeligheter trengs: databasepassordet gjelder bare inne i Docker. OWASP A02:2025 Security Misconfiguration.
+**Configuration.** Every page sends `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: same-origin`. Apache and PHP hide their version numbers (`ServerTokens Prod`, `ServerSignature Off`, `expose_php = Off` in `docker/Dockerfile`). The app only listens on `127.0.0.1`, and the database is not reachable outside Docker. No secrets are needed: the database password only applies inside Docker. OWASP A02:2025 Security Misconfiguration.
 
-**Opplasting og personvern.** Profilbilder må være JPEG eller PNG under 3 MB, og posisjon og annen metadata fjernes. De lagres i `data/avatars` utenfor `public/`, holdes utenfor git, og vises bare for brukeren selv. Fullt navn vises aldri offentlig, og måltallene lagres uten bruker-ID.
+**Uploads and privacy.** Profile pictures must be JPEG or PNG under 3 MB, and location and other metadata are removed. They are stored in `data/avatars` outside `public/`, kept out of git, and only shown to the user themselves. Full names are never shown publicly, and analytics are stored without user IDs.
 
-**Feil.** Advarsler blir unntak, og kunden ser bare en vennlig side med en kort referanse som også står i loggen (`docker compose logs app`). Lister der det skal være tekst (`?q[]=`) gir 400 i stedet for krasj. OWASP A10:2025 Mishandling of Exceptional Conditions.
+**Errors.** Warnings become exceptions, and the customer only sees a friendly page with a short reference that also appears in the log (`docker compose logs app`). Arrays where text is expected (`?q[]=`) give 400 instead of a crash. OWASP A10:2025 Mishandling of Exceptional Conditions.
 
-**Bevisste valg for demoen.** Registreringen sier fra hvis e-posten allerede er i bruk, alle testbrukere har passordet `admin`, og chatten har ingen grense for antall spørsmål. Det gjør demoen enkel å vise frem.
+**Deliberate demo choices.** Registration says when an email is already in use, all test users have the password `admin`, and the chat has no limit on the number of questions. This keeps the demo easy to show.

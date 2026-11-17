@@ -1,73 +1,73 @@
-# Arkitektur
+# Architecture
 
-## Beslutninger (ADR i kortform)
+## Decisions (short ADRs)
 
-| Nr | Beslutning | Begrunnelse |
+| No. | Decision | Rationale |
 |---|---|---|
-| ADR-001 | Egen PHP 8.4 + MariaDB, uten rammeverk og byggesteg | Ligner Sør-Tre (WordPress og WooCommerce på MySQL), lett å forstå og forklare, ingen npm-bygg |
-| ADR-002 | Kun lokal kjøring med Docker Compose | Offentlig kopi med Sør-Tre sine produkter og demo-anmeldelser kan villede kunder. Åpen redigering og opplasting inviterer misbruk |
-| ADR-003 | Spesifikasjoner som rader (EAV), ikke kolonner | Nye spesifikasjonstyper krever ingen migrering |
-| ADR-004 | Sanntid med hendelsestabell og Server-Sent Events i stedet for LISTEN/NOTIFY | MariaDB har ikke LISTEN/NOTIFY. Fungerer på alle MySQL-varianter uten utvidelser |
-| ADR-005 | DeepSeek-R1 via Ollama på verten, med regelbasert reserve | Synlig resonnement (hvitboks), ingen data til eksterne KI-tjenester, demoen virker uten modell |
-| ADR-006 | E-post skrives til en tabell og vises i en demo-innboks | Ingen e-post forlater maskinen. Ingen ekstra tjeneste |
+| ADR-001 | Custom PHP 8.4 + MariaDB, no framework and no build step | Similar to Sør-Tre (WordPress and WooCommerce on MySQL), easy to understand and explain, no npm build |
+| ADR-002 | Local only, with Docker Compose | A public copy with Sør-Tre's products and demo reviews could mislead customers. Open editing and uploads invite abuse |
+| ADR-003 | Specifications as rows (EAV), not columns | New specification types require no migration |
+| ADR-004 | Live updates with an event table and Server-Sent Events instead of LISTEN/NOTIFY | MariaDB has no LISTEN/NOTIFY. Works on every MySQL variant without extensions |
+| ADR-005 | DeepSeek-R1 via Ollama on the host, with a rule-based fallback | Visible reasoning (white box), no data to external AI services, the demo works without a model |
+| ADR-006 | Email is written to a table and shown in a demo inbox | No email leaves the machine. No extra service |
 
-## Komponenter
+## Components
 
 ```mermaid
 flowchart LR
-  B["Nettleser (HTML, CSS, vanilla JS)"] --> W["PHP-app (public/index.php, ruter)"]
+  B["Browser (HTML, CSS, vanilla JS)"] --> W["PHP app (public/index.php, routes)"]
   W --> DB[("MariaDB")]
   W -->|"/api/stream (SSE)"| B
   W -->|"HTTP /api/chat"| O["Ollama: deepseek-r1:8b"]
-  W --> R["Regelmotor: fasetter, passer sammen, guide"]
+  W --> R["Rule engine: facets, goes well with, guide"]
   R --> DB
 ```
 
-## Datamodell (hovedtabeller)
+## Data model (main tables)
 
-| Tabell | Innhold |
+| Table | Contents |
 |---|---|
-| `products` | id, sku, navn, slug, pris_ore, kort- og langbeskrivelse fra Sør-Tre, kildelenke |
-| `categories`, `product_categories` | Sør-Tre sitt kategoritre |
-| `product_images` | bilde, rekkefølge, type (sortre, kunde_ferdig_montert), opplastet_av |
-| `spec_keys` | nøkkel, etikett, enhet, datatype, fasett (ja/nei). Ny spesifikasjonstype = ny rad |
-| `spec_values` | produkt, nøkkel, verdi, versjon (verifisert eller apen), kilde (sortre, utledet, bruker, ansatt), evidens, revisjon |
-| `spec_revisions` | Git-lignende endringssett: hvem, hva (JSON diff), kommentar, status (aktiv, flettet, avvist, tilbakestilt) |
-| `warehouses`, `stock` | 12 varehus. Per produkt og varehus: på lager fysisk, nettlager, bestillingsvare med forventet dato |
-| `users`, `roles` | bruker, verifisert-status beregnes: e-post bekreftet OG minst én betalt ordre |
-| `orders`, `order_items` | Demo-kasse (Vipps og Klarna simulert) |
-| `reviews` | Bare fra verifiserte kjøpere av akkurat produktet |
-| `relations` | produkt A, produkt B, type (passer_sammen, alternativ), nivå (dokumentert, regelutledet, antatt), begrunnelse |
-| `manuals` | monteringsveiledning per produkt eller produktgruppe: steg, bilder, PDF |
-| `support_tickets`, `support_messages` | Eskalering fra chat til Support |
-| `events` | Hendelseslogg for sanntid (id, kanal, payload JSON) |
-| `mail_outbox` | Utgående e-post vist i demo-innboksen |
-| `analytics_events` | Søk, nullresultat, guide, handlekurv, kjøp, eskalering. Brukes av KPI-dashboard |
+| `products` | id, sku, name, slug, price in øre, short and long description from Sør-Tre, source link |
+| `categories`, `product_categories` | Sør-Tre's category tree |
+| `product_images` | image, order, type (sortre, customer photo of the finished result), uploaded by |
+| `spec_keys` | key, label, unit, data type, facet (yes/no). New specification type = new row |
+| `spec_values` | product, key, value, version (verified or open), source (sortre, utledet, bruker, ansatt), evidence, revision |
+| `spec_revisions` | Git-like change sets: who, what (JSON diff), comment, status (active, merged, rejected, rolled back) |
+| `warehouses`, `stock` | 12 stores. Per product and store: physical stock, online stock, backorder with expected date |
+| `users`, `roles` | user, verified status is computed: email confirmed AND at least one paid order |
+| `orders`, `order_items` | Demo checkout (Vipps and Klarna simulated) |
+| `reviews` | Only from verified buyers of that exact product |
+| `relations` | product A, product B, type (goes well with, alternative), level (documented, rule based, assumed), reason |
+| `manuals` | assembly guide per product or product group: steps, images, PDF |
+| `support_tickets`, `support_messages` | Escalation from the chat to Support |
+| `events` | Event log for live updates (id, channel, JSON payload) |
+| `mail_outbox` | Outgoing email shown in the demo inbox |
+| `analytics_events` | Searches, zero results, guide, cart, purchase, escalation. Used by the KPI dashboard |
 
-## To-versjonssystemet
+## The two-version system
 
-Hver spesifikasjon finnes i opptil to versjoner. Verifisert er Sør-Tre sine data, pluss det en ansatt har godkjent. Åpen er det verifiserte kjøpere har lagt til eller endret, som på Wikipedia. Produktsiden viser begge, side om side, med kilde på hver verdi. En redigering lager en `spec_revision` og oppdaterer den åpne versjonen umiddelbart. En ansatt ser endringen i køen og kan flette den inn i Verifisert, avvise den eller tilbakestille den. Utledede verdier (fra produkttekst) ligger i Åpen med kilde `utledet`, til en ansatt bekrefter dem.
+Every specification exists in up to two versions. Verified is Sør-Tre's data plus what staff have approved. Open is what verified buyers have added or changed, like on Wikipedia. The product page shows both side by side, with a source on every value. An edit creates a `spec_revision` and updates the open version immediately. Staff see the change in their queue and can merge it into Verified, reject it or roll it back. Derived values (from product text) sit in Open with the source `utledet` until staff confirm them.
 
-## Sanntid uten LISTEN/NOTIFY
+## Live updates without LISTEN/NOTIFY
 
-Når noe skjer (ny revisjon, svar i supportsak, lagerendring), skrives en rad til `events` i samme transaksjon som selve endringen. Endepunktet `/api/stream` holder en Server-Sent Events-tilkobling åpen. Det spør `events WHERE id > siste_id AND kanal IN (...)` hvert sekund og sender nye rader. Nettleserens EventSource kobler automatisk til igjen og sender `Last-Event-ID`, så ingen hendelser går tapt. Dette er et "transactional outbox"-mønster. Det gir samme effekt som LISTEN/NOTIFY for en demo, på hvilken som helst MySQL eller MariaDB.
+When something happens (new revision, reply in a support case, stock change), a row is written to `events` in the same transaction as the change itself. The `/api/stream` endpoint keeps a Server-Sent Events connection open. It queries `events WHERE id > last_id AND channel IN (...)` every second and sends new rows. The browser's EventSource reconnects automatically and sends `Last-Event-ID`, so no events are lost. This is a "transactional outbox" pattern. It has the same effect as LISTEN/NOTIFY for a demo, on any MySQL or MariaDB.
 
-Merk til rapporten: det var EAV-modellen (rader i stedet for kolonner) som gjør at nye beskrivelser ikke krever migrering. LISTEN/NOTIFY løser bare varslingen, ikke migreringsproblemet.
+Note for the report: it is the EAV model (rows instead of columns) that means new descriptions require no migration. LISTEN/NOTIFY only solves the notification, not the migration problem.
 
-## Maskoten og KI-chatten
+## The mascot and the AI chat
 
-1. Kundens melding tolkes først deterministisk (søkeord, synonymer, bruksområder) og gir en liste kandidatprodukter fra databasen.
-2. Kandidatene (ID, navn, pris, spesifikasjoner med kilde) og regler sendes til DeepSeek-R1 som data.
-3. Svaret strømmes til nettleseren. `<think>`-delen vises i panelet "Slik tenkte maskoten (kan inneholde feil)".
-4. Produktkort i svaret rendres fra databasen. ID-er som ikke var blant kandidatene forkastes.
-5. "Snakk med et menneske" oppretter en supportsak. Support-rollen ser den live via SSE.
-6. Er Ollama utilgjengelig, svarer regelmotoren med et synlig beslutningsspor (hvilke filtre og regler som ble brukt).
+1. The customer's message is first interpreted deterministically (keywords, synonyms, use cases), which gives a list of candidate products from the database.
+2. The candidates (ID, name, price, specifications with source) and rules are sent to DeepSeek-R1 as data.
+3. The answer is streamed to the browser. The `<think>` part is shown in the panel "How the mascot reasoned (may contain errors)".
+4. Product cards in the answer are rendered from the database. IDs that weren't among the candidates are discarded.
+5. "Talk to a human" creates a support case. The Support role sees it live via SSE.
+6. If Ollama is unavailable, the rule engine answers with a visible decision trail (which filters and rules were used).
 
-## Kjøring
+## Running
 
-| Miljø | Hvordan |
+| Environment | How |
 |---|---|
-| Utvikling (skyserveren) | `PHP_CLI_SERVER_WORKERS=4 php -S 0.0.0.0:8080 -t public` mot lokal MariaDB. Flere arbeidere trengs fordi SSE holder en tilkobling åpen |
-| Demo (egen PC) | `docker compose up` (php:8.4-apache og mariadb). Ollama kjører på verten. Appen når den via `http://host.docker.internal:11434` |
+| Development (cloud server) | `PHP_CLI_SERVER_WORKERS=4 php -S 0.0.0.0:8080 -t public` against a local MariaDB. Several workers are needed because SSE keeps a connection open |
+| Demo (own PC) | `docker compose up` (php:8.4-apache and mariadb). Ollama runs on the host. The app reaches it via `http://host.docker.internal:11434` |
 
-Modell på RTX 4050 (6 GB VRAM): `ollama pull deepseek-r1:8b` (cirka 5 GB). Er den for treg, bruk `deepseek-r1:7b`.
+Model on an RTX 4050 (6 GB VRAM): `ollama pull deepseek-r1:8b` (about 5 GB). If it is too slow, use `deepseek-r1:7b`.

@@ -2,18 +2,18 @@
 declare(strict_types=1);
 
 /**
- * Søk med skrivefeil-toleranse, synonymer og bruksområder (feature 004).
- * Katalogen er liten (cirka 500 produkter), så vi scorer i PHP. Det gir full kontroll og forklarbarhet:
- * resultatet sier hvilke ord som ble rettet og hvilke bruksområder som ble gjenkjent.
+ * Search with typo tolerance, synonyms and use cases (feature 004).
+ * The catalog is small (about 500 products), so we score in PHP. That gives full control and explainability:
+ * the result says which words were corrected and which use cases were recognized.
  */
 final class Search
 {
     private const STOP = ['og', 'i', 'til', 'for', 'en', 'et', 'ei', 'på', 'med', 'å', 'av', 'jeg', 'vil', 'skal',
         'trenger', 'noe', 'som', 'kan', 'har', 'meg', 'min', 'mitt', 'en', 'det', 'den', 'de', 'er', 'hva', 'hvordan', 'the',
-        // Engelske småord (søk på engelsk oversettes, se fromEnglish)
+        // Small English words (English searches are translated, see fromEnglish)
         'a', 'an', 'what', 'which', 'does', 'have', 'has', 'how', 'need', 'want', 'some', 'any', 'with', 'my', 'you', 'is', 'are',
         'can', 'do', 'me', 'show', 'find', 'please', 'good', 'of', 'in', 'it', 'that', 'this', 'products', 'product'];
-    /** Ord som er vanlige i spørsmål til Søren, men aldri beskriver et produkt. */
+    /** Words that are common in questions to Søren but never describe a product. */
     private const CHAT_STOP = ['greit', 'bruke', 'bruker', 'bra', 'best', 'beste', 'bedre', 'hvilken', 'hvilke', 'hvilket', 'lurer', 'tips',
         'anbefale', 'anbefaler', 'bør', 'dere', 'du', 'din', 'ditt', 'mine', 'hei', 'takk', 'ikke', 'eller', 'om', 'da', 'nå', 'her',
         'der', 'være', 'blir', 'få', 'gjøre', 'mye', 'lite', 'god', 'godt', 'gode', 'okei', 'ok', 'ja', 'nei', 'så', 'også', 'mer',
@@ -28,10 +28,10 @@ final class Search
         }
         $rows = self::rows();
         $vocab = self::vocab($rows);
-        // 0. Engelsk: «screw» blir «skrue». Bare ord katalogen ikke kjenner fra før, så «grill» og «hammer» står som de er.
+        // 0. English: "screw" becomes "skrue". Only words the catalog doesn't already know, so "grill" and "hammer" stay as they are.
         [$q, $translated] = self::fromEnglish($q, $vocab);
 
-        // 1. Bruksområder og synonymer ("male vegg", "lommelykt")
+        // 1. Use cases and synonyms ("male vegg", "lommelykt")
         $terms = [];
         $themes = [];
         $boost = [];
@@ -41,7 +41,7 @@ final class Search
                 $matched[] = $s;
                 foreach (explode(' ', $s['expands']) as $e) {
                     if (str_starts_with($e, 'tema:')) {
-                        // Bruksområde ("se i mørket") viser hele temaet. Synonym ("drill") gir bare lenke, ikke falske treff.
+                        // A use case ("se i mørket") shows the whole theme. A synonym ("drill") only gives a link, not false hits.
                         $s['kind'] === 'bruksomrade' ? $boost[] = substr($e, 5) : null;
                         $themes[] = substr($e, 5);
                     } else {
@@ -51,7 +51,7 @@ final class Search
             }
         }
 
-        // 2. Ord fra spørringen, med retting av skrivefeil mot ord som finnes i katalogen
+        // 2. Words from the query, with typo correction against words that exist in the catalog
         $stop = $strict ? array_merge(self::STOP, self::CHAT_STOP) : self::STOP;
         $words = array_values(array_filter(preg_split('/[^\p{L}\d,.]+/u', $q) ?: [], fn($w) => mb_strlen($w) >= 2 && !in_array($w, $stop, true)));
         $fixed = [];
@@ -62,28 +62,28 @@ final class Search
                 $fixed[] = $w;
                 continue;
             }
-            // Sammensatte ord: "litiumbatteri" søker på "batteri"
+            // Compound words: "litiumbatteri" searches for "batteri"
             if (($head = self::head($w, $vocab)) !== null) {
                 $fixed[] = $head;
                 $changed = true;
                 continue;
             }
-            // Del av sammensatte navn: "skrue" i "Øyeskrue" og "Skruekrok" er ikke en skrivefeil
+            // Part of compound names: "skrue" in "Øyeskrue" and "Skruekrok" is not a typo
             if (mb_strlen($w) >= 4 && str_contains(self::names($rows), $w)) {
                 $fixed[] = $w;
                 continue;
             }
-            // Strengt (Søren): bare én skrivefeil, og bare i lange ord, så "greit" ikke blir "rett"
+            // Strict (Søren): only one typo, and only in long words, so "greit" doesn't become "rett"
             $best = $strict ? (mb_strlen($w) >= 6 ? self::nearest($w, $vocab, 1) : null) : self::nearest($w, $vocab);
             if ($strict && $best === null) {
-                continue; // ukjent ord i en setning: hopp over i stedet for å gjette
+                continue; // unknown word in a sentence: skip it instead of guessing
             }
             $fixed[] = $best ?? $w;
             $changed = $changed || ($best !== null && $best !== $w);
         }
         $terms = array_merge($fixed, $terms);
 
-        // 3. Poeng per produkt
+        // 3. Score per product
         $scores = [];
         foreach ($rows as $r) {
             $s = 0;
@@ -111,14 +111,14 @@ final class Search
                 $s += 2;
             }
             if ($fixed && $hits === count($fixed)) {
-                $s += 5; // alle ordene traff
+                $s += 5; // all the words matched
             }
             if ($s > 0) {
                 $scores[$r['id']] = $s;
             }
         }
         arsort($scores);
-        // Bare de med minst halvparten av toppscoren, så "drill" ikke drukner i tilfeldige teksttreff
+        // Only those with at least half the top score, so "drill" doesn't drown in random text hits
         $top = $scores ? reset($scores) : 0;
         $ids = array_keys(array_filter($scores, fn($s) => $s >= max(2, $top / 3)));
 
@@ -131,11 +131,11 @@ final class Search
         ];
     }
 
-    /** Oversetter engelske produktord til norsk. Returnerer [spørring, norsk tekst hvis noe ble oversatt]. */
+    /** Translates English product words to Norwegian. Returns [query, Norwegian text if anything was translated]. */
     public static function fromEnglish(string $q, array $vocab): array
     {
         $out = $q;
-        // Uttrykk med flere ord først («hearing protection», «work light»)
+        // Multi word phrases first ("hearing protection", "work light")
         foreach (I18nEn::SEARCH as $en => $no) {
             if (str_contains($en, ' ') && preg_match('/(^|\s)' . preg_quote($en, '/') . 's?($|\s)/u', $out)) {
                 $out = (string) preg_replace('/(^|\s)' . preg_quote($en, '/') . 's?($|\s)/u', '$1' . $no . '$2', $out);
@@ -147,7 +147,7 @@ final class Search
                 continue;
             }
             $hit = I18nEn::SEARCH[$w] ?? null;
-            // Flertall: «screws», «batteries», «brushes»
+            // Plurals: "screws", "batteries", "brushes"
             foreach ([['ies', 'y'], ['es', ''], ['s', '']] as [$suf, $rep]) {
                 if ($hit === null && str_ends_with($w, $suf)) {
                     $hit = I18nEn::SEARCH[substr($w, 0, -strlen($suf)) . $rep] ?? null;
@@ -166,7 +166,7 @@ final class Search
         static $rows = null;
         return $rows ??= array_map(fn($r) => [
             'id' => (int) $r['id'], 'theme' => $r['theme'],
-            // "(ikke Core)" og "Passer ikke Core" skal ikke gi treff på "core"
+            // "(ikke Core)" and "Passer ikke Core" must not match "core"
             'n' => mb_strtolower((string) preg_replace(['/\\(ikke[^)]*\\)/iu', '/passer\\s+ikke.*$/iu'], ' ', $r['name'])), 't' => mb_strtolower(mb_substr((string) $r['plain_text'], 0, 1500)),
         ], db()->query('SELECT id, theme, name, plain_text FROM products')->fetchAll());
     }
@@ -195,7 +195,7 @@ final class Search
         return $v;
     }
 
-    /** Siste ledd i et sammensatt ord, hvis det er et kjent ord på minst fem bokstaver. */
+    /** The last part of a compound word, if it is a known word of at least five letters. */
     private static function head(string $w, array $vocab): ?string
     {
         $len = mb_strlen($w);
@@ -218,7 +218,7 @@ final class Search
         return false;
     }
 
-    /** Nærmeste ord med Levenshtein-avstand. Tillater 1 feil for korte ord, 2 for lengre. */
+    /** Nearest word by Levenshtein distance. Allows 1 error for short words, 2 for longer ones. */
     private static function nearest(string $w, array $vocab, ?int $limit = null): ?string
     {
         $len = mb_strlen($w);

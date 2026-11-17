@@ -1,14 +1,14 @@
 """
-Klipper Søren ut av public/assets/mascot.png med ferdige verktøy (rembg), og lagrer gjennomsiktigheten
-som public/assets/mascot-alpha.png (gråtone, samme størrelse som mascot.png). trace_soren.py bruker den.
+Cuts Søren out of public/assets/mascot.png with ready made tools (rembg), and saves the transparency
+as public/assets/mascot-alpha.png (greyscale, same size as mascot.png). trace_soren.py uses it.
 
-Kroppen er hvit på hvit bakgrunn, så ett verktøy er ikke nok:
-  Segment Anything (SAM) med punkter på Søren finner hele kroppen, men river opp bladene ytterst.
-  BiRefNet finner bladene rent, men tar ikke med den hvite kroppen.
-Søren er det minst ett av dem sier er Søren (største verdi per piksel).
+The body is white on a white background, so one tool isn't enough:
+  Segment Anything (SAM) with points on Søren finds the whole body, but tears up the outermost leaves.
+  BiRefNet finds the leaves cleanly, but leaves out the white body.
+Søren is whatever at least one of them says is Søren (highest value per pixel).
 
-Krever: pip install "rembg[cpu]"  (laster ned modellene første gang, ca. 1 GB)
-Kjør:   python scripts/cutout_soren.py            (tar 10 til 20 minutter på én CPU)
+Requires: pip install "rembg[cpu]"  (downloads the models the first time, about 1 GB)
+Run:      python scripts/cutout_soren.py            (takes 10 to 20 minutes on one CPU)
 """
 import os
 import cv2
@@ -19,12 +19,12 @@ from rembg import new_session, remove
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'public/assets/mascot.png')
 OUT = os.path.join(ROOT, 'public/assets/mascot-alpha.png')
-X0, Y0, X1, Y1 = 375, 0, 652, 341   # Søren med marg i originalbildet
-UP = 3                               # forstørres, så modellene ser detaljene
-# Punkter på Søren for SAM (koordinater i originalbildet): stamme, hode, armer, krone, støvler
+X0, Y0, X1, Y1 = 375, 0, 652, 341   # Søren with a margin in the original image
+UP = 3                               # upscaled, so the models see the details
+# Points on Søren for SAM (coordinates in the original image): trunk, head, arms, crown, boots
 POINTS = [(512, 230), (512, 290), (500, 170), (445, 205), (580, 260), (480, 90), (560, 120), (500, 315), (545, 315),
-          (515, 125), (493, 178), (537, 178), (515, 150)]  # panne og kinn
-# Hvit bakgrunn som er omsluttet av Søren (SAM tar den ellers med): over den vinkende armen, ved stammen, mellom greinene
+          (515, 125), (493, 178), (537, 178), (515, 150)]  # forehead and cheeks
+# White background enclosed by Søren (SAM includes it otherwise): above the waving arm, by the trunk, between the branches
 NOT = [(465, 200), (474, 186), (498, 109)]
 
 
@@ -37,10 +37,10 @@ def main():
     crop = src.crop((X0, Y0, X1, Y1)).resize(((X1 - X0) * UP, (Y1 - Y0) * UP), Image.LANCZOS)
     pts = ([{'type': 'point', 'data': [(x - X0) * UP, (y - Y0) * UP], 'label': 1} for x, y in POINTS]
            + [{'type': 'point', 'data': [(x - X0) * UP, (y - Y0) * UP], 'label': 0} for x, y in NOT])
-    a_sam = alpha_of(crop, session=new_session('sam'), sam_prompt=pts, post_process_mask=True)  # rembg fjerner små hull
+    a_sam = alpha_of(crop, session=new_session('sam'), sam_prompt=pts, post_process_mask=True)  # rembg removes small holes
     a_bir = alpha_of(crop, session=new_session('birefnet-general'))
     a = np.maximum(a_sam, a_bir)
-    # Lukking (OpenCV): fyller hull på noen få piksler der bladkantene møter stammen
+    # Closing (OpenCV): fills holes of a few pixels where the leaf edges meet the trunk
     a = cv2.morphologyEx(a, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
     small = Image.fromarray(a).resize((X1 - X0, Y1 - Y0), Image.BOX)
     full = Image.new('L', src.size, 0)

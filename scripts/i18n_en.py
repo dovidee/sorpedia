@@ -1,7 +1,7 @@
-# Engelsk ordliste for Sørpedia. Kjør: python3 scripts/i18n_en.py  (skriver src/I18nEn.php)
-# Nøkkel = norsk tekst slik den står i koden.
+# English word list for Sørpedia. Run: python3 scripts/i18n_en.py  (writes src/I18nEn.php)
+# Key = the Norwegian text as it appears in the code.
 T = {
-# Felles
+# Shared
 "Søk": "Search", "Handlekurv": "Cart", "Innboks": "Inbox", "Innstillinger": "Settings", "Logg inn": "Log in", "Logg ut": "Log out",
 "Registrer deg": "Sign up", "Kontoen din": "Your account", "Logg inn eller registrer deg": "Log in or sign up", "Arbeid": "Work",
 "Varehus": "Store", "Varehus, konto og handlekurv": "Store, account and cart", "Varehuset ditt. Lagerstatus vises for dette.": "Your store. Stock is shown for this one.",
@@ -19,11 +19,11 @@ T = {
 "Prøv søket øverst, eller <a href=\"/guide\">la Søren hjelpe deg</a>.": "Try the search at the top, or <a href=\"/guide\">let Søren help you</a>.",
 "Kasse": "Checkout", "Produktguiden": "Product guide", "Forslag fra Søren": "Suggestions from Søren", "Forslag fra produktguiden": "Suggestions from the product guide",
 "Sammenligning": "Comparison", "Kundeservice": "Customer service", "Flettekø": "Merge queue", "Admin": "Admin", "Sørpedia": "Sørpedia",
-# Roller, status, betaling
+# Roles, status, payment
 "bruker": "customer", "ansatt": "employee", "support": "support", "admin": "admin",
 "aktiv": "active", "flettet": "merged", "avvist": "rejected", "tilbakestilt": "reverted", "status": "status",
 "Vipps": "Vipps", "Klarna": "Klarna", "Kort": "Card",
-# Kategorier (Catalog::THEMES)
+# Categories (Catalog::THEMES)
 "Lys og lykter": "Lights", "Hodelykter, lommelykter, arbeidslys og batterier": "Headlamps, flashlights, work lights and batteries",
 "Bygg og feste": "Building", "Hammer, spiker, skruer, beslag og måleverktøy": "Hammers, nails, screws, brackets and measuring tools",
 "Maling og sparkel": "Paint and filler", "Ruller, pensler, sparkel, maskering og slipepapir": "Rollers, brushes, filler, masking and sandpaper",
@@ -31,7 +31,7 @@ T = {
 "Kjetting og løft": "Chain and lifting", "Sjakler, kjetting og kroker": "Shackles, chain and hooks",
 "Skog og ved": "Forest and wood", "Sagkjeder, filer, hansker og hørselvern": "Saw chains, files, gloves and hearing protection",
 "Tur og friluft": "Outdoors", "Kikkerter, grill og kokeutstyr": "Binoculars, grills and cooking gear",
-# Produktguiden (Guide::QUESTIONS)
+# The product guide (Guide::QUESTIONS)
 "Hva skal du gjøre?": "What do you want to do?", "Se bedre i mørket": "See better in the dark", "Snekre eller feste noe": "Build or fix something",
 "Male eller sparkle": "Paint or fill", "Skjerme balkongen": "Shelter the balcony", "Løfte, sikre eller fortøye": "Lift, secure or moor",
 "Sage eller hogge ved": "Cut or chop firewood", "Tur, båt eller grilling": "Hiking, boating or grilling",
@@ -79,7 +79,7 @@ T = {
 "Komplett sett, fint første gang": "Complete kit, good for a first time", "Profesjonell kvalitet": "Professional quality",
 "Snitt {r} av 5 fra {n} kjøpere": "Average {r} of 5 from {n} buyers", "På lager i {wh}": "In stock in {wh}", "valgt varehus": "the chosen store",
 "Vi vet hva som passer sammen med den": "We know what goes with it",
-# Forside
+# Home page
 "Finn riktig utstyr, og alt som hører til": "Find the right gear, and everything that goes with it",
 "Svar på fire spørsmål, så foreslår Søren produkter og forklarer hvorfor. Du ser også hva som passer sammen, hva andre kjøpere har lagt til av info, og om varen er inne i ditt varehus.":
   "Answer four questions and Søren suggests products and explains why. You also see what goes together, what other buyers have added, and whether the item is in stock in your store.",
@@ -92,7 +92,7 @@ T = {
   "We only say something <i>fits</i> when Sør-Tre has written it, or a clear rule says so, like a chain and shackle having the same size.",
 "Ditt varehus": "Your store", "Velg varehus øverst for å se hva som står på hylla, hva som ligger på nettlager og hva som kan bestilles.":
   "Choose a store at the top to see what's on the shelf, what's in the online warehouse and what can be ordered.",
-# Produktkort og lister
+# Product cards and lists
 "Ingen bilde": "No image", "{n} i butikk": "{n} in store", "Nettlager": "Online stock", "nettlager": "online stock", "ikke på lager": "out of stock",
 "Bestilling, ca. {d}": "Order, about {d}", "Utsolgt": "Sold out", "{n} produkter": "{n} products", "Filtrer": "Filter", "Nullstill alle": "Clear all",
 "Pris": "Price", "Pris fra": "Price from", "Pris til": "Price to", "Oppgitt for {n} produkter": "Given for {n} products",
@@ -101,7 +101,7 @@ T = {
 "Mest populære": "Most popular", "Best vurdert": "Best rated", "Laveste pris": "Lowest price", "Høyeste pris": "Highest price", "Navn": "Name",
 "Ingen produkter passer filtrene. Mange produkter mangler tall for enkelte filtre fordi Sør-Tre ikke oppgir dem.": "No products match the filters. Many products lack numbers for some filters because Sør-Tre doesn't list them.",
 "Nullstill filtre": "Clear filters", "{n} av 5": "{n} of 5",
-# Søk
+# Search
 "{n} treff": "{n} results", "Viser treff for <b>{fixed}</b>. Søkte du på «{q}»?": "Showing results for <b>{fixed}</b>. Did you search for “{q}”?",
 "Søkte på norsk: <b>{no}</b>. Produktene har norske navn fra Sør-Tre.": "Searched in Norwegian: <b>{no}</b>. Products have Norwegian names from Sør-Tre.",
 "Søren tolket søket som en oppgave": "Søren read the search as a task", "Se alt i {theme}": "See everything in {theme}",
@@ -109,7 +109,7 @@ T = {
 "<a href=\"/guide\">Prøv produktguiden</a> eller <a href=\"#\" data-open-soren>spør Søren</a>. Søkeord uten treff lagres slik at butikken ser hva kundene leter etter.":
   "<a href=\"/guide\">Try the product guide</a> or <a href=\"#\" data-open-soren>ask Søren</a>. Searches without results are saved so the store sees what customers look for.",
 "Kanskje dette?": "Maybe this?",
-# Produktside
+# Product page
 "Zoom inn": "Zoom in", "Zoom ut": "Zoom out", "Bilde fra Sør-Tre": "Image from Sør-Tre", "Ingen bilder fra Sør-Tre": "No images from Sør-Tre", "Bilde {n}": "Image {n}",
 "Klikk på bildet for å zoome inn, og klikk igjen for å zoome ut.": "Click the image to zoom in, and click again to zoom out.",
 "{n} bilde": "{n} image", "{n} bilder": "{n} images", "Mangler: ferdig montert og i bruk.": "Missing: assembled and in use.", "Merke": "Brand",
@@ -141,12 +141,12 @@ T = {
 "Se produktet på sor-tre.no": "See the product on sor-tre.no", "Anmeldelser": "Reviews", "Bare kunder som har kjøpt produktet kan anmelde det.": "Only customers who bought the product can review it.",
 "verifisert kjøp": "verified purchase", "Karakter": "Rating", "Tittel": "Title", "Hva bør andre vite?": "What should others know?", "Publiser anmeldelse": "Publish review",
 "Andre kjøpte også": "Others also bought", "Basert på hva som er kjøpt sammen. Det betyr ikke at produktene passer sammen.": "Based on what was bought together. It doesn't mean the products fit together.",
-# Kilder og nivå (helpers.php)
+# Sources and level (helpers.php)
 "Sør-Tre": "Sør-Tre", "Står i Sør-Tre sin produkttekst": "Stated in Sør-Tre's product text", "Ansatt": "Employee", "Kontrollert og godkjent av en ansatt": "Checked and approved by an employee",
 "Utledet": "Derived", "Tolket automatisk fra produktteksten, ikke kontrollert": "Read automatically from the product text, not checked",
 "Kjøper": "Buyer", "Lagt inn av en verifisert kjøper, ikke kontrollert av Sør-Tre": "Added by a verified buyer, not checked by Sør-Tre",
 "Dokumentert": "Documented", "Regel": "Rule", "Kjøpt sammen": "Bought together",
-# Handlekurv, kasse, ordre
+# Cart, checkout, order
 "{b} passer ikke til {a}.": "{b} doesn't fit {a}.", "Handlekurven er tom.": "Your cart is empty.", "På lager i butikk": "In stock in store",
 "Sendes fra nettlager": "Ships from the online warehouse", "Bestillingsvare": "Order item", "Til kassen": "Go to checkout", "Har du husket?": "Did you remember?",
 "Ting som passer sammen med det du har i kurven. Hvert forslag sier hvorfor.": "Things that go with what's in your cart. Each suggestion says why.",
@@ -155,7 +155,7 @@ T = {
 "Ordre {id}, betalt med {pay}.": "Order {id}, paid with {pay}.",
 "Du er verifisert kjøper. Gå til et produkt du har kjøpt og velg <b>Åpen (Sørpedia)</b> under spesifikasjoner for å fylle inn det som mangler, eller skriv en anmeldelse.":
   "You're a verified buyer. Go to a product you bought and choose <b>Open (Sørpedia)</b> under specifications to fill in what's missing, or write a review.",
-# Innlogging, registrering, innboks
+# Login, registration, inbox
 "E-post": "Email", "Passord": "Password", "Ingen konto?": "No account?", "Testbrukere": "Test users",
 "Alle har passordet <code>admin</code>. Klikk for å fylle inn.": "All have the password <code>admin</code>. Click to fill in.",
 "Ingrid (kunde@) er verifisert kjøper og eier en H7R Core. Nora (ny@) har ikke bekreftet e-post. Erik (epost@) har bekreftet e-post, men har ikke handlet ennå.":
@@ -166,13 +166,13 @@ T = {
 "Opprett konto": "Create account", "Har du konto?": "Have an account?",
 "Prototypen sender ikke ekte e-post. Alt som ville blitt sendt til deg havner her.": "The prototype doesn't send real email. Everything that would be sent to you ends up here.",
 "E-postene er på norsk.": "The emails are in Norwegian.", "for å se e-posten din.": "to see your email.", "Ingen e-post ennå.": "No email yet.",
-# Veiledning og sammenligning
+# Guides and compare
 "Veiledning skrevet av IS-219 gruppe 4, ikke fra produsenten. Følg alltid produsentens anvisning.": "Guide written by IS-219 group 4, not by the manufacturer. Always follow the manufacturer's instructions.",
 "Veiledningen finnes bare på norsk.": "The guide is only available in Norwegian.", "Du trenger": "You need", "Skriv ut": "Print", "Produkter denne veiledningen gjelder": "Products this guide covers",
 "Velg minst to produkter med «Sammenlign» på produktkortene.": "Choose at least two products with “Compare” on the product cards.",
 "Kjøpere": "Buyers", "Lager her": "Stock here", "Ikke inne": "Not in stock",
 "«Ukjent» betyr at verken Sør-Tre eller kjøpere har oppgitt verdien. Vi gjetter ikke.": "“Unknown” means neither Sør-Tre nor buyers have given the value. We don't guess.",
-# Innstillinger
+# Settings
 "Profil": "Profile", "Utseende": "Appearance", "Personvern": "Privacy", "Rolle": "Role", "verifisert kjøper": "verified buyer",
 "blir verifisert kjøper etter første kjøp": "becomes a verified buyer after the first purchase", "bekreft e-posten for å bli verifisert kjøper": "confirm your email to become a verified buyer",
 "Profilbildet ditt": "Your profile picture", "Velg bilde": "Choose image",
@@ -194,7 +194,7 @@ T = {
 "Navn, e-post, telefon, profilbilde og anmeldelser slettes. Bidrag i den åpne versjonen blir stående som «Slettet bruker». Ordrer beholdes uten navn fordi loven krever det. Dette kan ikke angres.":
   "Name, email, phone, profile picture and reviews are deleted. Contributions to the open version stay as “Slettet bruker” (deleted user). Orders are kept without a name because the law requires it. This can't be undone.",
 "Skriv passordet for å bekrefte": "Enter your password to confirm", "Slett kontoen for godt": "Delete the account for good",
-# Meldinger (flash)
+# Messages (flash)
 "Bare verifiserte kjøpere (bekreftet e-post og minst ett kjøp) kan redigere.": "Only verified buyers (confirmed email and at least one purchase) can edit.",
 "Ingen endringer å lagre.": "No changes to save.", "Takk! Endringen er synlig i den åpne versjonen. En ansatt vurderer om den skal inn i den verifiserte.": "Thanks! The change is visible in the open version. An employee will consider moving it to the verified one.",
 "Bare verifiserte kjøpere av dette produktet kan skrive anmeldelse.": "Only verified buyers of this product can write a review.", "Takk for anmeldelsen!": "Thanks for the review!",
@@ -241,7 +241,7 @@ T = {
 "{name} passer sammen med {list}.": "{name} goes with {list}.",
 "Søren tenkte på engelsk denne gangen, så tankene vises ikke.": "Søren thought in English this time, so the reasoning is hidden.",
 "Det du skriver høres ut som du har det veldig vondt, og det tar jeg på alvor. Du fortjener å snakke med et menneske nå.\n\nMental Helse hjelpetelefon: 116 123 (hele døgnet)\nKirkens SOS: 22 40 00 40 (hele døgnet)\nEr du i fare nå, ring 113.\n\nDu kan også trykke «Snakk med et menneske» under.": "What you write sounds like you are in a lot of pain, and I take that seriously. You deserve to talk to a person now.\n\nMental Helse helpline (Norway): 116 123 (24/7)\nKirkens SOS (Norway): 22 40 00 40 (24/7)\nIf you are in danger now, call 113.\n\nYou can also press “Talk to a person” below.", "Obs: {name} passer ikke.": "Note: {name} doesn't fit.",
-# Katalogspørsmål (CatalogIntent)
+# Catalog questions (CatalogIntent)
 "Ingen av produktene som passer «{scope}» har monteringsveiledning.": "None of the products matching “{scope}” have an assembly guide.",
 "Butikken har ingen monteringsveiledninger ennå.": "The store has no assembly guides yet.", "«{title}» ({n} produkter)": "“{title}” ({n} products)",
 "Blant produktene som passer «{scope}» har {n} produkter monteringsveiledning: {list}.": "Among the products matching “{scope}”, {n} have an assembly guide: {list}.",
@@ -250,14 +250,14 @@ T = {
 "{name} ({r} av 5 fra {n} kjøpere)": "{name} ({r} of 5 from {n} buyers)", "{name} ({price})": "{name} ({price})", "Dårligst vurdert": "Worst rated", "Billigst": "Cheapest", "Dyrest": "Most expensive",
 "blant «{scope}»": "among “{scope}”", "Vurderingene er meninger fra kjøpere.": "The ratings are buyers' opinions.",
 "Ingen av disse produktene har anmeldelser ennå.": "None of these products have reviews yet.", "Fant ingen produkter som passer.": "Found no matching products.",
-# Feilsider
+# Error pages
 "Adressen eller skjemaet inneholdt noe vi ikke forstår.": "The address or form contained something we don't understand.",
 "Noe gikk galt hos oss. Prøv igjen om litt.": "Something went wrong on our side. Try again in a moment.",
 "Noe gikk galt. Prøv igjen, eller snakk med et menneske.": "Something went wrong. Try again, or talk to a human.",
 "Ugyldig forespørsel": "Invalid request", "Noe gikk galt": "Something went wrong",
 "Referanse: {ref}. Oppgi den hvis du kontakter oss.": "Reference: {ref}. Mention it if you contact us.", "Til forsiden": "Go to home page",
 }
-# Tekst i app.js (tr)
+# Text in app.js (tr)
 JS = {
 "Beklager, noe gikk galt. Prøv igjen, eller snakk med et menneske.": "Sorry, something went wrong. Try again, or talk to a human.",
 "Chat med Søren": "Chat with Søren", "Fjern {x}": "Remove {x}",
@@ -276,7 +276,7 @@ JS = {
 "Tidligere søk": "Recent searches", "Tøm": "Clear", "Velg minst to": "Choose at least two", "Zoom inn": "Zoom in", "Zoom ut": "Zoom out", "bare produktinfo": "product info only",
 "kundeservice": "customer service", "skriver om …": "rewriting …", "svarer …": "answering …", "tenker …": "thinking …", "våkner …": "waking up …",
 }
-# Verdier fra databasen (bruksområde, materiale, farge)
+# Values from the database (use case, material, color)
 VALUES = {
 "Bygg og snekring": "Building and carpentry", "Galvanisert stål": "Galvanized steel", "Varmgalvanisert stål": "Hot-dip galvanized steel", "Maling og overflate": "Paint and surface",
 "Utendørs": "Outdoor", "Innendørs": "Indoor", "Løft og sikring": "Lifting and securing", "Marint": "Marine", "Skog og hage": "Forest and garden", "Belysning": "Lighting",
@@ -285,7 +285,7 @@ VALUES = {
 "Latex": "Latex", "Polyester": "Polyester", "Gummi": "Rubber", "Blå": "Blue", "Frostet": "Frosted", "Klar": "Clear", "Rød": "Red", "Grønn": "Green", "Gul": "Yellow", "Grå": "Grey",
 "Oransje": "Orange", "Plast": "Plastic", "Ja": "Yes", "Nei": "No",
 }
-# Spesifikasjonstyper (spec_keys.key)
+# Specification types (spec_keys.key)
 SPECS = {
 "merke": "Brand", "materiale": "Material", "farge": "Colour", "bruksomrade": "Use", "lysstyrke_lm": "Brightness", "rekkevidde_m": "Beam range", "brenntid_t": "Burn time",
 "batteri": "Battery", "ip_klasse": "Water resistance (IP)", "sokkel": "Socket", "effekt_w": "Power", "fallhoyde_m": "Drop resistance", "diameter_mm": "Diameter", "lengde_mm": "Length",
@@ -293,7 +293,7 @@ SPECS = {
 "dimensjon_mm": "Size", "dimensjon_tomme": "Size (inches)", "arbeidslast_kg": "Working load (WLL)", "bruddstyrke_kg": "Breaking strength", "sverdlengde_tomme": "Bar length",
 "drivlenker": "Drive links", "storrelse": "Size", "standard": "Standard", "volum_l": "Volume", "forstorrelse": "Magnification", "objektiv_mm": "Objective diameter",
 }
-# Engelske søkeord til norske ord i katalogen. Flertall (-s, -es, -ies) håndteres i Search::fromEnglish.
+# English search words to Norwegian words in the catalog. Plurals (-s, -es, -ies) are handled in Search::fromEnglish.
 SEARCH = {
 "screw": "skrue", "nail": "spiker", "bolt": "bolt", "nut": "mutter", "washer": "skive", "anchor": "plugg", "hook": "krok", "eye bolt": "øyebolt", "eye screw": "øyeskrue",
 "bracket": "vinkel", "hinge": "hengsel", "staple": "stift", "dowel": "plugg", "rivet": "nagle", "measuring tape": "målebånd", "tape measure": "målebånd", "level": "vater",
@@ -319,23 +319,23 @@ def php_arr(d): return "[\n" + "\n".join(f"        {php_str(k)} => {php_str(v)},
 out = """<?php
 declare(strict_types=1);
 
-// GENERERT av scripts/i18n_en.py. Endre ordlisten der og kjør skriptet på nytt.
+// GENERATED by scripts/i18n_en.py. Change the word list there and run the script again.
 
-/** Engelske oversettelser. Nøkkel = norsk tekst. Se src/I18n.php. */
+/** English translations. Key = Norwegian text. See src/I18n.php. */
 final class I18nEn
 {
     public const T = """ + php_arr(T) + """;
 
-    /** Tekst i app.js, skrives inn i siden som window.I18N når språket er engelsk. */
+    /** Text in app.js, written into the page as window.I18N when the language is English. */
     public const JS = """ + php_arr(JS) + """;
 
-    /** Verdier fra databasen (bruksområde, materiale, farge). */
+    /** Values from the database (use case, material, color). */
     public const VALUES = """ + php_arr(VALUES) + """;
 
-    /** Spesifikasjonstyper (spec_keys.key => engelsk navn). */
+    /** Specification types (spec_keys.key => English name). */
     public const SPECS = """ + php_arr(SPECS) + """;
 
-    /** Engelske søkeord => norske ord i katalogen. */
+    /** English search words => Norwegian words in the catalog. */
     public const SEARCH = """ + php_arr(SEARCH) + """;
 }
 """

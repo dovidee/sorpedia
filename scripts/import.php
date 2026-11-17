@@ -1,16 +1,16 @@
 <?php
-// Bygger databasen fra data/raw/*.json pluss demo-seed. Kan kjøres på nytt: starter alltid fra tomt skjema.
+// Builds the database from data/raw/*.json plus demo seed data. Can be rerun: always starts from an empty schema.
 //
 //   php scripts/import.php
 //
-// Alt som er syntetisk (lager, brukere, ordrer, anmeldelser, åpne bidrag) er merket som demo.
+// Everything synthetic (stock, users, orders, reviews, open contributions) is marked as demo.
 
 declare(strict_types=1);
 require __DIR__ . '/../src/bootstrap.php';
 
 $root = APP_ROOT;
 $pdo = db();
-mt_srand(219); // deterministisk demo-data
+mt_srand(219); // deterministic demo data
 
 function step(string $msg): void { echo str_pad($msg, 44, '.') . ' '; }
 function done(string $msg = 'ok'): void { echo "$msg\n"; }
@@ -22,12 +22,12 @@ function slugify(string $s): string
     return trim(preg_replace('/[^a-z0-9]+/', '-', $s) ?? '', '-');
 }
 
-// 1. Skjema
+// 1. Schema
 step('Skjema');
 $pdo->exec(file_get_contents("$root/db/schema.sql"));
 done();
 
-// 2. Kategorier
+// 2. Categories
 step('Kategorier');
 $cats = json_decode(file_get_contents("$root/data/raw/categories.json"), true);
 $st = $pdo->prepare('INSERT INTO categories (id, parent_id, name, slug) VALUES (?,?,?,?)');
@@ -36,7 +36,7 @@ foreach ($cats as $c) {
 }
 done(count($cats) . ' stk');
 
-// 3. Spesifikasjonstyper (rader, ikke kolonner)
+// 3. Specification types (rows, not columns)
 step('Spesifikasjonstyper');
 $st = $pdo->prepare('INSERT INTO spec_keys (`key`, label, unit, datatype, is_facet, themes, sort) VALUES (?,?,?,?,?,?,?)');
 foreach (Extract::KEYS as $k => [$label, $unit, $type, $facet, $themes, $sort]) {
@@ -44,7 +44,7 @@ foreach (Extract::KEYS as $k => [$label, $unit, $type, $facet, $themes, $sort]) 
 }
 done(count(Extract::KEYS) . ' stk');
 
-// 4. Produkter, kategorier, bilder, spesifikasjoner
+// 4. Products, categories, images, specifications
 step('Produkter');
 $raw = json_decode(file_get_contents("$root/data/raw/products.json"), true);
 $insP = $pdo->prepare('INSERT INTO products (id, sku, name, slug, theme, brand, price_ore, regular_ore, short_html, long_html, plain_text, source_url)
@@ -92,12 +92,12 @@ foreach ($raw as $p) {
         }
     }
     foreach ($specs as $s) {
-        if (!isset(Extract::KEYS[$s['key']])) { // ny egenskap fra Sør-Tre sin tekst: ny rad i spec_keys
+        if (!isset(Extract::KEYS[$s['key']])) { // new property from Sør-Tre's text: new row in spec_keys
             $newKey->execute([$s['key'], $s['label'] ?? $s['key'], $s['unit'], $s['num'] !== null ? 'number' : 'text', 0, $p['_theme'], 90]);
         }
     }
     foreach ($specs as $s) {
-        // Sør-Tre sine egne tall går i Verifisert, våre tolkninger i Åpen (constitution punkt 2)
+        // Sør-Tre's own numbers go in Verified, our interpretations in Open (constitution point 2)
         $version = $s['source'] === 'sortre' ? 'verifisert' : 'apen';
         $insS->execute([$id, $s['key'], $version, $s['text'], $s['num'], $s['source'], $s['evidence']]);
         $nSpec[$s['source']]++;
@@ -108,7 +108,7 @@ foreach ($raw as $p) {
 $pdo->commit();
 done(count($products) . " stk, $nImg bilder, {$nSpec['sortre']} Sør-Tre-verdier, {$nSpec['utledet']} utledet");
 
-// 5. Varehus (Sør-Tre har én butikk i Kristiansand, resten er demo)
+// 5. Stores (Sør-Tre has one store in Kristiansand, the rest are demo)
 step('Varehus');
 $warehouses = [
     1 => ['Kristiansand', 'Kristiansand', 1], 2 => ['Oslo', 'Oslo', 0], 3 => ['Bergen', 'Bergen', 0],
@@ -122,13 +122,13 @@ foreach ($warehouses as $wid => [$n, $c, $real]) {
 }
 done(count($warehouses) . ' stk');
 
-// 6. Lager per varehus: fysisk i butikk, nettlager, eller bestillingsvare med dato
+// 6. Stock per store: physically in store, online stock, or backorder with a date
 step('Lager (demo)');
 $st = $pdo->prepare('INSERT INTO stock (product_id, warehouse_id, in_store, online, preorder_eta) VALUES (?,?,?,?,?)');
 $pdo->beginTransaction();
 $n = 0;
 foreach ($products as $id => $p) {
-    $online = mt_rand(0, 100) < 85 ? mt_rand(3, 120) : 0; // nettlageret er felles, men lagres per rad for enkelhets skyld
+    $online = mt_rand(0, 100) < 85 ? mt_rand(3, 120) : 0; // online stock is shared, but stored per row for simplicity
     foreach ($warehouses as $wid => $w) {
         $r = mt_rand(0, 100);
         $inStore = $wid === 1 ? ($r < 80 ? mt_rand(1, 40) : 0) : ($r < 45 ? mt_rand(1, 15) : 0);
@@ -140,17 +140,17 @@ foreach ($products as $id => $p) {
 $pdo->commit();
 done("$n rader");
 
-// 7. Brukere. Alle seedede brukere har passordet "admin".
+// 7. Users. All seeded users have the password "admin".
 step('Brukere (passord: admin)');
 $hash = password_hash('admin', PASSWORD_ARGON2ID);
 $users = [
     ['admin@sorpedia.test', 'Admin Adminsen', 'admin', true],
     ['ansatt@sorpedia.test', 'Thomas Gregersen', 'ansatt', true],
     ['support@sorpedia.test', 'Siri Support', 'support', true],
-    ['kunde@sorpedia.test', 'Ingrid Lunde', 'bruker', true],     // verifisert (e-post + kjøp)
-    ['arne@sorpedia.test', 'Arne Hansen', 'bruker', true],        // verifisert
-    ['ny@sorpedia.test', 'Nora Ny', 'bruker', false],             // ikke bekreftet e-post, ingen kjøp
-    ['epost@sorpedia.test', 'Erik Epost', 'bruker', true],        // bekreftet e-post, men ingen kjøp
+    ['kunde@sorpedia.test', 'Ingrid Lunde', 'bruker', true],     // verified (email + purchase)
+    ['arne@sorpedia.test', 'Arne Hansen', 'bruker', true],        // verified
+    ['ny@sorpedia.test', 'Nora Ny', 'bruker', false],             // unconfirmed email, no purchases
+    ['epost@sorpedia.test', 'Erik Epost', 'bruker', true],        // confirmed email, but no purchases
 ];
 $demoBuyers = ['Kari', 'Ola', 'Lars', 'Mona', 'Per', 'Hanne', 'Jonas', 'Silje', 'Ahmed', 'Linnea', 'Tor', 'Maja'];
 foreach ($demoBuyers as $i => $fn) {
@@ -164,7 +164,7 @@ foreach ($users as [$email, $name, $role, $verified]) {
 }
 done(count($users) . ' stk');
 
-// 8. Demo-ordrer: kjøpte pakker som gir "andre kjøpte også" og gjør kjøperne verifiserte
+// 8. Demo orders: bought kits that give "others also bought" and make the buyers verified
 step('Ordrer (demo)');
 $byTheme = [];
 foreach ($products as $id => $p) {
@@ -184,7 +184,7 @@ foreach ($buyers as $email => $uid) {
         shuffle($pool);
         $items = array_slice($pool, 0, mt_rand(1, 4));
         if ($email === 'kunde@sorpedia.test' && $o === 0) {
-            // Ingrid har kjøpt en Ledlenser-hodelykt, så hun kan bidra med rekkevidde (demo av P1)
+            // Ingrid has bought a Ledlenser headlamp, so she can contribute the beam range (demo of P1)
             $items = array_values(array_filter(array_keys($products), fn($i) => str_contains($products[$i]['name'], 'H7R Core')));
         }
         $total = array_sum(array_map(fn($i) => $products[$i]['price'], $items));
@@ -200,7 +200,7 @@ foreach ($buyers as $email => $uid) {
 $pdo->commit();
 done("$nO ordrer");
 
-// 9. Demo-anmeldelser: bare fra brukere som har kjøpt produktet (samme regel som i appen)
+// 9. Demo reviews: only from users who bought the product (same rule as in the app)
 step('Anmeldelser (demo)');
 $templates = [
     5 => ['Akkurat som beskrevet', 'Gjør jobben og vel så det. Kjøper igjen.', 'Solid kvalitet til prisen. Anbefales.'],
@@ -223,7 +223,7 @@ foreach ($bought as $uid => $pids) {
 }
 done("$nR stk");
 
-// 10. "Passer sammen" (se docs/context/product-taxonomy.md)
+// 10. "Goes well with" (see docs/context/product-taxonomy.md)
 step('Passer sammen');
 $rel = [];
 $addRel = function (int $a, int $b, string $kind, string $level, string $reason, float $score) use (&$rel): void {
@@ -240,14 +240,14 @@ $num = fn(int $id, string $k): ?float => $products[$id]['specs'][$k]['num'] ?? n
 $inCat = fn(int $id, int ...$cats): bool => in_array($products[$id]['subcat'], $cats, true);
 $nameHas = fn(int $id, string $re): bool => (bool) preg_match($re, $products[$id]['name']);
 
-// 10a. Dokumentert: Sør-Tre sin tekst sier eksplisitt hva tilbehøret passer til.
+// 10a. Documented: Sør-Tre's text says explicitly what the accessory fits.
 $bySku = [];
 foreach ($pdo->query('SELECT id, sku FROM products WHERE sku IS NOT NULL') as $r) {
     $bySku[$r['sku']] = (int) $r['id'];
 }
 foreach ($products as $acc) {
     $hay = $acc['name'] . ' ' . $acc['text'];
-    // Varenummer: "Passer bla. varenr. 355190", "beregnet for vår arbeidslampe 718085"
+    // Item numbers: "Passer bla. varenr. 355190", "beregnet for vår arbeidslampe 718085"
     if (preg_match_all('/(?:varenr\.?|vår\s+\p{L}+)\s*(\d{6})\b/iu', $hay, $vm)) {
         foreach ($vm[1] as $sku) {
             if (isset($bySku[$sku]) && $bySku[$sku] !== $acc['id']) {
@@ -258,11 +258,11 @@ foreach ($products as $acc) {
             }
         }
     }
-    // Bare tilbehør. Ellers ville koder som "IP54" eller "P8 LED" i vanlig tekst gitt falske koblinger.
+    // Accessories only. Otherwise codes like "IP54" or "P8 LED" in ordinary text would give false links.
     if (!preg_match('/batteri|lader|ladeboks|ladekabel|pannebånd|veke|reservedel|holder|feste/iu', $acc['name'])) {
         continue;
     }
-    // Eksplisitt "passer ikke": "Ladekabel ... NB! Passer ikke Core" eller "batteripakke for H7R2 (ikke Core)"
+    // Explicit "doesn't fit": "Ladekabel ... NB! Passer ikke Core" or "batteripakke for H7R2 (ikke Core)"
     if (preg_match('/(?:passer\s+ikke|\(ikke)\s+(?:til\s+|for\s+)?([\p{L}\d-]{3,})/iu', $hay, $nm)) {
         $word = $nm[1];
         $quote = trim($nm[0], '( ');
@@ -275,9 +275,9 @@ foreach ($products as $acc) {
                 $addRel($acc['id'], $main['id'], 'passer_ikke', 'dokumentert', $reason, 1.0);
             }
         }
-        $hay = (string) preg_replace(['/passer\s+ikke.*$/isu', '/\(ikke[^)]*\)/iu'], '', $hay); // resten skal ikke tolkes som "passer"
+        $hay = (string) preg_replace(['/passer\s+ikke.*$/isu', '/\(ikke[^)]*\)/iu'], '', $hay); // the rest must not be read as "fits"
     }
-    // Modellkoder i tittel eller etter "passer/for/til": "Batteri 21700 – H7R Core og P7R Core"
+    // Model codes in the title or after "passer/for/til": "Batteri 21700, H7R Core og P7R Core"
     $passage = $acc['name'];
     if (preg_match('/(?:passer|for|til)\s+(?:blant annet\s+|bl\.?a\.?\s+)?(.{3,120})/iu', $hay, $m)) {
         $passage .= ' ' . $m[1];
@@ -298,25 +298,25 @@ foreach ($products as $acc) {
     }
 }
 
-// 10b. Regelutledet
+// 10b. Rule based
 $ids = array_keys($products);
 foreach ($ids as $a) {
     foreach ($ids as $b) {
         if ($a === $b) {
             continue;
         }
-        // Hammer og slegge -> spiker og stift
+        // Hammer and sledgehammer -> nails and staples
         if ($inCat($a, 7207) && $nameHas($a, '/hammer/iu') && $inCat($b, 7137)) {
             $addRel($a, $b, 'passer_sammen', 'regelutledet', 'Snekkerhammer brukes til spiker og stift', 0.8);
         }
         if ($inCat($a, 7137) && $inCat($b, 7207) && $nameHas($b, '/hammer/iu')) {
             $addRel($a, $b, 'passer_sammen', 'regelutledet', 'Du trenger en hammer for å slå inn spiker', 0.8);
         }
-        // Slegge -> stålkile (vedkløyving)
+        // Sledgehammer -> steel wedge (splitting firewood)
         if ($nameHas($a, '/slegge/iu') && !$nameHas($a, '/kile/iu') && $nameHas($b, '/kile/iu')) {
             $addRel($a, $b, 'passer_sammen', 'regelutledet', 'Slegge og kile brukes sammen til vedkløyving', 0.7);
         }
-        // Maling: sparkel -> sandpapir, maskering, rulle/pensel. Rulle/pensel -> maskering
+        // Painting: filler -> sandpaper, masking, roller/brush. Roller/brush -> masking
         if ($inCat($a, 7179) && $inCat($b, 7253, 7193, 7206)) {
             $addRel($a, $b, 'passer_sammen', 'regelutledet', 'Etter sparkling slipes flaten, og kantene maskeres før maling', 0.7);
         }
@@ -326,7 +326,7 @@ foreach ($ids as $a) {
         if ($inCat($a, 7193, 7206, 7253) && $inCat($b, 7364) && $nameHas($b, '/sett/iu')) {
             $addRel($a, $b, 'passer_sammen', 'regelutledet', 'Komplett malesett til samme jobb', 0.6);
         }
-        // Balkong: glass -> stender med riktig høyde, og dekklist
+        // Balcony: glass -> post with the right height, and cover strip
         if ($inCat($a, 7678) && $inCat($b, 7680)) {
             $hg = $num($a, 'hoyde_cm');
             $hs = $num($b, 'hoyde_cm');
@@ -338,7 +338,7 @@ foreach ($ids as $a) {
         if ($inCat($a, 7678) && $inCat($b, 7679)) {
             $addRel($a, $b, 'passer_sammen', 'regelutledet', 'Dekklist dekker overkanten av glassfeltet', 0.7);
         }
-        // Kjetting: sjakkel og krok med samme dimensjon som kjettingen
+        // Chain: shackle and hook with the same dimension as the chain
         if ($inCat($a, 7504) && $inCat($b, 7499, 7220)) {
             $da = $num($a, 'dimensjon_mm');
             $db = $num($b, 'dimensjon_mm');
@@ -347,7 +347,7 @@ foreach ($ids as $a) {
                 $addRel($b, $a, 'passer_sammen', 'regelutledet', "{$spec($b, 'dimensjon_mm')} mm passer kjetting på {$spec($a, 'dimensjon_mm')} mm", 0.85);
             }
         }
-        // Motorsagkjede: 3/8″ LP bruker rundfil 4,0 mm, .325″ bruker 4,8 mm
+        // Chainsaw chain: 3/8″ LP uses a 4.0 mm round file, .325″ uses 4.8 mm
         if ($nameHas($a, '/sagkjede/iu') && $nameHas($b, '/rundfil|filsett/iu')) {
             $lp = $nameHas($a, '/3\/8″\s*LP/u');
             $want = $lp ? '4,0' : '4,8';
@@ -356,11 +356,11 @@ foreach ($ids as $a) {
                 $addRel($b, $a, 'passer_sammen', 'regelutledet', "$want mm fil passer " . ($lp ? '3/8″ LP' : '.325″') . ' sagkjede', 0.9);
             }
         }
-        // Skog: sagkjede og hogsttilbehør -> hansker og hørselvern
+        // Forest: saw chain and forestry accessories -> gloves and hearing protection
         if ($inCat($a, 7070, 7079) && $inCat($b, 7088, 7087)) {
             $addRel($a, $b, 'passer_sammen', 'regelutledet', 'Bruk hansker og hørselvern ved motorsagarbeid', 0.6);
         }
-        // Lys: lykt -> batterier av samme type
+        // Light: lamp -> batteries of the same type
         if ($products[$a]['theme'] === 'lys' && !$nameHas($a, '/batteri/iu') && $nameHas($b, '/batteri/iu')) {
             $ba = $spec($a, 'batteri');
             if ($ba && $ba !== 'Oppladbart' && preg_match('/x(AAA|AA|D|C)$/', $ba, $t) && preg_match('/\b' . $t[1] . '\b/u', $products[$b]['name'])) {
@@ -369,12 +369,12 @@ foreach ($ids as $a) {
         }
     }
 }
-// 10c. Antatt: kjøpt sammen i demo-ordrer
+// 10c. Assumed: bought together in demo orders
 $co = $pdo->query('SELECT a.product_id pa, b.product_id pb, COUNT(*) n FROM order_items a JOIN order_items b ON a.order_id = b.order_id AND a.product_id <> b.product_id GROUP BY pa, pb')->fetchAll();
 foreach ($co as $r) {
     $addRel((int) $r['pa'], (int) $r['pb'], 'kjopt_sammen', 'antatt', 'Andre kunder kjøpte disse sammen (demo-ordrer)', 0.3 + 0.1 * (int) $r['n']);
 }
-// Dokumentert "passer ikke" vinner over alle regler som sier at paret passer
+// A documented "doesn't fit" wins over every rule that says the pair fits
 foreach ($rel as $k => $r) {
     if ($r[2] === 'passer_ikke') {
         unset($rel["{$r[0]}-{$r[1]}-passer_sammen"]);
@@ -390,7 +390,7 @@ foreach ($rel as $r) {
 $pdo->commit();
 done(implode(', ', array_map(fn($k, $v) => "$v $k", array_keys($count), $count)));
 
-// 11. Søkesynonymer og bruksområder ("henge opp", "male vegg")
+// 11. Search synonyms and use cases ("henge opp", "male vegg")
 step('Søkesynonymer');
 $syn = [
     ['lommelykt', 'lykt', 'synonym'], ['lykt', 'lommelykt hodelykt stavlykt', 'synonym'], ['hodelampe', 'hodelykt', 'synonym'],
@@ -420,14 +420,14 @@ foreach ($syn as $s) {
 }
 done(count($syn) . ' stk');
 
-// 12. Demo av to-versjonssystemet: åpne bidrag fra verifiserte kjøpere
+// 12. Demo of the two-version system: open contributions from verified buyers
 step('Åpne bidrag (demo)');
 $ingrid = $userIds['kunde@sorpedia.test'];
 $arne = $userIds['arne@sorpedia.test'];
 $contrib = [];
 foreach ($products as $p) {
     if (str_contains($p['name'], 'H7R Core')) {
-        // Verdien er et demo-bidrag. Poenget er at den vises som "fra verifisert kjøper", ikke som Sør-Tre sin.
+        // The value is a demo contribution. The point is that it shows as "from a verified buyer", not as Sør-Tre's.
         $contrib[] = [$p['id'], $ingrid, 'rekkevidde_m', '220', 220.0, 'Målte selv på en skogsvei i mørket, omtrent 220 meter før lyset ble for svakt. (demo-bidrag, ikke kontrollert)'];
     }
 }
@@ -447,7 +447,7 @@ foreach ($contrib as [$pid, $uid, $key, $txt, $numv, $why]) {
 }
 done(count($contrib) . ' stk');
 
-// 13. Monteringsveiledninger (demo) med PDF
+// 13. Assembly guides (demo) with PDF
 step('Veiledninger (demo)');
 require_once APP_ROOT . '/src/helpers.php';
 $n = require __DIR__ . '/manuals.php';

@@ -1,9 +1,9 @@
 <?php
-// Henter produkter fra Sør-Tre sitt offentlige WooCommerce Store API til data/raw/.
-// Kjøres én gang på utviklingsmaskinen. Resultatet (JSON og bilder) følger med prosjektet,
-// så demoen trenger ikke internett.
+// Fetches products from Sør-Tre's public WooCommerce Store API into data/raw/.
+// Run once on the development machine. The result (JSON and images) ships with the project,
+// so the demo doesn't need internet.
 //
-//   php scripts/scrape.php            # alle temaer, maks 40 per underkategori
+//   php scripts/scrape.php            # all themes, at most 40 per subcategory
 //   php scripts/scrape.php --no-images
 
 declare(strict_types=1);
@@ -11,7 +11,7 @@ declare(strict_types=1);
 const API = 'https://www.sor-tre.no/wp-json/wc/store/v1';
 const PER_SUBCAT = 40;
 
-// Underkategori-ID hos Sør-Tre => tema i vår guide (se docs/context/product-taxonomy.md)
+// Subcategory ID at Sør-Tre => theme in our guide (see docs/context/product-taxonomy.md)
 const SUBCATS = [
     7111 => 'lys', 7129 => 'lys', 7117 => 'lys', 7160 => 'lys',
     7207 => 'bygg', 7137 => 'bygg', 7138 => 'bygg', 7663 => 'bygg', 7118 => 'bygg', 7128 => 'bygg',
@@ -22,8 +22,8 @@ const SUBCATS = [
     7246 => 'tur', 7258 => 'tur',
 ];
 
-// Enkeltprodukter fra andre kategorier som trengs for "passer sammen"-demoen:
-// Ledlenser-batterier og ladekabler (en av dem sier eksplisitt "Passer ikke Core").
+// Single products from other categories needed for the "goes well with" demo:
+// Ledlenser batteries and charging cables (one of them says explicitly "Passer ikke Core").
 const EXTRA_IDS = [291489 => 'lys', 291485 => 'lys', 291480 => 'lys', 291385 => 'lys', 291431 => 'lys'];
 
 $root = dirname(__DIR__);
@@ -65,7 +65,7 @@ foreach (SUBCATS as $catId => $theme) {
             $products[$id] = $p;
         }
     }
-    usleep(400_000); // vær snill mot serveren
+    usleep(400_000); // be gentle with the server
 }
 
 foreach (EXTRA_IDS as $id => $theme) {
@@ -97,7 +97,7 @@ if ($withImages) {
     $n = 0;
     foreach ($products as $id => $p) {
         foreach (array_slice($p['images'] ?? [], 0, 6) as $i => $img) {
-            // Mellomstor variant holder demoen lett. Faller tilbake til originalen.
+            // The medium size keeps the demo light. Falls back to the original.
             $src = $img['thumbnail'] ?? $img['src'];
             $big = $img['src'];
             foreach (['m' => $src, 'l' => $big] as $size => $u) {

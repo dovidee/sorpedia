@@ -1,14 +1,14 @@
-# Constitution (prosjektprinsipper)
+# Constitution (project principles)
 
-Alle planer og implementasjoner skal følge disse prinsippene. Ved konflikt mellom en spesifikasjon og dette dokumentet: stopp og rapporter konflikten.
+All plans and implementations must follow these principles. If a specification conflicts with this document: stop and report the conflict.
 
-1. Strukturerte data (databasen) er sannhetskilde for produkt-ID, navn, pris og lager. Språkmodellen brukes bare til dialog, tolkning og forklaring.
-2. Det er ulovlig å gi villedende produktinformasjon (markedsføringsloven). Derfor har hver spesifikasjon en kilde og et nivå, og ukjent er et gyldig og nødvendig resultat.
-3. To versjoner av hver produktbeskrivelse: Verifisert (Sør-Tre og ansatt-godkjente data) og Åpen (verifiserte kjøpere kan redigere, som Wikipedia). Ansatte kan flette inn i Verifisert eller avvise.
-4. Vandalisme skal koste: bare kunder som har bekreftet e-post og kjøpt minst én vare kan redigere. Prisen for å poste falsk informasjon blir prisen på en vare.
-5. Alle anbefalinger skal kunne forklares, med evidens (produkttekst, regel eller kjøpsdata) og nivå (dokumentert, regelutledet, antatt).
-6. Maskoten viser hele resonnementet til modellen synlig for kunden (hvitboks). Det merkes at resonnementet er modellens egen tekst og kan inneholde feil.
-7. Kunden skal alltid kunne gå videre til et menneske (Support) fra chatten.
-8. Nye typer spesifikasjoner krever ingen databasemigrering.
-9. Kritiske regler (verifisert bruker, kildenivå, at LLM ikke setter pris) har automatiske tester.
-10. Personopplysninger minimeres. Demo-brukere er syntetiske.
+1. Structured data (the database) is the source of truth for product ID, name, price and stock. The language model is only used for dialogue, interpretation and explanation.
+2. Giving misleading product information is illegal (the Norwegian Marketing Control Act). That is why every specification has a source and a level, and unknown is a valid and necessary result.
+3. Two versions of every product description: Verified (Sør-Tre data and staff approved data) and Open (verified buyers can edit, like Wikipedia). Staff can merge into Verified or reject.
+4. Vandalism must cost something: only customers who have confirmed their email and bought at least one item can edit. The price of posting false information becomes the price of an item.
+5. Every recommendation must be explainable, with evidence (product text, rule or purchase data) and a level (documented, rule based, assumed).
+6. The mascot shows the model's full reasoning to the customer (white box). It is marked that the reasoning is the model's own text and may contain errors.
+7. The customer can always move on from the chat to a human (Support).
+8. New types of specifications require no database migration.
+9. Critical rules (verified user, source level, the language model never setting prices) are enforced in code, not only in instructions.
+10. Personal data is minimized. Demo users are synthetic.

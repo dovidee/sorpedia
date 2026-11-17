@@ -5,7 +5,7 @@
   --scroll-track: oklch(95.7% .018 17); --scroll-thumb: var(--brand);
   --radius: 10px; --shadow: 0 1px 2px oklch(0% 0 0 / .06), 0 4px 14px oklch(0% 0 0 / .05);
 }
-/* Mørk modus: følger enheten, med mindre brukeren har valgt lys eller mørk under Innstillinger (data-theme på <html>) */
+/* Dark mode: follows the device, unless the user has chosen light or dark under Settings (data-theme on <html>) */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { --bg: oklch(19.6% .007 18); --surface: oklch(23.3% .009 18); --ink: oklch(93.6% .008 27); --muted: oklch(71.2% .009 26); --line: oklch(32.3% .013 25);
     --brand: oklch(69.3% .197 23); --brand-ink: oklch(17.1% .043 23); --brand-soft: oklch(27.1% .046 18); --brand-deep: oklch(83.9% .089 19); --scroll-track: oklch(25% .03 20); --scroll-thumb: var(--brand); --sortre: oklch(73.7% .135 152); --utledet: oklch(81.5% .134 93); --bruker: oklch(71.9% .109 257); --ansatt: oklch(73.7% .111 299);  color-scheme: dark; }
@@ -14,8 +14,8 @@
     --brand: oklch(69.3% .197 23); --brand-ink: oklch(17.1% .043 23); --brand-soft: oklch(27.1% .046 18); --brand-deep: oklch(83.9% .089 19); --scroll-track: oklch(25% .03 20); --scroll-thumb: var(--brand); --sortre: oklch(73.7% .135 152); --utledet: oklch(81.5% .134 93); --bruker: oklch(71.9% .109 257); --ansatt: oklch(73.7% .111 299);  color-scheme: dark; }
 :root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; }
-/* Rullefelt i merkevarens rødt: alltid synlig, tynt i ro og bredt under pekeren (som i gruppe4).
-   Chrome ignorerer ::-webkit-reglene når scrollbar-color er satt, så standardegenskapene gis bare til andre nettlesere. */
+/* Scrollbar in the brand red: always visible, thin at rest and wide under the pointer (as in gruppe4).
+   Chrome ignores the ::-webkit rules when scrollbar-color is set, so the standard properties only go to other browsers. */
 @supports not selector(::-webkit-scrollbar) { html { scrollbar-color: var(--scroll-thumb) var(--scroll-track); scrollbar-width: auto; } }
 ::-webkit-scrollbar { width: 16px; height: 16px; }
 ::-webkit-scrollbar-track { background: var(--scroll-track); }
@@ -54,7 +54,7 @@ button.link { background: none; border: 0; color: var(--brand); cursor: pointer;
 .themes a:hover { background: var(--bg); }
 .themes a[aria-current="page"] { background: var(--brand); color: var(--brand-ink); font-weight: 650; }
 .themes a[aria-current="page"]:hover { background: var(--brand); }
-/* Produktguiden er et verktøy, ikke en kategori: omriss og en skillelinje mot kategoriene */
+/* The product guide is a tool, not a category: outline and a divider against the categories */
 .themes .guide-link { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--brand); color: var(--brand); font-weight: 600; margin-right: 10px; position: relative; }
 .themes .guide-link::after { content: ""; position: absolute; right: -9px; top: 20%; bottom: 20%; width: 1px; background: var(--line); }
 .themes .guide-link .soren-leaf { width: 9px; height: 15px; }
@@ -232,7 +232,7 @@ button.link { background: none; border: 0; color: var(--brand); cursor: pointer;
 .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
 .admin-grid section { background: var(--surface); border-radius: var(--radius); padding: 4px 16px 16px; }
 
-/* ---------- Søren (animert SVG, sporet fra mascot.png) ---------- */
+/* ---------- Søren (animated SVG, traced from mascot.png) ---------- */
 [data-soren] { display: block; }
 .soren { width: 100%; height: 100%; overflow: visible; display: block; }
 .soren * { transform-box: view-box; }
@@ -249,7 +249,7 @@ button.link { background: none; border: 0; color: var(--brand); cursor: pointer;
 .soren .s-arm-l { transform-origin: 478px 236px; transition: transform .45s cubic-bezier(.3,1.4,.5,1); }
 .soren .s-arm-r { transform-origin: 561px 232px; transition: transform .45s cubic-bezier(.3,1.4,.5,1); }
 .soren.waving .s-arm-l { animation: s-wave .45s ease-in-out .1s 4 alternate; }
-/* Øynene bærer følelsene */
+/* The eyes carry the feelings */
 .soren .s-eyes-happy { opacity: 0; transition: opacity .15s; }
 .soren .s-eyes-open { transition: opacity .15s; }
 .soren .s-lids { opacity: 0; transition: opacity .2s; }
@@ -321,7 +321,7 @@ body:has(.compare-bar:not([hidden])) .soren-fab { bottom: 70px; }
 .chat form input { flex: 1; padding: 8px 10px; font: inherit; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); min-width: 0; }
 .chat .human { font-size: .8rem; text-align: center; padding: 0 10px 8px; margin: 0; }
 
-/* ---------- Søk med innebygd autofullføring ---------- */
+/* ---------- Search with inline autocomplete ---------- */
 .q-wrap { flex: 1; position: relative; display: flex; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-right: 0; border-radius: var(--radius) 0 0 var(--radius); }
 .q-wrap:focus-within { border-color: var(--brand); }
 .search .q-wrap input { border: 0; background: transparent; position: relative; z-index: 1; outline: none; border-radius: var(--radius) 0 0 var(--radius); }
@@ -334,7 +334,7 @@ body:has(.compare-bar:not([hidden])) .soren-fab { bottom: 70px; }
 .suggest .label { padding: 6px 12px 2px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .chat details.think .note.cut { display: block; margin-top: 6px; font-style: italic; }
 
-/* Søren: varianter */
+/* Søren: variants */
 .soren.still, .soren.still * { animation: none !important; transition: none !important; }
 .soren-basket .s-eyes { transform: translate(3px, 3px); }
 .soren-leaf { display: inline-block; width: 11px; height: 18px; vertical-align: -3px; flex: none; }
@@ -343,7 +343,7 @@ body:has(.compare-bar:not([hidden])) .soren-fab { bottom: 70px; }
 .av .soren { width: 100%; height: 100%; }
 .empty-head { width: 96px; height: 96px; margin: 0 auto 8px; }
 .empty-mascot[data-soren="basket"] { width: 200px; }
-/* Chat: hode til venstre, boble til høyre */
+/* Chat: head on the left, bubble on the right */
 .chat .row { display: flex; gap: 8px; align-items: flex-end; align-self: flex-start; max-width: 94%; }
 .chat .row .msg { max-width: none; min-width: 0; }
 .chat .row .av { margin-bottom: 2px; }
@@ -353,7 +353,7 @@ body:has(.compare-bar:not([hidden])) .soren-fab { bottom: 70px; }
 .themes::-webkit-scrollbar { height: 6px; }
 .themes::-webkit-scrollbar-thumb { min-height: 0; border-width: 0; }
 
-/* Ikoner (Lucide) ved siden av tekst */
+/* Icons (Lucide) next to text */
 .i { width: 1.1em; height: 1.1em; flex: none; vertical-align: -.18em; }
 .themes a .i { width: 1.05em; height: 1.05em; opacity: .85; }
 .themes a[aria-current="page"] .i { opacity: 1; }
@@ -361,9 +361,9 @@ body:has(.compare-bar:not([hidden])) .soren-fab { bottom: 70px; }
 .theme-tile .tile-icon .i { width: 24px; height: 24px; }
 .theme-tile:hover .tile-icon { background: var(--brand); color: var(--brand-ink); }
 
-/* ---------- Toppfelt: ikoner med verktøytips (Jakobs lov: som andre nettbutikker, handlekurven lengst til høyre).
-   Maks seks valg synlig (Hick og Miller). Arbeidsverktøy og utlogging ligger samlet i kontomenyen (felles område).
-   Treffflater på 44 px (Fitts). ---------- */
+/* ---------- Top bar: icons with tooltips (Jakob's law: like other web stores, the cart furthest to the right).
+   At most six choices visible (Hick and Miller). Work tools and logout are grouped in the account menu (common region).
+   Hit areas of 44 px (Fitts). ---------- */
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .themes a, .search button { display: inline-flex; align-items: center; gap: 6px; }
 .tools { display: flex; gap: 4px; align-items: center; font-size: .9rem; }
@@ -397,7 +397,7 @@ body:has(.compare-bar:not([hidden])) .soren-fab { bottom: 70px; }
 .menu-group::before { content: attr(data-label); display: block; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 4px 10px 2px; }
 @media (max-width: 640px) { .wh select { max-width: 110px; } }
 
-/* ---------- Innstillinger ---------- */
+/* ---------- Settings ---------- */
 .settings { max-width: 760px; }
 .settings-nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 16px; }
 .settings-nav a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; }
@@ -424,7 +424,7 @@ details.danger { border: 1px solid var(--line); border-radius: var(--radius); pa
 details.danger summary { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: var(--brand); font-weight: 700; }
 .btn.danger { background: var(--brand); }
 
-/* ---------- Meld fra om feil i åpen versjon ---------- */
+/* ---------- Report an error in the open version ---------- */
 .specs .who-cell { white-space: nowrap; }
 .specs .by { color: var(--muted); }
 .report-btn { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; border: 0; background: none; color: var(--brand); cursor: pointer; vertical-align: middle; opacity: 0; transition: opacity .15s; }
@@ -450,7 +450,7 @@ dialog.report .quick button:hover { border-color: var(--brand); color: var(--bra
 .choice label > span { flex: 1; }
 .choice label small { display: block; }
 @media (max-width: 640px) {
-  /* Spesifikasjoner stables: navnet over, verdi og kilde under, så ingenting går utenfor skjermen */
+  /* Specifications stack: the name on top, value and source below, so nothing goes off screen */
   .specs, .specs tbody { display: block; width: 100%; }
   .specs tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .specs th { grid-column: 1 / -1; }
@@ -458,7 +458,7 @@ dialog.report .quick button:hover { border-color: var(--brand); color: var(--bra
   .specs td:only-of-type { grid-column: 1 / -1; }
   .specs td input { max-width: 100%; }
   .specs .who-cell { white-space: normal; justify-self: end; text-align: right; }
-  /* Mobil: ikonene ved siden av logoen, søket på full bredde under (som andre nettbutikker) */
+  /* Mobile: the icons next to the logo, search at full width below (like other web stores) */
   .top-row { row-gap: 8px; }
   .top-row .logo { order: 1; }
   .top-row .tools { order: 2; margin-left: auto; }
@@ -471,7 +471,7 @@ dialog.report .quick button:hover { border-color: var(--brand); color: var(--bra
   .tools { gap: 0; }
 }
 
-/* Språkflagget i toppstripen */
+/* The language flag in the top bar */
 .demo-bar { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .lang-flag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 4px; border-radius: 999px; background: oklch(100% 0 0 / .55); color: oklch(20% .02 60); text-decoration: none; font-weight: 700; white-space: nowrap; }
 .lang-flag:hover { background: oklch(100% 0 0 / .85); }
@@ -484,7 +484,7 @@ dialog.report .quick button:hover { border-color: var(--brand); color: var(--bra
 h2 .i { vertical-align: -.12em; color: var(--brand); }
 
 
-/* Produktguiden: fant du det du lette etter? */
+/* Product guide: did you find what you were looking for? */
 .guide-ask { margin: 28px 0; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .guide-ask h2 { margin: 0 0 4px; font-size: 1.15rem; }
 .ga-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }

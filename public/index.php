@@ -1,24 +1,24 @@
 <?php
 declare(strict_types=1);
 
-// Frontkontroller. Utviklingsserver: PHP_CLI_SERVER_WORKERS=4 php -S 0.0.0.0:8080 -t public public/index.php
+// Front controller. Development server: PHP_CLI_SERVER_WORKERS=4 php -S 0.0.0.0:8080 -t public public/index.php
 
 if (PHP_SAPI === 'cli-server' && is_file(__DIR__ . parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) {
-    return false; // statiske filer
+    return false; // static files
 }
 
 require __DIR__ . '/../src/bootstrap.php';
 require __DIR__ . '/../src/helpers.php';
-Errors::install();     // ingen PHP-meldinger til kunden, alt logges med referanse
+Errors::install();     // no PHP messages to the customer, everything is logged with a reference
 
 session_name('sorpedia');
 session_start(['cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_secure' => !empty($_SERVER['HTTPS']), 'use_strict_mode' => true]);
 Privacy::ensure();
 Guide::ensure();
 Auth::ensure();
-Errors::cleanInput();  // «?q[]=» og lignende gir 400, ikke krasj
+Errors::cleanInput();  // "?q[]=" and the like give 400, not a crash
 
-// Sikkerhetshoder: ingen MIME-gjetting, ingen innramming på andre nettsteder, ingen adresser i Referer til andre
+// Security headers: no MIME sniffing, no framing on other sites, no addresses in Referer to other sites
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: same-origin');
@@ -39,13 +39,13 @@ function route(string $method, string $pattern): ?array
     return preg_match('#^' . $pattern . '$#u', $path, $m) ? array_slice($m, 1) : null;
 }
 
-// ---------- Forside ----------
+// ---------- Home page ----------
 if (route('GET', '/') !== null) {
     render('home', ['popular' => Catalog::cards(Catalog::popular(8))], 'Sørpedia');
     exit;
 }
 
-// ---------- Varehus ----------
+// ---------- Store ----------
 if (route('POST', '/varehus') !== null) {
     $id = (int) ($_POST['warehouse'] ?? 1);
     if (isset(warehouses()[$id])) {
@@ -54,7 +54,7 @@ if (route('POST', '/varehus') !== null) {
     redirect(safe_back($_POST['back'] ?? '/'));
 }
 
-// ---------- Tema (kategori) med filtre ----------
+// ---------- Theme (category) with filters ----------
 if ($m = route('GET', '/tema/([a-z]+)')) {
     $theme = $m[0];
     if (!isset(Catalog::THEMES[$theme])) {
@@ -74,7 +74,7 @@ if ($m = route('GET', '/tema/([a-z]+)')) {
     exit;
 }
 
-// ---------- Produkt ----------
+// ---------- Product ----------
 if ($m = route('GET', '/produkt/([a-z0-9-]+)')) {
     $p = Catalog::product($m[0]);
     if (!$p) {
@@ -102,7 +102,7 @@ if ($m = route('GET', '/produkt/([a-z0-9-]+)')) {
     exit;
 }
 
-// Sørpedia: verifisert kjøper redigerer den åpne versjonen (feature 009)
+// Sørpedia: a verified buyer edits the open version (feature 009)
 if ($m = route('POST', '/produkt/([a-z0-9-]+)/rediger')) {
     $p = Catalog::product($m[0]) ?? exit('Fant ikke produktet');
     $u = current_user();
@@ -114,16 +114,16 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/rediger')) {
     $specs = Catalog::specs((int) $p['id']);
     $diff = [];
     $incoming = array_map('trim', (array) ($_POST['spec'] ?? []));
-    // Ny spesifikasjonstype: en ny RAD i spec_keys, ingen migrering (ADR-003)
+    // New specification type: a new ROW in spec_keys, no migration (ADR-003)
     $newLabel = trim((string) ($_POST['new_label'] ?? ''));
     $newValue = trim((string) ($_POST['new_value'] ?? ''));
-    // Vern mot prompt injection: en verdi skal være en verdi, ikke en ordre til Søren (src/Guard.php)
+    // Protection against prompt injection: a value must be a value, not an order to Søren (src/Guard.php)
     $types = db()->query('SELECT `key`, datatype FROM spec_keys')->fetchAll(PDO::FETCH_KEY_PAIR);
     foreach (array_merge($incoming, ['ny spesifikasjonstype' => $newLabel, 'ny verdi' => $newValue, 'enhet' => (string) ($_POST['new_unit'] ?? ''),
         'kommentar' => (string) ($_POST['comment'] ?? '')]) as $what => $val) {
         $why = Moderation::reason((string) $val)
             ?? ($what === 'kommentar' ? Guard::injectionInProse((string) $val) : Guard::suspicious((string) $val))
-            // Tallfelt (vekt, lengde, lumen) tar bare tall
+            // Number fields (weight, length, lumen) only take numbers
             ?? ((($types[$what] ?? '') === 'number' && trim((string) $val) !== '' && !Guard::isNumberish((string) $val)) ? 'må være et tall, for eksempel «1,5» eller «220»' : null);
         if ($why) {
             track('injection_blocked', ['product' => (int) $p['id'], 'field' => (string) $what]);
@@ -168,7 +168,7 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/rediger')) {
     redirect("/produkt/{$p['slug']}#spesifikasjoner");
 }
 
-// Anmeldelse (feature 010): bare verifiserte kjøpere av akkurat dette produktet
+// Review (feature 010): only verified buyers of this exact product
 if ($m = route('POST', '/produkt/([a-z0-9-]+)/anmeldelse')) {
     $p = Catalog::product($m[0]) ?? exit('Fant ikke produktet');
     $u = current_user();
@@ -178,7 +178,7 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/anmeldelse')) {
         flash('Bare verifiserte kjøpere av dette produktet kan skrive anmeldelse.');
     } elseif ($why = Moderation::reason((string) ($_POST['title'] ?? '') . '. ' . (string) ($_POST['body'] ?? ''))
         ?? Guard::injectionInProse((string) ($_POST['title'] ?? '') . '. ' . (string) ($_POST['body'] ?? ''))) {
-        // Vern mot prompt injection: Søren leser anmeldelser (src/Guard.php)
+        // Protection against prompt injection: Søren reads reviews (src/Guard.php)
         track('injection_blocked', ['product' => (int) $p['id'], 'field' => 'anmeldelse']);
         flash("Anmeldelsen ble ikke lagret fordi den $why. Skriv om opplevelsen din med produktet, uten lenker og banning.");
     } else {
@@ -191,7 +191,7 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/anmeldelse')) {
     redirect("/produkt/{$p['slug']}#anmeldelser");
 }
 
-// Meld fra om feil i den åpne versjonen. Alle kan melde fra, også uten å logge inn. Én melding per verdi per økt.
+// Report an error in the open version. Anyone can report, even without logging in. One report per value per session.
 if ($m = route('POST', '/produkt/([a-z0-9-]+)/meld-feil')) {
     $p = Catalog::product($m[0]) ?? exit('Fant ikke produktet');
     $wantsJson = str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'json');
@@ -222,7 +222,7 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/meld-feil')) {
     $answer(true, 'Takk! En ansatt ser på verdien. Den er ikke endret ennå.');
 }
 
-// ---------- Søk ----------
+// ---------- Search ----------
 if (route('GET', '/sok') !== null) {
     $q = trim((string) ($_GET['q'] ?? ''));
     $r = Search::run($q);
@@ -232,7 +232,7 @@ if (route('GET', '/sok') !== null) {
     exit;
 }
 
-// Ordliste for innebygd autofullføring (grå tekst, Tab for å godta). Bygges fra katalogen, ingen persondata.
+// Word list for inline autocomplete (grey text, Tab to accept). Built from the catalog, no personal data.
 if (route('GET', '/api/vocab') !== null) {
     $words = $next = [];
     foreach (db()->query('SELECT name FROM products') as $r) {
@@ -254,10 +254,10 @@ if (route('GET', '/api/vocab') !== null) {
     }
     arsort($words);
     $phrases = db()->query('SELECT DISTINCT term FROM search_synonyms WHERE term LIKE "% %" ORDER BY term')->fetchAll(PDO::FETCH_COLUMN);
-    // Populære søk med treff (anonymt, bare søkeord som ga resultat minst to ganger)
+    // Popular searches with results (anonymous, only search terms that gave results at least twice)
     $popular = db()->query("SELECT LOWER(JSON_UNQUOTE(JSON_EXTRACT(data, '$.q'))) q, COUNT(*) n FROM analytics_events
         WHERE type = 'search' GROUP BY q HAVING n >= 2 AND CHAR_LENGTH(q) BETWEEN 3 AND 40 ORDER BY n DESC LIMIT 200")->fetchAll(PDO::FETCH_COLUMN);
-    // Populære søk blir grå forslag for alle, så bare familievennlige søk tas med
+    // Popular searches become grey suggestions for everyone, so only family friendly searches are included
     $popular = array_values(array_filter($popular, fn($q) => Moderation::clean((string) $q)));
     header('Cache-Control: public, max-age=600');
     json_out(['words' => array_map(fn($w, $n) => [(string) $w, $n], array_keys($words), $words), 'next' => $next,
@@ -283,13 +283,13 @@ if (route('GET', '/api/suggest') !== null) {
     ]);
 }
 
-// ---------- Produktguide ----------
+// ---------- Product guide ----------
 if (route('GET', '/guide') !== null) {
     $answers = Guide::answers($_GET);
     if (Guide::complete($answers)) {
         $res = Guide::recommend($answers);
         track('guide_done', $answers);
-        // Søren husker svarene resten av økten, så han kan hjelpe på produktsidene etterpå
+        // Søren remembers the answers for the rest of the session, so he can help on the product pages afterwards
         $_SESSION['guide'] = ['a' => $answers, 'at' => time()];
         render('guide_result', ['res' => $res, 'answers' => $answers], 'Forslag fra Søren');
     } else {
@@ -298,11 +298,11 @@ if (route('GET', '/guide') !== null) {
     exit;
 }
 
-// Kunden sier hvilket produkt som var riktig for svarene sine. Guiden lærer av det.
+// The customer says which product was right for their answers. The guide learns from it.
 if (route('POST', '/guide/svar') !== null) {
     check_csrf();
     $a = Guide::answers(is_array($_POST['a'] ?? null) ? $_POST['a'] : []);
-    // Fritekst: guiden lærer av beste søketreff i temaet, og kunden ser søkeresultatene for det de skrev
+    // Free text: the guide learns from the best search hit in the theme, and the customer sees the search results for what they wrote
     $wanted = trim(mb_substr((string) ($_POST['wanted'] ?? ''), 0, 120));
     if ($wanted !== '') {
         $theme = array_map('intval', Catalog::themeIds($a['oppgave'] ?? ''));
@@ -322,7 +322,7 @@ if (route('POST', '/guide/svar') !== null) {
     redirect('/produkt/' . (string) db()->query('SELECT slug FROM products WHERE id = ' . $pid)->fetchColumn());
 }
 
-// ---------- Handlekurv ----------
+// ---------- Cart ----------
 if (route('POST', '/handlekurv/legg-til') !== null) {
     $pid = (int) ($_POST['product'] ?? 0);
     $via = preg_replace('/[^a-z_]/', '', (string) ($_POST['via'] ?? 'produkt'));
@@ -352,7 +352,7 @@ if (route('GET', '/handlekurv') !== null) {
     $st->execute([sid()]);
     $items = $st->fetchAll(PDO::FETCH_UNIQUE);
     $cards = Catalog::cards(array_keys($items));
-    // Kaninhull: det som passer sammen med innholdet i kurven, men som ikke alt ligger der
+    // Rabbit hole: what goes well with the cart contents but isn't already in it
     $suggest = [];
     $warn = [];
     foreach ($cards as $c) {
@@ -373,7 +373,7 @@ if (route('GET', '/handlekurv') !== null) {
     exit;
 }
 
-// ---------- Kasse (demo) ----------
+// ---------- Checkout (demo) ----------
 if (route('GET', '/kasse') !== null) {
     if (!current_user()) {
         flash('Logg inn for å fullføre kjøpet. Testbrukerne har passordet «admin».');
@@ -433,7 +433,7 @@ if ($m = route('GET', '/ordre/(\d+)')) {
     exit;
 }
 
-// ---------- Innlogging ----------
+// ---------- Login ----------
 if (route('GET', '/logg-inn') !== null) {
     $demo = db()->query("SELECT email, name, role FROM users WHERE is_demo_seed = 1 AND name NOT LIKE '%(demo)%' ORDER BY id")->fetchAll();
     render('login', ['demo' => $demo, 'back' => $_GET['back'] ?? '/'], 'Logg inn');
@@ -441,14 +441,14 @@ if (route('GET', '/logg-inn') !== null) {
 }
 
 if (route('POST', '/logg-inn') !== null) {
-    // Samme melding for ukjent e-post, feil passord og låst konto (src/Auth.php)
+    // Same message for unknown email, wrong password and locked account (src/Auth.php)
     $u = Auth::attempt(mb_strtolower(trim((string) ($_POST['email'] ?? ''))), (string) ($_POST['password'] ?? ''));
     if (!$u) {
         flash('Feil e-post eller passord.');
         redirect('/logg-inn');
     }
     session_regenerate_id(true);
-    // Behold handlekurven fra før innlogging
+    // Keep the cart from before login
     $_SESSION['uid'] = (int) $u['id'];
     redirect(safe_back($_POST['back'] ?? '/'));
 }
@@ -459,7 +459,7 @@ if (route('POST', '/logg-ut') !== null) {
     redirect('/');
 }
 
-// ---------- Monteringsveiledninger (feature 011) ----------
+// ---------- Assembly guides (feature 011) ----------
 if ($m = route('GET', '/veiledning/([a-z0-9-]+)')) {
     $st = db()->prepare('SELECT * FROM manuals WHERE slug = ?');
     $st->execute([$m[0]]);
@@ -471,7 +471,7 @@ if ($m = route('GET', '/veiledning/([a-z0-9-]+)')) {
     }
     $steps = db()->prepare('SELECT * FROM manual_steps WHERE manual_id = ? ORDER BY step_no');
     $steps->execute([$man['id']]);
-    // Produkter veiledningen gjelder, for "kjøp alt du trenger"
+    // Products the guide applies to, for "buy everything you need"
     $ids = [];
     $names = db()->prepare('SELECT id, name FROM products WHERE theme = ?');
     $names->execute([$man['theme']]);
@@ -485,7 +485,7 @@ if ($m = route('GET', '/veiledning/([a-z0-9-]+)')) {
     exit;
 }
 
-// ---------- Registrering og e-postbekreftelse (feature 005) ----------
+// ---------- Registration and email confirmation (feature 005) ----------
 if (route('GET', '/registrer') !== null) {
     render('register', [], 'Registrer deg');
     exit;
@@ -499,7 +499,7 @@ if (route('POST', '/registrer') !== null) {
         flash('Fyll inn navn, gyldig e-post og passord på minst 8 tegn.');
         redirect('/registrer');
     } elseif ($why = Moderation::reason($name) ?? Moderation::reason(explode('@', $email)[0])) {
-        // Fornavnet kan vises ved bidrag hvis brukeren velger det, så det må passe for alle aldre
+        // The first name can be shown on contributions if the user chooses it, so it must be suitable for all ages
         flash("Navnet eller e-postadressen $why. Velg noe annet.");
         redirect('/registrer');
     }
@@ -535,7 +535,7 @@ if ($m = route('GET', '/bekreft/([a-f0-9]{32})')) {
     redirect('/');
 }
 
-// ---------- Innstillinger og personvern (GDPR) ----------
+// ---------- Settings and privacy (GDPR) ----------
 function settings_user(): array
 {
     $u = current_user();
@@ -601,15 +601,15 @@ if (route('POST', '/innstillinger/utseende') !== null) {
     redirect('/innstillinger#utseende');
 }
 
-// Språk: flagget i toppstripen. Funksjonell informasjonskapsel, lagrer bare «no» eller «en».
+// Language: the flag in the top bar. Functional cookie, only stores "no" or "en".
 if ($m = route('GET', '/sprak/(no|en)')) {
     setcookie('lang', $m[0], ['expires' => time() + 365 * 86400, 'path' => '/', 'samesite' => 'Lax', 'httponly' => false]);
     $back = (string) ($_GET['back'] ?? '/');
-    // Aldri tilbake til /sprak selv, ellers kan lenken legge seg inni seg selv for hver gang
+    // Never back to /sprak itself, otherwise the link can nest inside itself every time
     redirect(str_starts_with($back, '/sprak') ? '/' : safe_back($back));
 }
 
-// Profilbildet vises bare for brukeren selv (i menyen og i chatten med Søren), aldri for andre
+// The profile picture is only shown to the user themselves (in the menu and in the chat with Søren), never to others
 if (route('GET', '/profilbilde') !== null) {
     $u = current_user();
     $file = $u && $u['avatar'] ? Privacy::avatarDir() . '/' . basename($u['avatar']) : null;
@@ -667,7 +667,7 @@ if (route('POST', '/innstillinger/passord') !== null) {
     redirect('/innstillinger#passord');
 }
 
-// Innsyn og dataportabilitet (GDPR art. 15 og 20): alt vi har lagret om brukeren, som JSON
+// Access and data portability (GDPR art. 15 and 20): everything we store about the user, as JSON
 if (route('GET', '/innstillinger/eksport') !== null) {
     $u = settings_user();
     $q = function (string $sql) use ($u): array {
@@ -693,7 +693,7 @@ if (route('GET', '/innstillinger/eksport') !== null) {
     exit;
 }
 
-// Slett konto (GDPR art. 17). Personopplysninger fjernes. Ordrer må beholdes i fem år (bokføringsloven), men knyttes ikke lenger til et navn.
+// Delete account (GDPR art. 17). Personal data is removed. Orders must be kept for five years (Norwegian Bookkeeping Act), but are no longer tied to a name.
 if (route('POST', '/innstillinger/slett') !== null) {
     $u = settings_user();
     if (!password_verify((string) ($_POST['password'] ?? ''), $u['password_hash'])) {
@@ -723,7 +723,7 @@ if (route('POST', '/innstillinger/slett') !== null) {
     redirect('/');
 }
 
-// ---------- Ansatt: flettekø for åpen versjon (feature 009) ----------
+// ---------- Staff: merge queue for the open version (feature 009) ----------
 if (route('GET', '/ansatt') !== null) {
     if (!has_role('ansatt', 'admin')) {
         redirect('/logg-inn?back=/ansatt');
@@ -756,7 +756,7 @@ if ($m = route('POST', '/ansatt/revisjon/(\d+)')) {
         $pdo->beginTransaction();
         $approve = ($_POST['action'] ?? '') === 'flett';
         if ($approve) {
-            // Godkjent verdi flyttes til Verifisert med kilde "ansatt"
+            // An approved value moves to Verified with the source "ansatt"
             $up = $pdo->prepare('INSERT INTO spec_values (product_id, `key`, version, value_text, value_num, source, evidence, revision_id)
                 SELECT product_id, `key`, "verifisert", value_text, value_num, "ansatt", CONCAT("Godkjent av en ansatt. ", COALESCE(evidence, "")), revision_id
                 FROM spec_values WHERE product_id = ? AND `key` = ? AND version = "apen" AND revision_id = ?
@@ -765,7 +765,7 @@ if ($m = route('POST', '/ansatt/revisjon/(\d+)')) {
                 $up->execute([$r['product_id'], $d['key'], $rid]);
             }
         } else {
-            // Avvist: fjern verdiene fra åpen versjon hvis de fortsatt er fra denne revisjonen
+            // Rejected: remove the values from the open version if they still come from this revision
             $pdo->prepare('DELETE FROM spec_values WHERE product_id = ? AND version = "apen" AND revision_id = ?')->execute([$r['product_id'], $rid]);
         }
         $pdo->prepare('UPDATE spec_revisions SET status = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?')
@@ -777,7 +777,7 @@ if ($m = route('POST', '/ansatt/revisjon/(\d+)')) {
     redirect('/ansatt');
 }
 
-// Ansatt behandler en feilmelding: lukk den, eller fjern verdien fra den åpne versjonen
+// Staff handle an error report: close it, or remove the value from the open version
 if ($m = route('POST', '/ansatt/rapport/(\d+)')) {
     if (!has_role('ansatt', 'admin')) {
         http_response_code(403);
@@ -791,7 +791,7 @@ if ($m = route('POST', '/ansatt/rapport/(\d+)')) {
             db()->prepare("DELETE FROM spec_values WHERE product_id = ? AND `key` = ? AND version = 'apen'")->execute([$r['product_id'], $r['key']]);
             emit("product:{$r['product_id']}", 'revision', ['product' => (int) $r['product_id'], 'status' => 'fjernet']);
         }
-        // Samme verdi kan være meldt av flere: alle meldingene om den lukkes
+        // The same value can be reported by several people: all reports about it are closed
         db()->prepare("UPDATE spec_reports SET status = 'lukket', handled_by = ? WHERE product_id = ? AND `key` = ? AND status = 'apen'")
             ->execute([current_user()['id'], $r['product_id'], $r['key']]);
         flash($remove ? 'Verdien er fjernet fra den åpne versjonen.' : 'Meldingen er lukket. Verdien står som før.');
@@ -799,7 +799,7 @@ if ($m = route('POST', '/ansatt/rapport/(\d+)')) {
     redirect('/ansatt#meldinger');
 }
 
-// ---------- Kundeservice-panel (feature 006) ----------
+// ---------- Customer service panel (feature 006) ----------
 if (route('GET', '/support') !== null) {
     if (!has_role('support', 'ansatt', 'admin')) {
         redirect('/logg-inn?back=/support');
@@ -825,7 +825,7 @@ if ($m = route('POST', '/support/(\d+)/lukk')) {
     redirect('/support');
 }
 
-// ---------- Admin: måltall (business-context KPI) ----------
+// ---------- Admin: metrics (business-context KPI) ----------
 if (route('GET', '/admin') !== null) {
     if (!has_role('admin')) {
         redirect('/logg-inn?back=/admin');
@@ -851,7 +851,7 @@ if (route('GET', '/admin') !== null) {
     exit;
 }
 
-// ---------- Sammenlign (feature 007) ----------
+// ---------- Compare (feature 007) ----------
 if (route('GET', '/sammenlign') !== null) {
     $ids = array_slice(array_filter(array_map('intval', explode(',', (string) ($_GET['ids'] ?? '')))), 0, 4);
     $cards = Catalog::cards($ids);
@@ -873,7 +873,7 @@ if (route('GET', '/sammenlign') !== null) {
 // ---------- Søren (feature 008) ----------
 function sse(string $event, mixed $data): void
 {
-    ChatJob::append($event, $data); // så en ny side kan lese videre hvis kunden bytter side
+    ChatJob::append($event, $data); // so a new page can keep reading if the customer changes page
     if (connection_aborted()) {
         return;
     }
@@ -882,7 +882,7 @@ function sse(string $event, mixed $data): void
     flush();
 }
 
-// Les videre på et svar Søren holder på med (eller er ferdig med) etter at kunden byttet side
+// Keep reading an answer Søren is working on (or has finished) after the customer changed page
 if ($m = route('GET', '/api/chat/([a-f0-9]{24})')) {
     $from = max(0, (int) ($_GET['from'] ?? 0));
     session_write_close();
@@ -903,7 +903,7 @@ if ($m = route('GET', '/api/chat/([a-f0-9]{24})')) {
     exit;
 }
 
-// Laster språkmodellen inn i minnet når chatten åpnes, så første svar kommer raskt
+// Loads the language model into memory when the chat opens, so the first answer comes quickly
 if (route('POST', '/api/chat/warm') !== null) {
     session_write_close();
     json_out(['ok' => Chat::warm()]);
@@ -915,30 +915,30 @@ if (route('POST', '/api/chat') !== null) {
         'role' => ($m['role'] ?? '') === 'assistant' ? 'assistant' : 'user',
         'content' => mb_substr((string) ($m['content'] ?? ''), 0, 1500),
     ], array_slice((array) ($in['messages'] ?? []), -8)), fn($m) => $m['content'] !== ''));
-    // Bare adressen kommer fra nettleseren. Konteksten bygges på serveren fra en fast liste med offentlige sider.
+    // Only the address comes from the browser. The context is built on the server from a fixed list of public pages.
     $page = PageContext::resolve(is_string($in['page'] ?? null) ? $in['page'] : null);
-    // Produktguiden kunden tok tidligere i økten (de siste tre timene) følger med til andre sider
+    // The product guide the customer took earlier in the session (the last three hours) follows along to other pages
     $g = $_SESSION['guide'] ?? null;
     if ($page['kind'] !== 'guide' && is_array($g) && time() - (int) $g['at'] < 3 * 3600) {
         $page['guide'] = $g['a'];
         $page['text'] = trim($page['text'] . "\n\n" . Guide::brief($g['a'], $page['product'], false));
     }
-    // Språk per melding: engelsk bare når kunden tydelig skriver engelsk. Ellers språket valgt med flagget, ellers norsk.
+    // Language per message: English only when the customer clearly writes English. Otherwise the language chosen with the flag, otherwise Norwegian.
     Chat::$lang = I18n::$force = Lang::question(Chat::lastUser($messages), I18n::chosen() ? I18n::lang() : 'no');
-    // Søren svarer ferdig selv om kunden bytter side. Siden spørsmålet ble stilt på er låst i $page over.
+    // Søren finishes his answer even if the customer changes page. The page the question was asked on is locked in $page above.
     $job = ChatJob::start();
     ignore_user_abort(true);
     set_time_limit(600);
-    session_write_close(); // ikke blokker andre forespørsler mens modellen svarer
+    session_write_close(); // don't block other requests while the model answers
     header('Content-Type: text/event-stream; charset=utf-8');
     header('Cache-Control: no-cache');
     header('X-Accel-Buffering: no');
     while (ob_get_level()) {
         ob_end_flush();
     }
-    echo "event: job\ndata: " . json_encode($job) . "\n\n"; // ikke i loggen: nettleseren trenger den bare én gang
+    echo "event: job\ndata: " . json_encode($job) . "\n\n"; // not in the log: the browser only needs it once
     sse('page', ['kind' => $page['kind'], 'label' => $page['label']]);
-    // Vern før modellen: selvskading, banning og forsøk på å overstyre Søren får et fast svar. Modellen spørres ikke.
+    // Protection before the model: self harm, profanity and attempts to override Søren get a fixed answer. The model is not asked.
     $q = Chat::lastUser($messages);
     $blocked = match (true) {
         Chat::crisis($q) => ['krise', Chat::crisisReply()],
@@ -953,7 +953,7 @@ if (route('POST', '/api/chat') !== null) {
         sse('done', true);
         exit;
     }
-    // Spørsmål om hele katalogen (veiledninger, best vurdert, billigst): databasen finner svaret, Søren forklarer det
+    // Questions about the whole catalog (guides, best rated, cheapest): the database finds the answer, Søren explains it
     $intent = ($kind = CatalogIntent::detect(Chat::lastUser($messages))) ? CatalogIntent::build($kind, Chat::lastUser($messages), $page) : null;
     $ids = $intent ? array_slice($intent['ids'], 0, 3) : Chat::context($messages, $page);
     $cardIds = $intent ? $intent['ids'] : Chat::cardIds($messages, $page);
@@ -980,7 +980,7 @@ if (route('POST', '/api/chat') !== null) {
     exit;
 }
 
-// ---------- Kundeservice: eskalering fra Søren til menneske (feature 006) ----------
+// ---------- Customer service: escalation from Søren to a human (feature 006) ----------
 if (route('POST', '/api/support') !== null) {
     $in = json_decode(file_get_contents('php://input') ?: '{}', true) ?: [];
     $log = array_slice((array) ($in['log'] ?? []), -20);
@@ -1020,7 +1020,7 @@ if ($m = route('POST', '/api/support/(\d+)')) {
     json_out(['ok' => true]);
 }
 
-// ---------- Sanntid: Server-Sent Events over hendelsestabellen (ADR-004, erstatter LISTEN/NOTIFY) ----------
+// ---------- Live updates: Server-Sent Events over the event table (ADR-004, replaces LISTEN/NOTIFY) ----------
 if (route('GET', '/api/stream') !== null) {
     $channels = array_filter(explode(',', (string) ($_GET['ch'] ?? '')), fn($c) => preg_match('/^[a-z]+(:\d+)?$/', $c));
     $staffOnly = array_filter($channels, fn($c) => in_array($c, ['support', 'staff'], true));
@@ -1049,7 +1049,7 @@ if (route('GET', '/api/stream') !== null) {
     $in = implode(',', array_fill(0, count($channels), '?'));
     $st = db()->prepare("SELECT * FROM events WHERE id > ? AND channel IN ($in) ORDER BY id LIMIT 50");
     echo "retry: 2000\n\n";
-    $until = time() + 25; // korte tilkoblinger, nettleseren kobler til igjen med Last-Event-ID
+    $until = time() + 25; // short connections, the browser reconnects with Last-Event-ID
     while (time() < $until && !connection_aborted()) {
         $st->execute([$last, ...$channels]);
         foreach ($st->fetchAll() as $e) {

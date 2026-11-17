@@ -1,10 +1,10 @@
-# Sørpedia lokalt: docker compose up -d, så http://localhost:8080
-# Ollama kjører på maskinen din (ikke i Docker): ollama pull deepseek-r1:8b
-# Annen modell: sett OLLAMA_MODEL (for eksempel gemma3:4b, som er raskere men svakere).
+# Sørpedia locally: docker compose up -d, then http://localhost:8080
+# Ollama runs on your machine (not in Docker): ollama pull deepseek-r1:8b
+# Other model: set OLLAMA_MODEL (for example gemma3:4b, which is faster but weaker).
 services:
   app:
     build: { context: ., dockerfile: docker/Dockerfile }
-    # Bare denne maskinen. Fjern «127.0.0.1:» for å åpne demoen for andre på nettverket.
+    # This machine only. Remove "127.0.0.1:" to open the demo to others on the network.
     ports: ["127.0.0.1:${PORT:-8080}:80"]
     volumes: [".:/var/www/app"]
     environment:

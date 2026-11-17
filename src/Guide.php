@@ -2,13 +2,13 @@
 declare(strict_types=1);
 
 /**
- * Produktguiden (feature 003). Deterministisk: hvert forslag får en liste med grunner,
- * slik at kunden ser nøyaktig hvorfor (hvitboks, constitution punkt 5).
+ * The product guide (feature 003). Deterministic: every suggestion gets a list of reasons,
+ * so the customer sees exactly why (white box, constitution point 5).
  *
- * Spørsmålene går fra bredt til smalt, som i 20 spørsmål: først oppgaven, så produkttypen (Sør-Tres egne
- * kategorier), så det av de gjenstående spørsmålene som deler de gjenværende produktene best (mest informasjon).
- * Spørsmål som ikke ville skilt noe hoppes over, og bare svar som faktisk har produkter vises.
- * Guiden er ferdig når tre eller færre produkter er igjen, eller ingen spørsmål kan snevre inn mer.
+ * The questions go from broad to narrow, like 20 questions: first the task, then the product type (Sør-Tre's own
+ * categories), then whichever remaining question splits the remaining products best (most information).
+ * Questions that wouldn't separate anything are skipped, and only answers that actually have products are shown.
+ * The guide is done when three or fewer products are left, or no question can narrow it down further.
  */
 final class Guide
 {
@@ -23,7 +23,7 @@ final class Guide
         'erfaring' => ['Hvor vant er du med dette?', ['ny' => 'Første gang', 'litt' => 'Har gjort det før', 'proff' => 'Gjør det ofte, gjerne proff']],
     ];
 
-    /** Tabellen for tilbakemeldinger, for databaser bygd før den kom. */
+    /** The feedback table, for databases built before it existed. */
     public static function ensure(): void
     {
         db()->exec("CREATE TABLE IF NOT EXISTS guide_feedback (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, theme VARCHAR(32) NOT NULL,
@@ -31,7 +31,7 @@ final class Guide
             ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
-    /** Kunden sier hvilket produkt som var det riktige for svarene sine. */
+    /** The customer says which product was the right one for their answers. */
     public static function learn(array $a, int $productId): bool
     {
         $a = self::answers($a);
@@ -43,8 +43,8 @@ final class Guide
     }
 
     /**
-     * Hva tidligere kunder med like svar sa var riktig: [produkt-id => vekt]. Hvert svar som er likt teller,
-     * så et treff på produkttype og budsjett veier mer enn bare samme oppgave.
+     * What earlier customers with the same answers said was right: [product id => weight]. Every matching answer counts,
+     * so a match on product type and budget weighs more than just the same task.
      */
     public static function learned(array $a): array
     {
@@ -67,10 +67,10 @@ final class Guide
         return $w;
     }
 
-    /** Spørsmålet om produkttype. Svarene kommer fra kategoriene i oppgaven kunden valgte. */
+    /** The product type question. The answers come from the categories in the task the customer chose. */
     public const TYPE_Q = 'Hva slags?';
 
-    /** Produkttypene (Sør-Tres kategorier) i et tema: [kategori-id => navn], største først. */
+    /** The product types (Sør-Tre's categories) in a theme: [category id => name], largest first. */
     public static function types(string $theme): array
     {
         $st = db()->prepare('SELECT c.id, c.name FROM products p JOIN product_categories pc ON pc.product_id = p.id JOIN categories c ON c.id = pc.category_id
@@ -79,7 +79,7 @@ final class Guide
         return array_map('strval', $st->fetchAll(PDO::FETCH_KEY_PAIR));
     }
 
-    /** Produktene som fortsatt er aktuelle etter svarene: tema, produkttype og budsjett. */
+    /** The products still relevant after the answers: theme, product type and budget. */
     public static function candidates(array $a): array
     {
         if (!isset($a['oppgave'])) {
@@ -99,13 +99,13 @@ final class Guide
         return array_values(array_filter($rows, fn($r) => self::bracket((int) $r['price_ore']) === $b || $b === '0'));
     }
 
-    /** Hvilket budsjettsvar en pris hører til. */
+    /** Which budget answer a price belongs to. */
     private static function bracket(int $ore): string
     {
         return $ore < 20000 ? '200' : ($ore <= 100000 ? '1000' : '99999');
     }
 
-    /** Hvilket svar på et spørsmål et produkt hører til, for å regne ut hvor godt spørsmålet deler. */
+    /** Which answer to a question a product belongs to, to work out how well the question splits. */
     private static function bucket(string $key, array $r): string
     {
         return match ($key) {
@@ -116,13 +116,13 @@ final class Guide
         };
     }
 
-    /** Entropi (i bit) for hvordan svarene på spørsmålet deler produktene. 0 betyr at spørsmålet ikke skiller noe. */
+    /** Entropy (in bits) of how the answers to the question split the products. 0 means the question separates nothing. */
     private static function entropy(string $key, array $rows, array $prior = []): float
     {
         $counts = [];
         $n = 0.0;
         foreach ($rows as $r) {
-            $w = 1 + ($prior[(int) $r['id']] ?? 0); // det kunder faktisk fant, teller mer
+            $w = 1 + ($prior[(int) $r['id']] ?? 0); // what customers actually found counts more
             $b = self::bucket($key, $r);
             $counts[$b] = ($counts[$b] ?? 0) + $w;
             $n += $w;
@@ -135,8 +135,8 @@ final class Guide
     }
 
     /**
-     * Neste spørsmål: [nøkkel, spørsmål, [verdi => svar]], eller null når guiden er ferdig.
-     * Bredt til smalt: oppgave, produkttype, så det spørsmålet som deler de gjenværende produktene best.
+     * Next question: [key, question, [value => answer]], or null when the guide is done.
+     * Broad to narrow: task, product type, then the question that splits the remaining products best.
      */
     public static function next(array $a): ?array
     {
@@ -166,13 +166,13 @@ final class Guide
         if ($best === null) {
             return null;
         }
-        // Bare svar som har produkter, pluss «spiller ingen rolle»
+        // Only answers that have products, plus "doesn't matter"
         $have = array_flip(array_map(fn($r) => self::bucket($best, $r), $rows));
         $opts = array_filter(self::QUESTIONS[$best][1], fn($v) => isset($have[(string) $v]) || in_array((string) $v, ['0', 'begge', 'litt'], true), ARRAY_FILTER_USE_KEY);
         return [$best, self::QUESTIONS[$best][0], $opts];
     }
 
-    /** Spørsmålene kunden har svart på, i rekkefølge: [nøkkel, spørsmål, svartekst]. */
+    /** The questions the customer has answered, in order: [key, question, answer text]. */
     public static function asked(array $a): array
     {
         $out = [];
@@ -222,7 +222,7 @@ final class Guide
             }
             $u = $use[$c['id']] ?? '';
             $wantUse = ['inne' => 'Innendørs', 'ute' => 'Utendørs', 'sjo' => 'Marint'][$sted] ?? null;
-            // 12 og 24 volt er strøm i bil, båt og campingvogn, ikke i stikkontakten hjemme
+            // 12 and 24 volts are power in cars, boats and caravans, not in the wall socket at home
             $vehicle = $wantUse === 'Innendørs' && preg_match('/\b(12|24) ?v\b/iu', $c['name']);
             if ($wantUse && $u === $wantUse && !$vehicle) {
                 $s += 3;
@@ -282,9 +282,9 @@ final class Guide
         return ['picks' => $picks, 'bundle' => $bundle, 'trace' => $trace, 'theme' => $theme, 'cards' => $cards];
     }
 
-    // ---------- Sporing: Søren vet hva kunden svarte i guiden ----------
+    // ---------- Tracking: Søren knows what the customer answered in the guide ----------
 
-    /** Bare kjente svar. Ukjente nøkler og verdier forkastes. */
+    /** Known answers only. Unknown keys and values are discarded. */
     public static function answers(array $in): array
     {
         $a = [];
@@ -310,7 +310,7 @@ final class Guide
         return implode(' ', array_map(fn($q) => "{$q[1]} «{$q[2]}»", self::asked($a)));
     }
 
-    /** Kundens svar og forslagene, til Søren (norsk). */
+    /** The customer's answers and the suggestions, for Søren (in Norwegian). */
     public static function brief(array $a, ?int $focus = null, bool $here = true): string
     {
         return I18n::with('no', function () use ($a, $focus, $here) {
@@ -326,7 +326,7 @@ final class Guide
         });
     }
 
-    /** Kunden er midt i guiden: hva er besvart og hvilket spørsmål de står på. */
+    /** The customer is in the middle of the guide: what has been answered and which question they are on. */
     public static function progress(array $a): string
     {
         return I18n::with('no', function () use ($a) {

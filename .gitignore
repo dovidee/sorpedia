@@ -1,2 +1,5 @@
-# Lokale innstillinger for docker compose (PORT, OLLAMA_MODEL, SOREN_NUM_CTX)
+# Local settings for docker compose (PORT, OLLAMA_MODEL, SOREN_NUM_CTX)
 .env
+
+# Python bytecode
+__pycache__/

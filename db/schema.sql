@@ -1,5 +1,5 @@
--- Sørpedia, MariaDB 10.11+ / MySQL 8+. utf8mb4 overalt.
--- Nye spesifikasjonstyper legges til som rader i spec_keys, aldri som kolonner (ADR-003).
+-- Sørpedia, MariaDB 10.11+ / MySQL 8+. utf8mb4 everywhere.
+-- New specification types are added as rows in spec_keys, never as columns (ADR-003).
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -12,17 +12,17 @@ DROP TABLE IF EXISTS spec_reports, analytics_events, mail_outbox, events, suppor
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE products (
-  id            INT UNSIGNED PRIMARY KEY,           -- samme ID som hos Sør-Tre
+  id            INT UNSIGNED PRIMARY KEY,           -- same ID as at Sør-Tre
   sku           VARCHAR(64)  NULL,
   name          VARCHAR(255) NOT NULL,
   slug          VARCHAR(255) NOT NULL UNIQUE,
   theme         VARCHAR(32)  NOT NULL,              -- lys, bygg, maling, balkong, kjetting, skog, tur
   brand         VARCHAR(80)  NULL,
-  price_ore     INT UNSIGNED NOT NULL,              -- pris i øre, fra Sør-Tre
+  price_ore     INT UNSIGNED NOT NULL,              -- price in øre, from Sør-Tre
   regular_ore   INT UNSIGNED NULL,
-  short_html    MEDIUMTEXT   NULL,                  -- Sør-Tre sin tekst, uendret
+  short_html    MEDIUMTEXT   NULL,                  -- Sør-Tre's text, unchanged
   long_html     MEDIUMTEXT   NULL,
-  plain_text    MEDIUMTEXT   NULL,                  -- for søk og regelmotor
+  plain_text    MEDIUMTEXT   NULL,                  -- for search and the rule engine
   source_url    VARCHAR(500) NULL,
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FULLTEXT KEY ft_products (name, plain_text)
@@ -55,19 +55,19 @@ CREATE TABLE product_images (
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Hvilke spesifikasjoner som finnes. En ny type = INSERT, ingen migrering.
+-- Which specifications exist. A new type = INSERT, no migration.
 CREATE TABLE spec_keys (
   `key`      VARCHAR(48) PRIMARY KEY,
   label      VARCHAR(80) NOT NULL,
   unit       VARCHAR(16) NULL,
   datatype   ENUM('text','number') NOT NULL DEFAULT 'text',
   is_facet   TINYINT(1) NOT NULL DEFAULT 0,
-  themes     VARCHAR(120) NULL,                     -- kommaseparert, NULL = alle
+  themes     VARCHAR(120) NULL,                     -- comma separated, NULL = all
   sort       SMALLINT NOT NULL DEFAULT 100,
-  created_by INT UNSIGNED NULL                      -- NULL = system, ellers bruker som foreslo den
+  created_by INT UNSIGNED NULL                      -- NULL = system, otherwise the user who suggested it
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Git-lignende endringssett for den åpne versjonen.
+-- Git-like change sets for the open version.
 CREATE TABLE spec_revisions (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   product_id  INT UNSIGNED NOT NULL,
@@ -82,15 +82,15 @@ CREATE TABLE spec_revisions (
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- En verdi per produkt, nøkkel og versjon.
+-- One value per product, key and version.
 CREATE TABLE spec_values (
   product_id  INT UNSIGNED NOT NULL,
   `key`       VARCHAR(48) NOT NULL,
   version     ENUM('verifisert','apen') NOT NULL,
   value_text  VARCHAR(255) NOT NULL,
-  value_num   DECIMAL(12,3) NULL,                  -- for filtrering og sammenligning
+  value_num   DECIMAL(12,3) NULL,                  -- for filtering and comparison
   source      ENUM('sortre','utledet','bruker','ansatt') NOT NULL,
-  evidence    VARCHAR(500) NULL,                    -- tekstutdrag eller begrunnelse
+  evidence    VARCHAR(500) NULL,                    -- text snippet or reason
   revision_id INT UNSIGNED NULL,
   updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (product_id, `key`, version),
@@ -104,16 +104,16 @@ CREATE TABLE warehouses (
   id     SMALLINT UNSIGNED PRIMARY KEY,
   name   VARCHAR(80) NOT NULL,
   city   VARCHAR(80) NOT NULL,
-  is_real TINYINT(1) NOT NULL DEFAULT 0              -- 1 = Sør-Tre sin faktiske butikk
+  is_real TINYINT(1) NOT NULL DEFAULT 0              -- 1 = Sør-Tre's actual store
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Demo-lager per varehus.
+-- Demo stock per store.
 CREATE TABLE stock (
   product_id    INT UNSIGNED NOT NULL,
   warehouse_id  SMALLINT UNSIGNED NOT NULL,
-  in_store      INT NOT NULL DEFAULT 0,             -- fysisk i butikk
-  online        INT NOT NULL DEFAULT 0,             -- nettlager/sentrallager
-  preorder_eta  DATE NULL,                          -- bestillingsvare: forventet dato
+  in_store      INT NOT NULL DEFAULT 0,             -- physically in store
+  online        INT NOT NULL DEFAULT 0,             -- online stock / central warehouse
+  preorder_eta  DATE NULL,                          -- backorder: expected date
   PRIMARY KEY (product_id, warehouse_id),
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
   FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
@@ -122,22 +122,22 @@ CREATE TABLE stock (
 CREATE TABLE users (
   id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email             VARCHAR(190) NOT NULL UNIQUE,
-  name              VARCHAR(120) NOT NULL,          -- privat, vises aldri offentlig
-  phone             VARCHAR(32) NULL,               -- privat, valgfritt
-  display_name      ENUM('anonym','fornavn') NOT NULL DEFAULT 'anonym', -- hva andre ser ved bidrag (personvern som standard)
-  alias_salt        CHAR(16) NULL,                  -- tilfeldig salt for aliaset «Kjøper #a1b2c3»
-  avatar            VARCHAR(64) NULL,               -- filnavn i data/avatars, vises bare for brukeren selv
-  theme             ENUM('system','lys','mork') NOT NULL DEFAULT 'system', -- lys eller mørk modus
+  name              VARCHAR(120) NOT NULL,          -- private, never shown publicly
+  phone             VARCHAR(32) NULL,               -- private, optional
+  display_name      ENUM('anonym','fornavn') NOT NULL DEFAULT 'anonym', -- what others see on contributions (privacy by default)
+  alias_salt        CHAR(16) NULL,                  -- random salt for the alias "Kjøper #a1b2c3"
+  avatar            VARCHAR(64) NULL,               -- file name in data/avatars, only shown to the user themselves
+  theme             ENUM('system','lys','mork') NOT NULL DEFAULT 'system', -- light or dark mode
   password_hash     VARCHAR(255) NOT NULL,
   role              ENUM('bruker','ansatt','support','admin') NOT NULL DEFAULT 'bruker',
   email_verified_at TIMESTAMP NULL,
   verify_token      CHAR(32) NULL,
   warehouse_id      SMALLINT UNSIGNED NULL,
   is_demo_seed      TINYINT(1) NOT NULL DEFAULT 0,
-  failed_logins     TINYINT UNSIGNED NOT NULL DEFAULT 0, -- feil passord på rad
-  locked_until      TIMESTAMP NULL,                 -- låst etter fem feil, i 15 minutter (src/Auth.php)
+  failed_logins     TINYINT UNSIGNED NOT NULL DEFAULT 0, -- wrong passwords in a row
+  locked_until      TIMESTAMP NULL,                 -- locked after five failures, for 15 minutes (src/Auth.php)
   created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at        TIMESTAMP NULL                  -- konto slettet: personopplysninger er fjernet, ordrer beholdes (bokføringsloven)
+  deleted_at        TIMESTAMP NULL                  -- account deleted: personal data removed, orders kept (Norwegian Bookkeeping Act)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE cart_items (
@@ -174,7 +174,7 @@ CREATE TABLE reviews (
   id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   product_id   INT UNSIGNED NOT NULL,
   user_id      INT UNSIGNED NOT NULL,
-  rating       TINYINT UNSIGNED NOT NULL,           -- 1 til 5
+  rating       TINYINT UNSIGNED NOT NULL,           -- 1 to 5
   title        VARCHAR(120) NULL,
   body         TEXT NOT NULL,
   is_demo_seed TINYINT(1) NOT NULL DEFAULT 0,
@@ -204,7 +204,7 @@ CREATE TABLE manuals (
   tools      VARCHAR(500) NULL,
   pdf_path   VARCHAR(255) NULL,
   is_demo    TINYINT(1) NOT NULL DEFAULT 1,
-  match_rule VARCHAR(255) NULL                      -- hvilke produkter veiledningen gjelder
+  match_rule VARCHAR(255) NULL                      -- which products the guide applies to
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE manual_steps (
@@ -212,7 +212,7 @@ CREATE TABLE manual_steps (
   step_no   TINYINT UNSIGNED NOT NULL,
   title     VARCHAR(160) NOT NULL,
   body      TEXT NOT NULL,
-  svg       MEDIUMTEXT NULL,                        -- enkel illustrasjon
+  svg       MEDIUMTEXT NULL,                        -- simple illustration
   PRIMARY KEY (manual_id, step_no),
   FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -224,7 +224,7 @@ CREATE TABLE support_tickets (
   assigned_to INT UNSIGNED NULL,
   status      ENUM('apen','pagar','lukket') NOT NULL DEFAULT 'apen',
   summary     VARCHAR(300) NULL,
-  chat_log    JSON NULL,                            -- samtalen med maskoten før eskalering
+  chat_log    JSON NULL,                            -- the conversation with the mascot before escalation
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -238,10 +238,10 @@ CREATE TABLE support_messages (
   FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Transactional outbox for sanntid (ADR-004). SSE-endepunktet leser herfra.
+-- Transactional outbox for live updates (ADR-004). The SSE endpoint reads from here.
 CREATE TABLE events (
   id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  channel    VARCHAR(64) NOT NULL,                  -- f.eks. product:123, ticket:5, support, stock
+  channel    VARCHAR(64) NOT NULL,                  -- e.g. product:123, ticket:5, support, stock
   type       VARCHAR(48) NOT NULL,
   payload    JSON NOT NULL,
   created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -258,7 +258,7 @@ CREATE TABLE mail_outbox (
 
 CREATE TABLE search_synonyms (
   term     VARCHAR(80) NOT NULL,
-  expands  VARCHAR(300) NOT NULL,                   -- søkeord eller kategori:ID / tema:navn
+  expands  VARCHAR(300) NOT NULL,                   -- search term or kategori:ID / tema:navn
   kind     ENUM('synonym','bruksomrade') NOT NULL,
   PRIMARY KEY (term, kind)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -274,8 +274,8 @@ CREATE TABLE analytics_events (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- Meldinger om feil i den åpne versjonen. Alle kan melde fra, også uten å logge inn.
--- Produktguiden lærer: kunden sier hvilket produkt som var riktig for svarene sine
+-- Reports of errors in the open version. Anyone can report, even without logging in.
+-- The product guide learns: the customer says which product was right for their answers
 CREATE TABLE IF NOT EXISTS guide_feedback (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   theme VARCHAR(32) NOT NULL,

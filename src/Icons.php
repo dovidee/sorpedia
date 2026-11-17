@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Ikoner fra Lucide (lucide.dev, ISC-lisens, v0.460.0), lagret lokalt fordi siden ikke henter noe utenfra.
- * Bruk: icon('search'). Ikonet arver tekstfargen og er skjult for skjermlesere, så det alltid står tekst ved siden av.
+ * Icons from Lucide (lucide.dev, ISC license, v0.460.0), stored locally because the site fetches nothing from outside.
+ * Usage: icon('search'). The icon inherits the text color and is hidden from screen readers, so there is always text next to it.
  */
 final class Icons
 {
@@ -49,7 +49,7 @@ final class Icons
         'languages' => '<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>',
     ];
 
-    /** Ikon per kategori (Catalog::THEMES) */
+    /** Icon per category (Catalog::THEMES) */
     public const THEMES = ['lys' => 'flashlight', 'bygg' => 'hammer', 'maling' => 'paint-roller', 'balkong' => 'fence',
         'kjetting' => 'link', 'skog' => 'axe', 'tur' => 'tent'];
 

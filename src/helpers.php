@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// Små hjelpefunksjoner for web-delen.
+// Small helper functions for the web part.
 
 function h(mixed $s): string
 {
@@ -25,7 +25,7 @@ function redirect(string $to): never
     exit;
 }
 
-/** Bare stier på dette nettstedet. «//evil.no» og «/\\evil.no» er lenker til andre nettsteder og blir $default. */
+/** Only paths on this site. "//evil.no" and "/\\evil.no" are links to other sites and become $default. */
 function safe_back(mixed $to, string $default = '/'): string
 {
     $to = is_string($to) ? $to : '';
@@ -89,7 +89,7 @@ function current_user(): ?array
     return $u;
 }
 
-/** Verifisert bruker = bekreftet e-post OG minst én betalt ordre (constitution punkt 4). */
+/** Verified user = confirmed email AND at least one paid order (constitution point 4). */
 function is_verified(?array $u): bool
 {
     if (!$u || !$u['email_verified_at']) {
@@ -115,7 +115,7 @@ function warehouses(): array
 {
     static $w = null;
     if ($w === null) {
-        // Eldre databaser kalte butikken «Sør-Tre Kristiansand». Det heter bare Kristiansand.
+        // Older databases called the store "Sør-Tre Kristiansand". It is just called Kristiansand.
         db()->exec("UPDATE warehouses SET name = 'Kristiansand' WHERE name = 'Sør-Tre Kristiansand'");
         $w = db()->query('SELECT * FROM warehouses ORDER BY is_real DESC, name')->fetchAll(PDO::FETCH_UNIQUE);
     }
@@ -124,12 +124,12 @@ function warehouses(): array
 
 function track(string $type, array $data = []): void
 {
-    // Dataminimering: måltallene trenger ikke vite hvem som gjorde hva, så bruker-ID lagres ikke
+    // Data minimization: the metrics don't need to know who did what, so the user ID isn't stored
     db()->prepare('INSERT INTO analytics_events (session_id, user_id, type, data) VALUES (?,?,?,?)')
         ->execute([sid(), null, $type, json_encode($data, JSON_UNESCAPED_UNICODE)]);
 }
 
-/** Skriver til hendelsestabellen (ADR-004). Leses av /api/stream. */
+/** Writes to the event table (ADR-004). Read by /api/stream. */
 function emit(string $channel, string $type, array $payload): void
 {
     db()->prepare('INSERT INTO events (channel, type, payload) VALUES (?,?,?)')
@@ -180,13 +180,13 @@ const LEVEL_LABEL = [
     'antatt' => 'Kjøpt sammen',
 ];
 
-/** Escaper og sensurerer tekst fra brukere (Åpen-verdier, anmeldelser, navn). Se src/Moderation.php. */
+/** Escapes and censors text from users (open values, reviews, names). See src/Moderation.php. */
 function hc(mixed $s): string
 {
     return h(Moderation::censor((string) $s));
 }
 
-/** Tekst på kundens språk (src/I18n.php). Returnerer rå tekst: oversettelsene er våre egne, men variabler må escapes av den som kaller. */
+/** Text in the customer's language (src/I18n.php). Returns raw text: the translations are our own, but variables must be escaped by the caller. */
 function t(string $no, array $vars = []): string
 {
     return I18n::t($no, $vars);
@@ -207,13 +207,13 @@ function theme_desc(string $k): string
     return t(Catalog::THEMES[$k][1] ?? '');
 }
 
-/** Ikon fra Icons (Lucide), alltid sammen med tekst. */
+/** Icon from Icons (Lucide), always together with text. */
 function icon(string $name, string $class = ''): string
 {
     return Icons::svg($name, $class);
 }
 
-/** Navn på en person til visning. Testbrukerne heter «Kari (demo)» i databasen; merkingen vises ikke. */
+/** A person's name for display. The test users are called "Kari (demo)" in the database; the label isn't shown. */
 function person(mixed $s): string
 {
     return hc(preg_replace('/\s*\(demo\)\s*$/iu', '', (string) $s));

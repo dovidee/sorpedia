@@ -2,32 +2,32 @@
 declare(strict_types=1);
 
 /**
- * Personvern (GDPR art. 25, innebygd personvern og personvern som standard).
+ * Privacy (GDPR art. 25, data protection by design and by default).
  *
- * Fullt navn, e-post og telefon vises aldri offentlig. Bidrag og anmeldelser vises med et alias:
- * standard er «Kjøper #a1b2c3» (et avkortet SHA-256 av et tilfeldig salt per bruker og bruker-ID),
- * eller fornavnet hvis brukeren selv velger det under Innstillinger.
- * Aliaset regnes ut i SQL, så det fulle navnet aldri forlater databasen for offentlige visninger.
+ * Full name, email and phone are never shown publicly. Contributions and reviews are shown with an alias:
+ * the default is "Kjøper #a1b2c3" (a truncated SHA-256 of a random salt per user and the user ID),
+ * or the first name if the user chooses that under Settings.
+ * The alias is computed in SQL, so the full name never leaves the database for public views.
  */
 final class Privacy
 {
     public const DELETED = 'Slettet bruker';
 
-    /** Legger til kolonnene og tabellen i databaser som ble bygd før personvernendringen. */
+    /** Adds the columns and the table in databases built before the privacy change. */
     public static function ensure(): void
     {
         $pdo = db();
-        // Rekkefølgen betyr noe: en database fra før personvernendringen mangler avatar, og theme legges etter den
+        // The order matters: a database from before the privacy change lacks avatar, and theme is added after it
         if (!$pdo->query("SHOW TABLES LIKE 'spec_reports'")->fetch()) {
             self::privacyColumns($pdo);
         }
-        // Lys eller mørk modus er en personlig innstilling (kom etter personvernendringen)
+        // Light or dark mode is a personal setting (came after the privacy change)
         if (!$pdo->query("SHOW COLUMNS FROM users LIKE 'theme'")->fetch()) {
             $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS theme ENUM('system','lys','mork') NOT NULL DEFAULT 'system' AFTER avatar");
         }
     }
 
-    /** Personvernendringen. spec_reports opprettes sist, så den fungerer som merke på at dette er gjort. */
+    /** The privacy change. spec_reports is created last, so it works as a marker that this is done. */
     private static function privacyColumns(PDO $pdo): void
     {
         $pdo->exec("ALTER TABLE users
@@ -37,14 +37,14 @@ final class Privacy
             ADD COLUMN IF NOT EXISTS avatar VARCHAR(64) NULL AFTER alias_salt,
             ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL");
         $pdo->exec("UPDATE users SET alias_salt = LEFT(SHA2(CONCAT(RAND(), id, UUID()), 256), 16) WHERE alias_salt IS NULL");
-        // Eldre godkjenninger skrev navnet på den ansatte inn i kildeteksten, som er offentlig
+        // Older approvals wrote the staff member's name into the source text, which is public
         $pdo->exec("UPDATE spec_values SET evidence = REGEXP_REPLACE(evidence, '^Godkjent av [^.]*\\\\.', 'Godkjent av en ansatt.')
             WHERE evidence LIKE 'Godkjent av %' AND evidence NOT LIKE 'Godkjent av en ansatt%'");
         $pdo->exec("UPDATE analytics_events SET user_id = NULL WHERE user_id IS NOT NULL");
         $pdo->exec(substr(file_get_contents(APP_ROOT . '/db/schema.sql'), strpos(file_get_contents(APP_ROOT . '/db/schema.sql'), 'CREATE TABLE spec_reports')));
     }
 
-    /** SQL-uttrykk for det offentlige aliaset til brukeren i tabellalias $t. Gir NULL når det ikke finnes noen bruker. */
+    /** SQL expression for the user's public alias in table alias $t. Gives NULL when there is no user. */
     public static function sql(string $t = 'u'): string
     {
         return "CASE WHEN $t.id IS NULL THEN NULL WHEN $t.deleted_at IS NOT NULL THEN '" . self::DELETED . "'"
@@ -52,7 +52,7 @@ final class Privacy
             . " ELSE CONCAT('Kjøper #', LEFT(SHA2(CONCAT($t.alias_salt, $t.id), 256), 6)) END";
     }
 
-    /** Samme alias regnet ut i PHP, for brukerens egen forhåndsvisning. */
+    /** The same alias computed in PHP, for the user's own preview. */
     public static function alias(array $u, ?string $mode = null): string
     {
         if (!empty($u['deleted_at'])) {
@@ -69,7 +69,7 @@ final class Privacy
         return bin2hex(random_bytes(8));
     }
 
-    // ---------- Profilbilde ----------
+    // ---------- Profile picture ----------
 
     public const AVATAR_MAX = 3 * 1024 * 1024;
 
@@ -83,9 +83,9 @@ final class Privacy
     }
 
     /**
-     * Lagrer et opplastet profilbilde (JPEG eller PNG) og returnerer filnavnet.
-     * Metadata som EXIF (kan inneholde GPS-posisjon og kameraserienummer) fjernes før lagring.
-     * @throws RuntimeException med en melding som kan vises til brukeren
+     * Saves an uploaded profile picture (JPEG or PNG) and returns the file name.
+     * Metadata like EXIF (can contain GPS location and camera serial number) is removed before saving.
+     * @throws RuntimeException with a message that can be shown to the user
      */
     public static function saveAvatar(string $tmp, int $size): string
     {
@@ -117,7 +117,7 @@ final class Privacy
         }
     }
 
-    /** Fjerner APP1 (EXIF, XMP), APP13 (IPTC) og kommentarer fra en JPEG. Bildedata og fargeprofil beholdes. */
+    /** Removes APP1 (EXIF, XMP), APP13 (IPTC) and comments from a JPEG. Image data and color profile are kept. */
     public static function stripJpeg(string $b): ?string
     {
         if (substr($b, 0, 2) !== "\xFF\xD8") {
@@ -131,11 +131,11 @@ final class Privacy
                 return null;
             }
             $m = ord($b[$i + 1]);
-            if ($m === 0xFF) { // fyllbyte
+            if ($m === 0xFF) { // fill byte
                 $i++;
                 continue;
             }
-            if ($m === 0xDA) { // start på bildedata: resten kopieres som det er
+            if ($m === 0xDA) { // start of image data: the rest is copied as is
                 return $out . substr($b, $i);
             }
             $len = (ord($b[$i + 2]) << 8) | ord($b[$i + 3]);
@@ -150,7 +150,7 @@ final class Privacy
         return null;
     }
 
-    /** Fjerner tekst-, tids- og EXIF-biter fra en PNG. */
+    /** Removes text, time and EXIF chunks from a PNG. */
     public static function stripPng(string $b): ?string
     {
         if (substr($b, 0, 8) !== "\x89PNG\r\n\x1a\n") {

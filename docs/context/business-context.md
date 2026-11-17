@@ -1,53 +1,53 @@
-# Forretningskontekst
+# Business context
 
-## Problemdefinisjon (fra DoT)
+## Problem statement (from the DoT)
 
-Kunden får ikke den samme veiledningen og tryggheten på nett som i butikken.
+Customers don't get the same guidance and confidence online as in the store.
 
-1. Hvordan kan kunder finne riktig produkt og tilbehør når det finnes tusenvis av varer?
-2. Hvordan kan kunder stole på produktinformasjon uten å snakke med en ansatt?
-3. Hvordan kan nettkunder få samme fagkunnskap som i butikken?
-4. Hvordan kan kundenes egen erfaring bli en del av fagkunnskapen?
+1. How can customers find the right product and accessories among thousands of items?
+2. How can customers trust product information without talking to staff?
+3. How can online customers get the same expertise as in the store?
+4. How can customers' own experience become part of that expertise?
 
-## Kjerneproblemer som prototypen må vise løst
+## Core problems the prototype must show solved
 
-| Nr | Problem | Kilde | Løsning i prototypen |
+| No. | Problem | Source | Solution in the prototype |
 |---|---|---|---|
-| P1 | Mangler tekniske spesifikasjoner, f.eks. rekkevidde i meter på hodelykt | PK1 | Spesifikasjonstabell med kilde og nivå, åpen versjon som verifiserte kjøpere fyller inn |
-| P2 | Ingen anmeldelser | PK2 | Anmeldelser fra verifiserte kjøpere |
-| P3 | Vanskelig å finne produkter, uklare kategorier, fant ikke drill | PK1, K2 | Produktguide, autocomplete, skrivefeil-toleranse, søk etter bruksområde, filtre |
-| P4 | Ingen bilder av ferdig montert, ingen manualer | K1, K2, PK1, PK2 | Bildegalleri med zoom, kundebilder "ferdig montert", nedlastbar monteringsveiledning |
-| P5 | Ingen forslag til ting som passer sammen (hammer og spiker, hodelykt og batteri) | PK1, PK2 | "Passer sammen" med nivå og begrunnelse, i produktside og handlekurv |
+| P1 | Missing technical specifications, e.g. beam range in meters for a headlamp | PK1 | Specification table with source and level, and an open version that verified buyers fill in |
+| P2 | No reviews | PK2 | Reviews from verified buyers |
+| P3 | Hard to find products, unclear categories, couldn't find a drill | PK1, K2 | Product guide, autocomplete, typo tolerance, search by use case, filters |
+| P4 | No pictures of assembled products, no manuals | K1, K2, PK1, PK2 | Image gallery with zoom, customer photos of the finished result, downloadable assembly guide |
+| P5 | No suggestions for things that go together (hammer and nails, headlamp and battery) | PK1, PK2 | "Goes well with" with level and reason, on the product page and in the cart |
 
-Observasjon: Sør-Tre selger ingen bormaskiner på nett (søk på "drill" gir bare drillpumper). Det bekrefter PK1 sin opplevelse og brukes i demoen som eksempel på nullresultat-søk som håndteres med forslag og "spør en ansatt".
+Observation: Sør-Tre sells no power drills online (searching "drill" only gives drill pumps). This confirms PK1's experience and is used in the demo as an example of a zero result search handled with suggestions and "ask a staff member".
 
 ## Personas
 
-| Persona | Basert på | Behov |
+| Persona | Based on | Needs |
 |---|---|---|
-| Arne Hansen, 54, håndverker, Søgne | K1, K2 | Råd fra ansatte med fagkunnskap, kvalitet til rimelig pris, lang vei til butikken |
-| Ingrid Lunde, 34, maler, Mandal | PK1, PK2 | Finne riktig produkt og tilbehør raskt på nett, trygg på at butikken er norsk, vil ha anmeldelser |
-| Thomas Gregersen, 38, butikksjef | Antakelse | Rask tilgang til produktinfo, færre gjentatte henvendelser |
+| Arne Hansen, 54, craftsman, Søgne | K1, K2 | Advice from knowledgeable staff, quality at a fair price, long way to the store |
+| Ingrid Lunde, 34, painter, Mandal | PK1, PK2 | Find the right product and accessories quickly online, confident the store is Norwegian, wants reviews |
+| Thomas Gregersen, 38, store manager | Assumption | Quick access to product info, fewer repeated inquiries |
 
-## Roller i systemet
+## Roles in the system
 
-| Rolle | Kan |
+| Role | Can |
 |---|---|
-| Gjest | Søke, se produkter, bruke guide og chat |
-| Bruker | Handle, ha handlekurv og ordrer |
-| Verifisert bruker | Bruker med bekreftet e-post og minst ett betalt kjøp. Kan redigere åpen versjon, laste opp bilder, skrive anmeldelser |
-| Ansatt | Flette åpne endringer inn i verifisert versjon, avvise, redigere lager |
-| Support | Svare på saker eskalert fra chatten, i sanntid |
-| Admin | Alt over, pluss brukere og KPI-dashboard |
+| Guest | Search, view products, use the guide and chat |
+| User | Buy, have a cart and orders |
+| Verified user | User with a confirmed email and at least one paid purchase. Can edit the open version, upload pictures, write reviews |
+| Staff | Merge open changes into the verified version, reject them, edit stock |
+| Support | Answer cases escalated from the chat, live |
+| Admin | Everything above, plus users and the KPI dashboard |
 
-## Suksessmål (gevinstrealisering, kap. 5 i rapporten)
+## Success goals (benefits realization, chapter 5 of the report)
 
-| Mål | Måling i prototypen |
+| Goal | Measured in the prototype by |
 |---|---|
-| Kunden finner riktig produkt | Andel søk med null treff, tid fra første søk til handlekurv |
-| Mer salg av tilbehør | Andel ordrer med minst ett "passer sammen"-produkt |
-| Tillit til produktinfo | Antall spesifikasjoner per produkt fordelt på kilde, antall anmeldelser |
-| Avlastning av ansatte | Andel chatsamtaler løst uten eskalering |
-| Konvertering | Besøk til handlekurv til kjøp (trakt) |
+| Customers find the right product | Share of searches with zero results, time from first search to cart |
+| More accessory sales | Share of orders with at least one "goes well with" product |
+| Trust in product info | Number of specifications per product by source, number of reviews |
+| Less load on staff | Share of chats resolved without escalation |
+| Conversion | Visit to cart to purchase (funnel) |
 
-Prototypen logger disse hendelsene i `analytics_events` og viser dem på et admin-dashboard.
+The prototype logs these events in `analytics_events` and shows them on an admin dashboard.

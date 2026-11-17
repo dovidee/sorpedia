@@ -1,42 +1,42 @@
-# Sørpedia: demo-nettbutikk for Sør-Tre (IS-219 gruppe 4)
+# Sørpedia: demo web store for Sør-Tre (IS-219 group 4)
 
-Digital produktveileder og kunnskapsdatabase ("Wikipedia for produkter") bygget som en demo av Sør-Tre sin nettbutikk. Kunden skal få samme veiledning og trygghet på nett som i butikken.
+Digital product guide and knowledge base ("Wikipedia for products") built as a demo of Sør-Tre's web store. Customers should get the same guidance and confidence online as in the store.
 
-## Arbeidsflyt (Context, Spec, Plan, Build, Verify)
+## Workflow (Context, Spec, Plan, Build, Verify)
 
-1. Les relevante filer i `docs/context/` og `docs/governance/constitution.md`.
-2. Les feature-spesifikasjonen i `specs/NNN-*/spec.md` før kode endres.
-3. Lag plan før endringer på tvers av flere filer. Implementer en oppgave om gangen.
-4. Prøv endringen i nettleseren og sammenhold resultatet med akseptansekriteriene.
-5. Skriv kort i `specs/NNN-*/verification.md` hva som ble testet, hva som ble forkastet og kjente svakheter.
+1. Read the relevant files in `docs/context/` and `docs/governance/constitution.md`.
+2. Read the feature spec in `specs/NNN-*/spec.md` before changing code.
+3. Make a plan before changes across several files. Implement one task at a time.
+4. Try the change in the browser and compare the result with the acceptance criteria.
+5. Write briefly in `specs/NNN-*/verification.md` what was tested, what was rejected and known weaknesses.
 
-## Ufravikelige regler
+## Non-negotiable rules
 
-1. Pris, lagerstatus, produktnavn og produkt-ID kommer alltid fra databasen. Språkmodellen skal aldri finne opp disse.
-2. Spesifikasjoner har kilde og nivå: `sortre` (fra Sør-Tre), `utledet` (regel over produkttekst), `bruker` (verifisert kjøper), `ansatt` (godkjent). Ukjent er et gyldig svar. Utledet eller brukerdata vises aldri som bekreftet.
-3. "Passer sammen" skal ha nivå: dokumentert, regelutledet eller antatt. Antatt vises aldri som sikkert.
-4. Nye spesifikasjonstyper legges til som rader (`spec_keys`), aldri som nye kolonner. Ingen migrering per ny spesifikasjon.
-5. Bare verifiserte brukere (bekreftet e-post OG minst ett betalt kjøp) kan redigere den åpne versjonen eller skrive anmeldelser.
-6. Kundetekst på norsk bokmål. Ingen tankestreker i UI-tekst.
-7. Demo-data (lager per varehus, anmeldelser, monteringsveiledninger, brukere) er tydelig merket som demo.
-8. Ingen eksterne kall ved kjøretid unntatt Ollama (`OLLAMA_URL`). Bilder ligger lokalt.
+1. Price, stock status, product name and product ID always come from the database. The language model must never make these up.
+2. Specifications have a source and level: `sortre` (from Sør-Tre), `utledet` (rule over product text), `bruker` (verified buyer), `ansatt` (approved by staff). Unknown is a valid answer. Derived or user data is never shown as confirmed.
+3. "Goes well with" has a level: documented, rule based or assumed. Assumed is never shown as certain.
+4. New specification types are added as rows (`spec_keys`), never as new columns. No migration per new specification.
+5. Only verified users (confirmed email AND at least one paid purchase) can edit the open version or write reviews.
+6. Customer-facing text is in Norwegian bokmål, with English through the language toggle. No em or en dashes in UI text.
+7. Demo data (stock per store, reviews, assembly guides, users) is clearly marked as demo.
+8. No external calls at runtime except Ollama (`OLLAMA_URL`). Images are stored locally.
 
-## Sannhetskilder
+## Sources of truth
 
-| Tema | Fil |
+| Topic | File |
 |---|---|
-| Virksomhet, brukere, problemer, mål | `docs/context/business-context.md` |
-| Kategorier, filtre, "passer sammen" | `docs/context/product-taxonomy.md` |
-| Risiko og guardrails | `docs/context/risks-and-guardrails.md` |
-| Arkitektur og datamodell | `docs/architecture/architecture.md` |
-| Prinsipper | `docs/governance/constitution.md` |
-| Features og akseptansekriterier | `specs/README.md` |
-| Arbeidsprosess (fra prototype-veikart) | `docs/process/arbeidsprosess.md` |
+| Business, users, problems, goals | `docs/context/business-context.md` |
+| Categories, filters, "goes well with" | `docs/context/product-taxonomy.md` |
+| Risks and guardrails | `docs/context/risks-and-guardrails.md` |
+| Architecture and data model | `docs/architecture/architecture.md` |
+| Principles | `docs/governance/constitution.md` |
+| Features and acceptance criteria | `specs/README.md` |
+| Work process (from the prototype roadmap) | `docs/process/workflow.md` |
 
-## Kommandoer
+## Commands
 
 ```
-php scripts/scrape.php          # henter produkter fra sor-tre.no til data/raw/
-php scripts/import.php          # bygger databasen fra data/raw + seed
-php -S localhost:8080 -t public # utviklingsserver
+php scripts/scrape.php          # fetches products from sor-tre.no into data/raw/
+php scripts/import.php          # builds the database from data/raw + seed data
+php -S localhost:8080 -t public # development server
 ```

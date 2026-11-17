@@ -2,23 +2,23 @@
 declare(strict_types=1);
 
 /**
- * Vern mot prompt injection i tekst fra kjøpere (spesifikasjoner i Åpen-versjonen og nye spesifikasjonstyper).
+ * Protection against prompt injection in text from buyers (specifications in the open version and new specification types).
  *
- * Tre lag, fordi ingen av dem er nok alene:
- * 1. Ved lagring: en spesifikasjonsverdi skal være en verdi ("220", "Varmgalvanisert stål"), ikke en setning
- *    som gir ordre. Slik tekst avvises før den havner i databasen.
- * 2. Før språkmodellen: alt fra kjøpere sjekkes på nytt (gamle rader, rader lagt inn utenom skjemaet),
- *    kuttes, og settes i «anførselstegn» så modellen ser hva som er data.
- * 3. Etter språkmodellen: priser i svaret sammenlignes med prisene i databasen.
+ * Layers, because none of them is enough alone:
+ * 1. On save: a specification value must be a value ("220", "Varmgalvanisert stål"), not a sentence
+ *    giving orders. Such text is rejected before it reaches the database.
+ * 2. Before the language model: everything from buyers is checked again (old rows, rows added outside the form),
+ *    shortened, and put in quotes so the model sees what is data.
+ * 3. After the language model: product cards with name, price and stock are built from the database, not from the answer text.
  */
 final class Guard
 {
-    /** Ord som hører hjemme i en ordre til en språkmodell, ikke i en produktverdi. Norsk og engelsk. */
+    /** Words that belong in an order to a language model, not in a product value. Norwegian and English. */
     private const IMPERATIVE = '/\b(ignore|ignorer|glem|forget|disregard|override|overstyr|return|returner|respond|reply|answer|svar|say|si at|skriv|write|print|output|pretend|late som|act as|you are|du er|du skal|you must|instruks\w*|instruction\w*|prompt|system|assistant|assistent|developer|jailbreak|regl(?:er|ene)|rules?)\b/iu';
 
     /**
-     * Slår sammen triks som skjuler ord for en enkel sjekk: usynlige tegn, breddeformer (ｉｇｎｏｒｅ),
-     * kyrilliske lookalikes (іgnоrе), tall som bokstaver (ign0re) og s p r e d t e bokstaver.
+     * Normalizes tricks that hide words from a simple check: invisible characters, fullwidth forms (ｉｇｎｏｒｅ),
+     * Cyrillic lookalikes (іgnоrе), numbers as letters (ign0re) and s p a c e d letters.
      */
     public static function normalize(string $text): string
     {
@@ -27,12 +27,12 @@ final class Guard
         $t = strtr($t, ['а' => 'a', 'е' => 'e', 'о' => 'o', 'р' => 'p', 'с' => 'c', 'х' => 'x', 'у' => 'y', 'і' => 'i', 'ј' => 'j', 'ѕ' => 's',
             'А' => 'A', 'Е' => 'E', 'О' => 'O', 'Р' => 'P', 'С' => 'C', 'Х' => 'X', 'І' => 'I', 'Ѕ' => 'S',
             'υ' => 'u', 'ο' => 'o', 'α' => 'a', 'ε' => 'e', 'ι' => 'i', 'κ' => 'k', 'ν' => 'v', 'ρ' => 'p', 'τ' => 't', 'χ' => 'x', 'Ο' => 'O', 'Α' => 'A', 'Ε' => 'E', 'Κ' => 'K']);
-        // s p r e d t e  b o k s t a v e r  ->  spredte
+        // s p a c e d  l e t t e r s  ->  spaced
         $t = (string) preg_replace_callback('/(?<!\S)(?:\p{L}[ ._\-]){3,}\p{L}(?!\S)/u', fn($m) => preg_replace('/[ ._\-]/u', '', $m[0]), $t);
         return $t;
     }
 
-    /** Grunn til at teksten ikke ser ut som en produktverdi, eller null hvis den er grei. */
+    /** Reason the text doesn't look like a product value, or null if it is fine. */
     public static function suspicious(string $text): ?string
     {
         $t = trim(self::normalize($text));
@@ -46,7 +46,7 @@ final class Guard
         if (preg_match(self::IMPERATIVE, $t) || preg_match(self::IMPERATIVE, $leet)) {
             return 'ser ut som en instruks, ikke en verdi';
         }
-        // Pris, tilbud og lager kommer bare fra Sør-Tre (constitution punkt 1)
+        // Price, offers and stock only come from Sør-Tre (constitution point 1)
         if (preg_match('/\b(kr|kroner|nok|pris\w*|gratis|tilbud\w*|kampanje\w*|rabatt\w*|salg|utsalg|lager\w*|price|free|discount|sale)\b|,-/iu', $t)) {
             return 'handler om pris eller lager, som bare Sør-Tre kan oppgi';
         }
@@ -64,7 +64,7 @@ final class Guard
         return null;
     }
 
-    /** Tydelige forsøk på å styre en språkmodell. Snevrere enn IMPERATIVE, så vanlige anmeldelser ikke stoppes. */
+    /** Clear attempts to steer a language model. Narrower than IMPERATIVE, so ordinary reviews aren't stopped. */
     private const INJECTION = '/\b(?:ignor\w*|glem|forget|disregard|overstyr|override)\b.{0,40}\b(?:instruks\w*|instruction\w*|regl\w*|rules?|alt|all|alle|tidligere|previous|above|ovenfor)\b'
         . '|\b(?:du er nå|du er heretter|you are now|act as|late som|pretend)\b'
         . '|\b(?:system ?prompt\w*|systemmelding\w*|jailbreak|developer mode)\b'
@@ -72,7 +72,7 @@ final class Guard
         . '|\b(?:søren|assistent\w*|assistant|ai|ki|språkmodell\w*|model)\b\s*[,:]'
         . '|<\s*\/?\s*\w+\s*>|https?:|www\./iu';
 
-    /** Forsøk i chatten på å overstyre Søren: «ignorer reglene», «du er nå», «systemprompt» og lignende. */
+    /** Attempts in the chat to override Søren: "ignore the rules", "you are now", "system prompt" and the like. */
     public static function chatInjection(string $text): bool
     {
         $t = mb_strtolower(self::normalize($text));
@@ -81,7 +81,7 @@ final class Guard
             . '|\b(?:system ?prompt\w*|systemmelding\w*|jailbreak|developer mode|dan mode)\b/iu', $t);
     }
 
-    /** For fritekst fra kjøpere (anmeldelser) ved lagring: grunn hvis teksten prøver å styre Søren. */
+    /** For free text from buyers (reviews) on save: a reason if the text tries to steer Søren. */
     public static function injectionInProse(string $text): ?string
     {
         $t = self::normalize($text);
@@ -93,8 +93,8 @@ final class Guard
     }
 
     /**
-     * Fritekst fra kjøper klar for prompten: setninger som ligner ordre, lenker eller rop fjernes,
-     * resten kuttes og settes i «anførselstegn».
+     * Free text from a buyer, ready for the prompt: sentences that look like orders, links or shouting are removed,
+     * the rest is shortened and put in quotes.
      */
     public static function forProse(string $text, int $max = 220): string
     {
@@ -122,13 +122,13 @@ final class Guard
         return "«{$body}»" . ($dropped ? " [{$dropped} setning(er) fjernet fordi de lignet instrukser]" : '');
     }
 
-    /** Ser verdien ut som et tall, eventuelt med enhet eller som mål (1,5 kg, 220, 70x80, 10-20)? */
+    /** Does the value look like a number, possibly with a unit or as dimensions (1,5 kg, 220, 70x80, 10-20)? */
     public static function isNumberish(string $v): bool
     {
         return (bool) preg_match('/^\s*[~≈ca.]*\s*\d[\d\s.,]*(?:\s*[-–x×\/]\s*\d[\d\s.,]*)*\s*\p{L}{0,4}\.?\s*$/u', $v);
     }
 
-    /** Tekst fra kjøper klar for prompten: i anførselstegn, eller skjult hvis den ser mistenkelig ut. */
+    /** Text from a buyer, ready for the prompt: in quotes, or hidden if it looks suspicious. */
     public static function forPrompt(string $text, int $max = 60): string
     {
         if (!Moderation::clean($text)) {

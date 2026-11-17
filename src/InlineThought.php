@@ -2,12 +2,12 @@
 declare(strict_types=1);
 
 /**
- * Deler modellens strøm i resonnement og svar. Søren skriver tankene sine selv, på norsk, inne i
- * <tanker>...</tanker> før svaret, i samme kall. Det er raskere enn innebygd resonnement (DeepSeek-R1),
- * som tenkte lenge og på engelsk, og vi slipper et ekstra kall for å oversette.
+ * Splits the model's stream into reasoning and answer. Søren writes his thoughts himself, in Norwegian, inside
+ * <tanker>...</tanker> before the answer, in the same call. That is faster than built-in reasoning (DeepSeek-R1),
+ * which thought for a long time and in English, and we avoid an extra call to translate.
  *
- * Sikring mot tankeløkker: blir resonnementet lengre enn $maxThought tegn, kastes TooLong.
- * Taggen kan byttes, så samme klasse også skiller ut den korte forklaringen <kort> i produksjon.
+ * Guard against thought loops: if the reasoning gets longer than $maxThought characters, TooLong is thrown.
+ * The tag can be changed, so the same class also separates out the short explanation <kort> in production.
  */
 final class InlineThought
 {
@@ -28,9 +28,9 @@ final class InlineThought
                     $this->buf = substr($trim, strlen($open));
                     $this->state = 'think';
                 } elseif (str_starts_with($open, $trim)) {
-                    return; // kan fortsatt bli taggen
+                    return; // may still become the tag
                 } else {
-                    $this->state = 'answer'; // modellen hoppet over tankene
+                    $this->state = 'answer'; // the model skipped the thoughts
                 }
             } elseif ($this->state === 'think') {
                 $close = "</{$this->tag}>";
@@ -39,7 +39,7 @@ final class InlineThought
                     $this->buf = ltrim(substr($this->buf, $p + strlen($close)));
                     $this->state = 'answer';
                 } elseif (mb_strlen($this->buf) > strlen($close)) {
-                    // hold igjen i tilfelle taggen er delt, og tell tegn så æøå ikke deles i to
+                    // hold back in case the tag is split, and count characters so æøå aren't split in two
                     $emit = mb_substr($this->buf, 0, mb_strlen($this->buf) - strlen($close));
                     $this->think($emit);
                     $this->buf = substr($this->buf, strlen($emit));
@@ -73,5 +73,5 @@ final class InlineThought
     }
 }
 
-/** Kastes når Søren bruker for lang tid eller tenker for lenge. */
+/** Thrown when Søren takes too long or thinks for too long. */
 final class TooLong extends RuntimeException {}

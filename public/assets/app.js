@@ -1,8 +1,8 @@
-// Sørpedia klientkode. Ingen rammeverk, ingen byggesteg.
+// Sørpedia client code. No framework, no build step.
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const CSRF = document.querySelector('meta[name=csrf]')?.content;
-// Tekst på kundens språk. Ordlisten (src/I18nEn.php) skrives inn i siden når språket er engelsk.
+// Text in the customer's language. The word list (src/I18nEn.php) is written into the page when the language is English.
 const tr = (s, v = {}) => (window.I18N?.[s] ?? s).replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
 const LANG = document.querySelector('meta[name=lang]')?.content || 'no';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -12,7 +12,7 @@ const store = {
   del(k, s = localStorage) { try { s.removeItem(k); } catch {} },
 };
 
-// ---------- Søk: innebygd autofullføring (grått forslag, Tab godtar) og tidligere søk ----------
+// ---------- Search: inline autocomplete (grey suggestion, Tab accepts) and earlier searches ----------
 (() => {
   const q = $('#q'), box = $('#suggest'), ghost = $('#ghost');
   if (!q) return;
@@ -32,7 +32,7 @@ const store = {
     return vocab;
   };
 
-  // Hva skal stå grått etter markøren? Tidligere søk først, så kjente fraser, så ord fra katalogen.
+  // What should be grey after the cursor? Earlier searches first, then known phrases, then words from the catalog.
   const complete = (v) => {
     const lv = v.toLowerCase();
     if (!lv.trim() || !vocab) return '';
@@ -41,14 +41,14 @@ const store = {
     if (hit) return hit.slice(lv.length);
     const toks = lv.split(/\s+/);
     const last = toks[toks.length - 1];
-    if (last === '') { // etter mellomrom: neste ord som pleier å følge
+    if (last === '') { // after a space: the next word that usually follows
       const prev = toks[toks.length - 2];
       return vocab.next[prev]?.[0] || '';
     }
     if (last.length >= 2) {
       const w = vocab.words.find(([x]) => x.startsWith(last) && x !== last);
       if (w) return w[0].slice(last.length);
-      if (vocab.next[last]?.[0]) return ' ' + vocab.next[last][0]; // helt ord: foreslå neste, så Tab kan kjedes
+      if (vocab.next[last]?.[0]) return ' ' + vocab.next[last][0]; // whole word: suggest the next one, so Tab can be chained
     }
     return '';
   };
@@ -102,7 +102,7 @@ const store = {
         for (const p of r.products) html += `<a href="${p.url}">${p.img ? `<img src="${p.img}" alt="">` : ''}<span>${esc(p.name)}</span><span class="sp">${esc(p.price)}</span></a>`;
         if (!r.products.length && !r.themes.length && !past.length) html += `<div class="hint">${tr('Ingen treff. Trykk Enter for å søke, eller spør Søren.')}</div>`;
         box.innerHTML = html; box.hidden = false; idx = -1;
-      } catch (e) { /* avbrutt */ }
+      } catch (e) { /* aborted */ }
     }, 150);
   });
   q.addEventListener('keydown', (e) => {
@@ -123,7 +123,7 @@ const store = {
   document.addEventListener('click', (e) => { if (!e.target.closest('.search')) close(); });
 })();
 
-// ---------- Bildegalleri: klikk for å zoome inn, klikk igjen for å zoome ut ----------
+// ---------- Image gallery: click to zoom in, click again to zoom out ----------
 (() => {
   const img = $('#main-img');
   if (!img) return;
@@ -155,13 +155,13 @@ const store = {
   }));
 })();
 
-// ---------- Filtre: virker med en gang du klikker, uten egen knapp ----------
+// ---------- Filters: apply as soon as you click, no separate button ----------
 (() => {
   const form = $('form[data-auto]');
   if (!form) return;
   const results = $('#results');
   const OPEN = 'sorpedia-facets:' + location.pathname;
-  // Husk hvilke grupper kunden har åpnet eller lukket
+  // Remember which groups the customer has opened or closed
   const saved = store.get(OPEN, null, sessionStorage);
   if (saved) $$('details.facet', form).forEach((d) => { if (!d.querySelector('.n-on')) d.open = saved.includes(d.dataset.key); });
   form.addEventListener('toggle', () => store.set(OPEN, $$('details.facet', form).filter((d) => d.open).map((d) => d.dataset.key), sessionStorage), true);
@@ -193,19 +193,19 @@ const store = {
   form.addEventListener('submit', (e) => { e.preventDefault(); clearTimeout(timer); apply(); });
 })();
 
-// ---------- Produktguide: ett spørsmål om gangen, neste spørsmål avhenger av svaret ----------
+// ---------- Product guide: one question at a time, the next question depends on the answer ----------
 (() => {
   const form = $('#quiz');
   if (!form) return;
   form.addEventListener('change', () => setTimeout(() => form.submit(), 150));
 })();
 
-// ---------- Demo-brukere: klikk for å fylle inn ----------
+// ---------- Demo users: click to fill in ----------
 $$('.demo-users tr').forEach((tr) => tr.addEventListener('click', () => {
   $('input[name=email]').value = tr.dataset.email; $('input[name=password]').value = 'admin'; $('input[name=password]').focus();
 }));
 
-// ---------- Sammenligning (lagres i nettleseren) ----------
+// ---------- Compare (stored in the browser) ----------
 (() => {
   const bar = $('#compare-bar');
   const KEY = 'sorpedia-compare';
@@ -232,7 +232,7 @@ $$('.demo-users tr').forEach((tr) => tr.addEventListener('click', () => {
   draw();
 })();
 
-// ---------- Legg i kurv uten sidelasting ----------
+// ---------- Add to cart without a page load ----------
 document.addEventListener('submit', async (e) => {
   const f = e.target;
   if (!f.matches('form.add')) return;
@@ -246,16 +246,16 @@ document.addEventListener('submit', async (e) => {
   } else f.submit();
 });
 
-// ---------- Søren-chat ----------
-// Samtalen lagres i nettleseren, så den overlever sidebytte og at panelet lukkes. Slettes ved utlogging
-// eller med «Ny samtale». Hver melding sender bare adressen til siden du står på; serveren avgjør selv
-// hva Søren får se (bare offentlige produktsider, aldri konto, kurv, ordre eller innlogging).
+// ---------- Søren chat ----------
+// The conversation is stored in the browser, so it survives page changes and closing the panel. Deleted on logout
+// or with "Ny samtale" (new conversation). Each message only sends the address of the page you are on; the server decides
+// what Søren gets to see (only public product pages, never account, cart, orders or login).
 window.Soren = (() => {
   const KEY = 'sorpedia-chat-v2';
   const pageLabel = () => document.querySelector('meta[name=soren-page]')?.content || '';
   const pageUrl = () => location.pathname + location.search;
   let st = store.get(KEY, null) || { open: false, items: [], history: [], ticket: null, since: 0, ctx: null, lang: LANG };
-  // Byttet språk med flagget: ny samtale på det nye språket
+  // Switched language with the flag: new conversation in the new language
   if ((st.lang || 'no') !== LANG) st = { open: st.open, items: [], history: [], ticket: null, since: 0, ctx: null, lang: LANG };
   let panel, log, es, busy = false;
   let mascot = { set() {}, wave() {}, gust() {}, happy() {}, sad() {}, surprised() {}, state: 'idle' };
@@ -266,13 +266,13 @@ window.Soren = (() => {
     if (it.t !== 'bot') return it.t === 'support' ? `<b>${esc(it.name)} (${tr('kundeservice')}):</b> ${esc(it.text)}` : esc(it.text);
     const think = it.think || it.note
       ? `<details class="think"${it.pending && !it.text ? ' open' : ''}><summary>${tr('Sørens resonnement (generert, kan være feil)')}</summary>${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}${esc(it.think)}${it.cut ? `<span class="note cut">${esc(it.cut)}</span>` : ''}</details>` : '';
-    // Anførselstegn rundt hele svaret fjernes
+    // Quotes around the whole answer are removed
     const text = it.pending ? it.text : it.text.replace(/^\s*[“"«„]+/u, '').replace(/[”"»]+\s*$/u, '');
     const body = it.text ? esc(text) : (it.wait ? `<span class="muted">${esc(it.wait)}</span>` : (it.pending ? `<span class="muted">${tr('Søren tenker …')}</span>` : ''));
     return think + body + cardsHtml(it.cards);
   };
-  // Søren står ved siden av svarene sine som et lite hode. Bare det nyeste hodet lever (tenker, blunker),
-  // de eldre står stille, så chatten ikke blir full av bevegelse.
+  // Søren stands next to his answers as a small head. Only the newest head is alive (thinks, blinks),
+  // the older ones stand still, so the chat doesn't fill up with movement.
   const NOOP = { set() {}, wave() {}, gust() {}, happy() {}, sad() {}, surprised() {}, state: 'idle' };
   let liveIt = null;
   const liveAvatar = (it) => {
@@ -296,7 +296,7 @@ window.Soren = (() => {
     log.scrollTop = log.scrollHeight;
   };
   const push = (it) => { st.items.push(it); if (log) draw(it); persist(); return it; };
-  // el er en DOM-node og skal ikke lagres
+  // el is a DOM node and must not be stored
   const plain = () => ({ ...st, items: st.items.slice(-60).map(({ el, av, box, ...rest }) => rest) });
   const persist = () => store.set(KEY, plain());
 
@@ -310,7 +310,7 @@ window.Soren = (() => {
     c.hidden = !label;
     c.innerHTML = `<span>${tr('Søren ser:')}</span> <b>${esc(label)}</b><span class="lock" title="${esc(tr('Søren får bare offentlig produktinfo fra denne siden. Han ser aldri passord, konto, handlekurv eller ordre.'))}">${tr('bare produktinfo')}</span>`;
   };
-  // Husk siste side (feltet over meldingsboksen viser hva Søren ser)
+  // Remember the last page (the field above the message box shows what Søren sees)
   const noteContext = () => {
     const label = pageLabel();
     st.ctx = label || st.ctx; persist();
@@ -348,7 +348,7 @@ window.Soren = (() => {
     persist();
   };
 
-  // Last modellen inn i minnet med en gang chatten åpnes (én gang per side)
+  // Load the model into memory as soon as the chat opens (once per page)
   let warmed = false;
   const warm = () => { if (warmed) return; warmed = true; fetch('/api/chat/warm', { method: 'POST', headers: { 'X-CSRF': CSRF } }).catch(() => {}); };
   const open = (opts = {}) => {
@@ -374,8 +374,8 @@ window.Soren = (() => {
     log.innerHTML = ''; liveIt = null; mascot = NOOP; intro(); noteContext(); mascot.gust(4);
   };
 
-  // Leser en strøm fra Søren inn i meldingen it. it.seen teller hendelsene som er vist, så en ny side kan lese
-  // videre fra samme sted (GET /api/chat/{jobb}?from=seen) hvis kunden bytter side midt i svaret.
+  // Reads a stream from Søren into the message it. it.seen counts the events shown, so a new page can keep reading
+  // from the same place (GET /api/chat/{job}?from=seen) if the customer changes page in the middle of the answer.
   let leaving = false;
   addEventListener('pagehide', () => { leaving = true; });
   addEventListener('beforeunload', () => { leaving = true; });
@@ -415,7 +415,7 @@ window.Soren = (() => {
     status(''); busy = false; persist();
   };
   const failed = (it) => {
-    if (leaving) { persist(); return; } // kunden bytter side: neste side leser videre, ikke vis feil
+    if (leaving) { persist(); return; } // the customer is changing page: the next page keeps reading, don't show an error
     it.pending = false; if (!it.text) it.text = tr('Beklager, noe gikk galt. Prøv igjen, eller snakk med et menneske.'); draw(it);
     mascot.set('idle'); mascot.sad(); status(''); busy = false; persist();
   };
@@ -436,7 +436,7 @@ window.Soren = (() => {
     } catch (e) { failed(it); }
   };
 
-  // Ny side: les videre på svaret Søren holdt på med da kunden byttet side
+  // New page: keep reading the answer Søren was working on when the customer changed page
   const resume = async (it) => {
     busy = true; mascot.set(it.text ? 'talk' : 'think'); status(it.text ? tr('svarer …') : tr('tenker …'));
     try {
@@ -447,7 +447,7 @@ window.Soren = (() => {
     } catch (e) { failed(it); }
   };
 
-  // ---------- Videre til kundeservice ----------
+  // ---------- On to customer service ----------
   const listen = () => {
     es?.close();
     es = new EventSource(`/api/stream?ch=ticket:${st.ticket}` + (st.since ? `&since=${st.since}` : ''));
@@ -479,14 +479,14 @@ window.Soren = (() => {
   });
   $('#soren-open')?.addEventListener('pointerenter', warm, { once: true });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel && !panel.hidden && panel.contains(document.activeElement)) close(); });
-  // Utlogging sletter samtalen, så neste person på samme maskin ikke ser den
+  // Logging out deletes the conversation, so the next person on the same machine doesn't see it
   document.addEventListener('submit', (e) => { if (e.target.matches('[data-logout]')) store.del(KEY); }, true);
   addEventListener('pagehide', persist);
   if (st.open) open({ silent: true });
   return { open };
 })();
 
-// ---------- Kontomenyen: lukkes ved klikk utenfor og med Escape ----------
+// ---------- Account menu: closes on click outside and with Escape ----------
 (() => {
   const menus = () => document.querySelectorAll('details[data-menu][open]');
   document.addEventListener('click', (e) => menus().forEach((m) => { if (!m.contains(e.target)) m.open = false; }));
@@ -496,7 +496,7 @@ window.Soren = (() => {
   });
 })();
 
-// ---------- Meld fra om feil i den åpne versjonen: trekanten på raden, eller høyreklikk på kilden ----------
+// ---------- Report an error in the open version: the triangle on the row, or right click on the source ----------
 (() => {
   const dlg = document.getElementById('report-dialog');
   if (!dlg) return;
