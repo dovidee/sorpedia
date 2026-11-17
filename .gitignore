@@ -1,0 +1,2 @@
+# Lokale innstillinger for docker compose (PORT, OLLAMA_MODEL, SOREN_NUM_CTX)
+.env

@@ -1,0 +1,3 @@
+# Profilbilder er personopplysninger og skal aldri inn i git
+*
+!.gitignore

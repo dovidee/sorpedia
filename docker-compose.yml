@@ -1,0 +1,31 @@
+# Sørpedia lokalt: docker compose up -d, så http://localhost:8080
+# Ollama kjører på maskinen din (ikke i Docker): ollama pull deepseek-r1:8b
+# Annen modell: sett OLLAMA_MODEL (for eksempel gemma3:4b, som er raskere men svakere).
+services:
+  app:
+    build: { context: ., dockerfile: docker/Dockerfile }
+    # Bare denne maskinen. Fjern «127.0.0.1:» for å åpne demoen for andre på nettverket.
+    ports: ["127.0.0.1:${PORT:-8080}:80"]
+    volumes: [".:/var/www/app"]
+    environment:
+      DB_HOST: db
+      DB_NAME: sorpedia
+      DB_USER: sorpedia
+      DB_PASS: sorpedia
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-deepseek-r1:8b}
+      SOREN_FIRST_TOKEN_S: 20
+      SOREN_MAX_ANSWER_S: 150
+      SOREN_NUM_CTX: ${SOREN_NUM_CTX:-8192}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: [db]
+  db:
+    image: mariadb:10.11
+    environment:
+      MARIADB_DATABASE: sorpedia
+      MARIADB_USER: sorpedia
+      MARIADB_PASSWORD: sorpedia
+      MARIADB_ROOT_PASSWORD: sorpedia-root
+    volumes: ["dbdata:/var/lib/mysql"]
+volumes:
+  dbdata:
