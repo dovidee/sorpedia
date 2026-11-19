@@ -1,17 +1,13 @@
-<?php /** @var array $u @var bool $verified */
+<?php /** @var array $u @var bool $verified @var array $orders @var array $reports */
 $alias = Privacy::alias($u, 'anonym');
 $first = Privacy::alias($u, 'fornavn');
 $theme = $u['theme'] ?? 'system';
+$current = '';
+$back = '/innstillinger#meldinger';
 ?>
 <div class="settings">
   <h1><?= t('Innstillinger') ?></h1>
-  <nav class="settings-nav" aria-label="<?= t('Innstillinger') ?>">
-    <a href="#profil"><?= icon('user-round') ?><?= t('Profil') ?></a>
-    <a href="#utseende"><?= icon('sun-moon') ?><?= t('Utseende') ?></a>
-    <a href="#epost"><?= icon('mail') ?><?= t('E-post') ?></a>
-    <a href="#passord"><?= icon('key-round') ?><?= t('Passord') ?></a>
-    <a href="#data"><?= icon('shield-check') ?><?= t('Personvern') ?></a>
-  </nav>
+  <?php require __DIR__ . '/_settings_nav.php' ?>
 
   <section class="block" id="profil">
     <h2><?= t('Profil') ?></h2>
@@ -42,6 +38,23 @@ $theme = $u['theme'] ?? 'system';
       </fieldset>
       <button class="btn"><?= icon('check') ?><?= t('Lagre profil') ?></button>
     </form>
+  </section>
+
+  <section class="block" id="ordrer">
+    <h2><?= t('Ordrer') ?></h2>
+    <?php if ($orders): ?>
+      <ul class="acct-list"><?php foreach (array_slice($orders, 0, 3) as $o) { require __DIR__ . '/_order_row.php'; } ?></ul>
+      <?php if (count($orders) > 3): ?><p><a class="btn ghost small" href="/innstillinger/ordrer"><?= t('Se alle ordrene ({n})', ['n' => count($orders)]) ?><?= icon('arrow-right') ?></a></p><?php endif ?>
+    <?php else: ?><p class="muted"><?= t('Ingen ordrer ennå.') ?></p><?php endif ?>
+  </section>
+
+  <section class="block" id="meldinger">
+    <h2><?= t('Feilmeldinger') ?></h2>
+    <p class="small muted"><?= t('Det du har meldt fra om i den åpne versjonen. Du kan trekke en melding tilbake så lenge en ansatt ikke har behandlet den.') ?></p>
+    <?php if ($reports): ?>
+      <ul class="acct-list"><?php foreach (array_slice($reports, 0, 3) as $r) { require __DIR__ . '/_report_row.php'; } ?></ul>
+      <?php if (count($reports) > 3): ?><p><a class="btn ghost small" href="/innstillinger/meldinger"><?= t('Se alle feilmeldingene ({n})', ['n' => count($reports)]) ?><?= icon('arrow-right') ?></a></p><?php endif ?>
+    <?php else: ?><p class="muted"><?= t('Du har ikke meldt fra om noen feil.') ?></p><?php endif ?>
   </section>
 
   <section class="block" id="utseende">

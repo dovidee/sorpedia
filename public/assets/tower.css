@@ -1,0 +1,198 @@
+/* Control Tower (feature 022). Own shell, dark operations floor. Colours mirror the 3D palette in tower.js. */
+@font-face { font-family: "Archivo"; src: url("/assets/fonts/archivo-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+
+:root {
+  color-scheme: dark;
+  --bg: oklch(19% .012 165); --panel: oklch(22% .013 165); --raise: oklch(26% .014 165);
+  --line: oklch(32% .014 165); --line-strong: oklch(42% .016 165);
+  --ink: oklch(93% .008 90); --muted: oklch(70% .012 120); --faint: oklch(55% .012 140);
+  --belt: oklch(42% .045 155); --birch: oklch(84% .05 80); --amber: oklch(76% .13 70);
+  --red: oklch(60% .2 27); --ok: oklch(72% .12 150);
+  --src-sortre: oklch(72% .11 151); --src-utledet: oklch(80% .11 90); --src-bruker: oklch(74% .1 257); --src-ansatt: oklch(74% .12 294);
+  --font: "Archivo", system-ui, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
+  --ease: cubic-bezier(.22, 1, .36, 1); --dur: 150ms;
+}
+
+html, body, header, main, section, aside, div, fieldset, label, span, ol, ul, li, table, button, input, a, p, dl { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body.tw { background: var(--bg); color: var(--ink); font: 400 13px/1.4 var(--font); font-variant-numeric: tabular-nums; overflow: hidden; }
+h1, h2 { margin: 0; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+h1 { font-size: 13px; }
+h2 { font-size: 11px; color: var(--muted); margin-bottom: var(--s2); }
+button, input { font: inherit; color: inherit; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.tw-muted { color: var(--muted); }
+
+/* Bar */
+.tw-bar { display: flex; align-items: center; gap: var(--s4); height: 48px; padding: 0 var(--s4); border-bottom: 1px solid var(--line); }
+.tw-back { display: grid; place-items: center; width: 36px; height: 36px; color: var(--ink); border: 1px solid var(--line); }
+.tw-back:hover { border-color: var(--line-strong); }
+.tw-back svg { width: 18px; height: 18px; }
+.tw-win { display: flex; border: 1px solid var(--line); margin: 0; padding: 0; }
+.tw-win label { position: relative; }
+.tw-win input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.tw-win span { display: block; padding: 6px 12px; color: var(--muted); transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
+.tw-win input:checked + span { background: var(--raise); color: var(--ink); }
+.tw-win input:focus-visible + span { outline: 2px solid var(--amber); outline-offset: -2px; }
+.tw-st { display: flex; flex-wrap: wrap; gap: 2px; margin: 0; padding: 0; border: 0; }
+.tw-st label { position: relative; }
+.tw-st input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.tw-st span { display: block; padding: 3px 6px; font-size: 11px; color: var(--faint); border: 1px solid var(--line); text-decoration: line-through; }
+.tw-st input:checked + span { color: var(--ink); border-color: var(--line-strong); text-decoration: none; }
+.tw-st input:checked + span.avvik { color: var(--red); border-color: var(--red); }
+.tw-st input:focus-visible + span { outline: 2px solid var(--amber); outline-offset: 1px; }
+.tw-play { display: flex; gap: var(--s1); }
+.tw-play select { background: var(--raise); color: var(--ink); border: 1px solid var(--line-strong); font: inherit; }
+.tw-btn[aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: var(--bg); }
+.tw-count { margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.tw-ty { position: relative; }
+.tw-ty summary { list-style: none; cursor: pointer; padding: 3px 8px; font-size: 11px; border: 1px solid var(--line-strong); color: var(--ink); }
+.tw-ty summary::-webkit-details-marker { display: none; }
+.tw-ty summary b { font-family: var(--mono); font-weight: 400; color: var(--muted); margin-left: var(--s1); }
+.tw-ty fieldset { position: absolute; top: calc(100% + 4px); left: 0; z-index: 5; display: grid; gap: 2px; min-width: 180px; max-height: 60vh; overflow: auto;
+  margin: 0; padding: var(--s2); background: var(--panel); border: 1px solid var(--line-strong); }
+.tw-ty label { display: flex; gap: var(--s2); align-items: center; font-size: 12px; cursor: pointer; }
+.tw-ty input { accent-color: var(--amber); margin: 0; }
+.tw-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tw-live.replay i { background: var(--amber); }
+.tw-live { display: inline-flex; align-items: center; gap: var(--s2); color: var(--muted); }
+.tw-live i { width: 8px; height: 8px; background: var(--faint); }
+.tw-live.on i { background: var(--ok); }
+.tw-live.err i { background: var(--red); }
+
+/* Grid */
+.tw-grid { display: grid; height: calc(100% - 48px); grid-template-columns: minmax(0, 1fr) 340px 260px; grid-template-rows: minmax(0, 1fr) 190px;
+  grid-template-areas: "floor inspect kpi" "flow log kpi"; }
+.tw-floor { grid-area: floor; position: relative; min-height: 0; overflow: hidden; }
+.tw-inspect { grid-area: inspect; border-left: 1px solid var(--line); padding: var(--s4); overflow: auto; }
+.tw-kpi { grid-area: kpi; border-left: 1px solid var(--line); padding: var(--s4); overflow: auto; }
+.tw-flow { grid-area: flow; border-top: 1px solid var(--line); padding: var(--s3) var(--s4); min-width: 0; }
+.tw-log { grid-area: log; border-top: 1px solid var(--line); border-left: 1px solid var(--line); padding: var(--s3) var(--s4); overflow: auto; }
+
+/* Floor */
+.tw-canvas { position: absolute; inset: 0; }
+.tw-canvas canvas { display: block; width: 100%; height: 100%; }
+.tw-labels { position: absolute; inset: 0; pointer-events: none; }
+.tw-label { position: absolute; transform: translate(-50%, -100%); padding: 2px 6px; background: oklch(16% .012 165 / .85); border: 1px solid var(--line-strong);
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.tw-label b { font-weight: 400; color: var(--muted); margin-left: 6px; letter-spacing: 0; font-family: var(--mono); }
+.tw-label.avvik { border-color: var(--red); color: var(--red); }
+.tw-label.hot { background: var(--red); border-color: var(--red); color: var(--ink); }
+.tw-label.hot b { color: var(--ink); }
+.tw-idle { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.tw-table { position: absolute; inset: 0; overflow: auto; padding: var(--s4); }
+.tw-table p { color: var(--amber); }
+
+/* Transport map */
+.tw-map { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+.tw-map[hidden] { display: none; }
+.tw-map-bar { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line); }
+.tw-map-fit { margin-left: auto; display: flex; gap: var(--s1); }
+.tw-demo-big { font-weight: 700; letter-spacing: .12em; padding: 2px 8px; background: var(--amber); color: var(--bg); }
+.tw-map svg { flex: 1; width: 100%; min-height: 0; display: block; cursor: grab; touch-action: none; }
+.tw-map svg.drag { cursor: grabbing; }
+.tw-land { fill: oklch(24% .014 160); stroke: oklch(40% .02 160); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tw-route { fill: none; stroke: oklch(55% .03 150); stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.tw-route.on { stroke: var(--amber); stroke-width: 2.5; }
+.tw-trace { fill: none; stroke: var(--ink); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.tw-city { fill: var(--muted); }
+.tw-vh { cursor: pointer; }
+.tw-vh rect { fill: var(--birch); stroke: var(--bg); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.tw-vh.forsinket rect { fill: var(--red); }
+.tw-vh.levert rect { fill: var(--faint); }
+.tw-vh.stale rect { fill: var(--bg); stroke: var(--birch); stroke-dasharray: 2 2; }
+.tw-vh.on rect { stroke: var(--amber); stroke-width: 3; }
+.tw-vh text { fill: var(--ink); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+.tw-vh .hd { fill: var(--ink); }
+.tw-hdr { display: flex; align-items: center; gap: var(--s2); font-size: 15px; font-weight: 700; margin-bottom: var(--s2); }
+.tw-hdr svg { width: 16px; height: 16px; }
+.tw-prog { position: relative; height: 34px; margin: var(--s2) 0 var(--s4); }
+.tw-prog .ln { position: absolute; left: 0; right: 0; top: 16px; height: 2px; background: var(--line-strong); }
+.tw-prog .done { position: absolute; left: 0; top: 16px; height: 2px; background: var(--amber); }
+.tw-prog .box { position: absolute; top: 6px; transform: translateX(-50%); padding: 2px 6px; background: var(--amber); color: var(--bg); font-size: 10px; font-weight: 700; white-space: nowrap; }
+.tw-prog .end { position: absolute; top: 12px; width: 10px; height: 10px; border: 2px solid var(--line-strong); background: var(--bg); }
+.tw-bar-w { display: flex; height: 10px; margin: var(--s1) 0 var(--s2); background: var(--raise); }
+.tw-bar-w i { display: block; height: 100%; background: var(--birch); border-right: 1px solid var(--bg); }
+
+/* Tables and lists shared by the panels */
+.tw-dl { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--s3); margin: 0 0 var(--s4); }
+.tw-dl dt { color: var(--muted); }
+.tw-dl dd { margin: 0; overflow-wrap: anywhere; }
+.tw-t { width: 100%; border-collapse: collapse; margin-bottom: var(--s4); }
+.tw-t th, .tw-t td { text-align: left; padding: 3px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tw-t th { font-weight: 400; color: var(--muted); padding-right: var(--s2); }
+.tw-t td.n { text-align: right; font-weight: 700; }
+.tw-t button { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; color: var(--ink); }
+.tw-t button:hover { color: var(--amber); }
+.tw-src { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 0 4px; border: 1px solid currentColor; margin-left: var(--s1); }
+.tw-src.sortre { color: var(--src-sortre); }
+.tw-src.utledet { color: var(--src-utledet); }
+.tw-src.bruker { color: var(--src-bruker); }
+.tw-src.ansatt { color: var(--src-ansatt); }
+.tw-demo { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .08em; padding: 0 4px; background: var(--amber); color: var(--bg); margin-left: var(--s1); }
+.tw-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 1px 6px; border: 1px solid var(--line-strong); }
+.tw-tag.avvik { border-color: var(--red); color: var(--red); }
+.tw-miss { color: var(--muted); margin: 0; padding: 0; list-style: none; }
+.tw-miss li { display: inline; }
+.tw-miss li:not(:last-child)::after { content: ", "; }
+
+/* Inspector */
+.tw-inspect h2 { color: var(--ink); font-size: 13px; letter-spacing: 0; text-transform: none; margin-bottom: var(--s1); }
+.tw-inspect h3 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: var(--s4) 0 var(--s2); }
+.tw-item { border-top: 1px solid var(--line); padding: var(--s2) 0; }
+.tw-item p { margin: 0 0 var(--s2); }
+.tw-item blockquote { margin: 0 0 var(--s2); color: var(--muted); white-space: pre-line; }
+.tw-act { display: flex; gap: var(--s2); }
+.tw-reply { display: block; width: 100%; box-sizing: border-box; resize: vertical; margin: 0 0 var(--s2); background: var(--raise); color: var(--ink); border: 1px solid var(--line-strong); font: inherit; padding: var(--s1) var(--s2); }
+.tw-reply:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.tw-item .tw-act { flex-wrap: wrap; }
+.tw-note { margin: var(--s1) 0 0; min-height: 1.2em; color: var(--muted); }
+.tw-note:empty { display: none; }
+.tw-btn { min-height: 32px; padding: 0 var(--s3); border: 1px solid var(--line-strong); background: var(--raise); cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+.tw-btn:hover { border-color: var(--ink); }
+.tw-btn:active { transform: translateY(1px); }
+.tw-btn.go { background: var(--red); border-color: var(--red); }
+.tw-btn[disabled] { opacity: .5; cursor: wait; }
+.tw-err { color: var(--red); }
+.tw-inspect a { color: var(--amber); }
+
+/* KPI */
+.tw-kpi section { margin-bottom: var(--s5); }
+
+/* Throughput chart */
+.tw-chart { height: calc(100% - 24px); }
+.tw-chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.tw-chart .grid { stroke: var(--line); }
+.tw-chart .step { fill: none; stroke: var(--birch); stroke-width: 1.5; }
+.tw-chart text { fill: var(--muted); font-size: 10px; }
+
+/* Log */
+.tw-log ol { list-style: none; margin: 0; padding: 0; }
+.tw-log li button { display: grid; grid-template-columns: 64px 96px 1fr; gap: var(--s2); width: 100%; background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 3px 0; text-align: left; cursor: pointer; color: var(--ink); }
+.tw-log li button:hover, .tw-log li button[aria-pressed="true"] { color: var(--amber); }
+.tw-log time { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.tw-t td.n, .tw-dl dd time { font-family: var(--mono); }
+.tw-msg { margin: 0 0 var(--s2); padding: var(--s2); border-left: 2px solid var(--line-strong); }
+.tw-msg.me { border-left-color: var(--amber); }
+.tw-msg time { font-family: var(--mono); font-size: 11px; margin-left: var(--s1); }
+.tw-chat { margin: 0 0 var(--s3); }
+.tw-chat summary { cursor: pointer; color: var(--muted); }
+.tw-chat p { margin: var(--s1) 0; font-size: 12px; }
+.tw-log .avvik { color: var(--red); }
+
+/* Narrow screens: floor first, inspector as a sheet below, KPIs last */
+@media (max-width: 1100px) {
+  body.tw { overflow: auto; }
+  .tw-bar { flex-wrap: wrap; height: auto; padding: var(--s2) var(--s4); }
+  .tw-grid { height: auto; grid-template-columns: minmax(0, 1fr); grid-template-rows: 60vh auto auto 180px auto;
+    grid-template-areas: "floor" "inspect" "kpi" "flow" "log"; }
+  .tw-inspect, .tw-kpi, .tw-log { border-left: 0; border-top: 1px solid var(--line); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tw-win span, .tw-btn { transition: none; }
+}

@@ -5,13 +5,13 @@ declare(strict_types=1);
 final class Catalog
 {
     public const THEMES = [
-        'lys' => ['Lys og lykter', 'Hodelykter, lommelykter, arbeidslys og batterier'],
-        'bygg' => ['Bygg og feste', 'Hammer, spiker, skruer, beslag og måleverktøy'],
-        'maling' => ['Maling og sparkel', 'Ruller, pensler, sparkel, maskering og slipepapir'],
-        'balkong' => ['Balkong og levegg', 'Balkongglass, stendere og dekklister'],
-        'kjetting' => ['Kjetting og løft', 'Sjakler, kjetting og kroker'],
-        'skog' => ['Skog og ved', 'Sagkjeder, filer, hansker og hørselvern'],
-        'tur' => ['Tur og friluft', 'Kikkerter, grill og kokeutstyr'],
+        'lys' => ['Lys og lykter', 'Hodelykter, lommelykter og arbeidslys til jobb, tur og strømbrudd, med batterier som passer.'],
+        'bygg' => ['Bygg og feste', 'Verktøy og festemidler til snekring: hammer, spiker, skruer, beslag og det du måler med.'],
+        'maling' => ['Maling og sparkel', 'Det du trenger rundt malingen: ruller, pensler, sparkel, maskering og slipepapir.'],
+        'balkong' => ['Balkong og levegg', 'Balkongglass, stendere og lister som tar vinden og innsynet uten å stenge utsikten.'],
+        'kjetting' => ['Kjetting og løft', 'Sjakler, kjetting og kroker til løft, sikring og fortøyning, på land og i båten.'],
+        'skog' => ['Skog og ved', 'Til vedskogen: sagkjeder og filer til motorsagen, hansker og hørselvern.'],
+        'tur' => ['Tur og friluft', 'Kikkerter, grill og kokeutstyr til turen, hytta og båten.'],
     ];
 
     /** Card data for a list of product IDs, in the same order. */
@@ -139,30 +139,64 @@ final class Catalog
         return $st->fetchAll();
     }
 
-    /** Facets for a theme: text values with counts, and min/max for numbers. */
-    public static function facets(string $theme, array $productIds): array
+    /**
+     * The attributes products in a theme can be compared on: facet keys that Sør-Tre states (verified version,
+     * source sortre) for at least $min products, most stated first. Counted from the database.
+     */
+    public static function compareKeys(string $theme, int $min = 4, int $limit = 6): array
+    {
+        $st = db()->prepare("SELECT k.`key`, k.label, k.unit, COUNT(DISTINCT v.product_id) n
+            FROM spec_keys k JOIN spec_values v ON v.`key` = k.`key` AND v.version = 'verifisert' AND v.source = 'sortre'
+            JOIN products p ON p.id = v.product_id AND p.theme = ?
+            WHERE k.is_facet = 1 GROUP BY k.`key`, k.label, k.unit HAVING n >= ? ORDER BY n DESC, k.sort LIMIT " . (int) $limit);
+        $st->execute([$theme, $min]);
+        return $st->fetchAll();
+    }
+
+    /**
+     * Facets for a theme. Which groups exist is decided by the whole theme, but the values and counts
+     * in each group come from the products that match every other active filter, so an option that
+     * would give zero hits disappears. Checked values always stay visible so they can be unchecked.
+     */
+    public static function facets(string $theme, array $f): array
     {
         $st = db()->prepare("SELECT * FROM spec_keys WHERE is_facet = 1 AND (themes IS NULL OR FIND_IN_SET(?, themes)) ORDER BY sort");
         $st->execute([$theme]);
         $keys = $st->fetchAll(PDO::FETCH_UNIQUE);
-        if (!$productIds || !$keys) {
+        $all = self::themeIds($theme);
+        if (!$all || !$keys) {
             return [];
         }
-        $in = implode(',', array_map('intval', $productIds));
         $out = [];
         foreach ($keys as $k => $meta) {
+            $q = db()->quote($k);
+            $in = implode(',', $all);
+            $other = $f;
+            unset($other['v'][$k], $other['min'][$k], $other['max'][$k]);
+            $ids = implode(',', self::filter($theme, $other, 'navn')) ?: '0';
             if ($meta['datatype'] === 'number') {
-                $r = db()->query("SELECT MIN(value_num) lo, MAX(value_num) hi, COUNT(DISTINCT product_id) n FROM spec_values
-                                  WHERE `key` = " . db()->quote($k) . " AND product_id IN ($in)")->fetch();
-                if ($r['n'] >= 2 && $r['lo'] < $r['hi']) {
-                    $out[$k] = $meta + ['type' => 'range', 'lo' => (float) $r['lo'], 'hi' => (float) $r['hi'], 'n' => (int) $r['n']];
+                $whole = db()->query("SELECT MIN(value_num) lo, MAX(value_num) hi, COUNT(DISTINCT product_id) n FROM spec_values WHERE `key` = $q AND product_id IN ($in)")->fetch();
+                if ($whole['n'] < 2 || $whole['lo'] >= $whole['hi']) {
+                    continue;
                 }
+                $r = db()->query("SELECT MIN(value_num) lo, MAX(value_num) hi, COUNT(DISTINCT product_id) n FROM spec_values WHERE `key` = $q AND product_id IN ($ids)")->fetch();
+                $lo = $r['n'] ? $r['lo'] : $whole['lo'];
+                $hi = $r['n'] ? $r['hi'] : $whole['hi'];
+                $out[$k] = $meta + ['type' => 'range', 'lo' => (float) $lo, 'hi' => (float) $hi, 'n' => (int) $r['n']];
             } else {
-                $vals = db()->query("SELECT value_text, COUNT(DISTINCT product_id) n, MAX(source = 'utledet') derived FROM spec_values
-                                     WHERE `key` = " . db()->quote($k) . " AND product_id IN ($in) GROUP BY value_text ORDER BY n DESC")->fetchAll();
-                if (count($vals) >= 2) {
-                    $out[$k] = $meta + ['type' => 'values', 'values' => $vals];
+                $distinct = (int) db()->query("SELECT COUNT(DISTINCT value_text) FROM spec_values WHERE `key` = $q AND product_id IN ($in)")->fetchColumn();
+                if ($distinct < 2) {
+                    continue;
                 }
+                $vals = db()->query("SELECT value_text, COUNT(DISTINCT product_id) n, MAX(source = 'utledet') derived FROM spec_values
+                                     WHERE `key` = $q AND product_id IN ($ids) GROUP BY value_text ORDER BY n DESC")->fetchAll();
+                $shown = array_column($vals, 'value_text');
+                foreach (array_filter((array) ($f['v'][$k] ?? []), 'strlen') as $checked) {
+                    if (!in_array($checked, $shown, true)) {
+                        $vals[] = ['value_text' => $checked, 'n' => 0, 'derived' => 0];
+                    }
+                }
+                $out[$k] = $meta + ['type' => 'values', 'values' => $vals];
             }
         }
         return $out;

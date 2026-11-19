@@ -74,5 +74,20 @@ foreach ($soren['cases'] as $sc) {
     $case($soren['feature'], "{$sc['scenario']} gets " . ($sc['fixed'] ?? 'the model'), $got === $sc['fixed'], 'got ' . ($got ?? 'the model'));
 }
 
+// 015: the violence check against a labeled set. Precision: of the blocked messages, how many were threats.
+// Recall: of the threats, how many were blocked. Each case also fails on its own when it is wrong.
+$v = json_decode((string) file_get_contents(__DIR__ . '/violence.json'), true, 512, JSON_THROW_ON_ERROR);
+$tp = $fp = $fn = 0;
+foreach ($v['cases'] as $vc) {
+    $got = Violence::threat($vc['message']);
+    $tp += $got && $vc['threat'] ? 1 : 0;
+    $fp += $got && !$vc['threat'] ? 1 : 0;
+    $fn += !$got && $vc['threat'] ? 1 : 0;
+    $case($v['feature'], "violence ({$vc['group']}, {$vc['lang']}): \"{$vc['message']}\" " . ($vc['threat'] ? 'is blocked' : 'reaches the model'), $got === $vc['threat'],
+        $got ? 'false positive' : 'missed threat');
+}
+printf("violence check: precision %.2f, recall %.2f (%d threats, %d false positives, %d missed)\n",
+    $tp + $fp ? $tp / ($tp + $fp) : 1, $tp + $fn ? $tp / ($tp + $fn) : 1, $tp + $fn, $fp, $fn);
+
 echo "$n cases, $failed failed\n";
 exit($failed ? 1 : 0);

@@ -117,7 +117,7 @@ final class Extract
             $rule('batteri', '/\b(\d)\s*(?:x|×|stk\.?)\s*(AAA|AA|D|C)\b/u', fn($m) => ["{$m[1]}x{$m[2]}", null]);
             $rule('batteri', '/\b(21700|18650|CR2032|CR123A?)\b/u', fn($m) => [$m[1], null]);
             $rule('batteri', '/\boppladbar/iu', fn($m) => ['Oppladbart', null]);
-            $rule('ip_klasse', '/\bIP\s?([X\d]\d)\b/u', fn($m) => ['IP' . $m[1], null]);
+            $rule('ip_klasse', self::IP, fn($m) => [self::ip($m), null]);
             $rule('brenntid_t', '/Brenntid:?\s*(\d+(?:[.,]\d+)?)\s*t/iu', fn($m) => [$fmt($n($m[1])), $n($m[1])]);
             $rule('fallhoyde_m', '/Støtsikker:?\s*(\d+(?:[.,]\d+)?)\s*m\b/iu', fn($m) => [$fmt($n($m[1])), $n($m[1])]);
         }
@@ -270,12 +270,21 @@ final class Extract
         return array_values($out);
     }
 
+    /** An IP rating as Sør-Tre writes it: «IP68», «IPX4», «IPx-4», «iP67», «IP 54». */
+    private const IP = '/\bIP\s?-?([X\d])-?(\d)\b/iu';
+
+    private static function ip(array $m): string
+    {
+        return 'IP' . strtoupper($m[1]) . $m[2];
+    }
+
     /** Synonyms in Sør-Tre's text => our key and how the value is read. */
     private const SYNONYMS = [
         'vekt' => 'vekt_g', 'vekt inkl. koffert' => 'vekt_g', 'hovedmateriale' => 'materiale', 'materiale' => 'materiale',
         'batteri' => 'batteri', 'batteritype' => 'batteri', 'lysstyrke' => 'lysstyrke_lm', 'effekt' => 'effekt_w',
         'maks effekt' => 'effekt_w', 'forstørrelse' => 'forstorrelse', 'objektivdiameter' => 'objektiv_mm',
-        'vanntetthet' => 'ip_klasse', 'lengde' => 'lengde_mm', 'diameter' => 'diameter_mm', 'bredde' => 'bredde_mm',
+        'vanntetthet' => 'ip_klasse', 'vantetthet' => 'ip_klasse', 'vannresistens' => 'ip_klasse', 'beskyttelsesgrad' => 'ip_klasse',
+        'beskyttelsesklasse' => 'ip_klasse', 'støv og vanntetthet' => 'ip_klasse', 'ip-klasse' => 'ip_klasse', 'kapslingsgrad' => 'ip_klasse', 'lengde' => 'lengde_mm', 'diameter' => 'diameter_mm', 'bredde' => 'bredde_mm',
         'dimensjon' => 'dimensjon_mm', 'sverdlengde' => 'sverdlengde_tomme', 'korning' => 'kornstorrelse',
         'standard' => 'standard', 'oppfyller følgende standarder' => 'standard', 'sertifisering' => 'standard',
         'bruddstyrke' => 'bruddstyrke_kg', 'bruddstyrke kg' => 'bruddstyrke_kg', 'arbeidslast' => 'arbeidslast_kg', 'arbeidslast kg' => 'arbeidslast_kg',
@@ -346,7 +355,7 @@ final class Extract
                     $mapped = $num === null ? null : [$fmt($num), $num];
                     break;
                 case 'ip_klasse':
-                    $mapped = preg_match('/IP\s?([X\d]\d)/u', $val, $ip) ? ['IP' . $ip[1], null] : null;
+                    $mapped = preg_match(self::IP, $val, $ip) ? [self::ip($ip), null] : null;
                     break;
                 case null:
                     break;
@@ -451,8 +460,25 @@ final class Extract
         // Charging: the sentence that says how it is charged (USB-C, magnetic cable, solar cell)
         if (preg_match("/($sent*\b(?:lades|lading|ladekabel|ladbar|oppladbar)\b$sent*)/iu", $text, $m, PREG_OFFSET_CAPTURE)
             && preg_match('/usb|magnet|solcelle|kabel|ladestasjon|ladeboks/iu', $m[1][0])) {
-            $add('lading', trim(mb_substr(trim((string) preg_replace('/^\S*?(?=[A-ZÆØÅ][a-zæøå])/u', '', trim($m[1][0]))), 0, 110)), null, 'sortre', $text, $m[0][1], strlen($m[0][0]), 'Lading', null);
+            $add('lading', self::charging($m[1][0]), null, 'sortre', $text, $m[0][1], strlen($m[0][0]), 'Lading', null);
         }
+    }
+
+    /** The charging method in Sør-Tre's sentence, in short words that compare across products. The sentence is the evidence. */
+    public static function charging(string $sentence): string
+    {
+        $s = mb_strtolower($sentence);
+        $magnet = str_contains($s, 'magnet');
+        $usbc = (bool) preg_match('/usb[\s-]?c/u', $s);
+        $ways = array_filter([
+            $magnet ? ($usbc ? 'Magnetisk ladekabel med USB-C' : (str_contains($s, 'usb') ? 'Magnetisk ladekabel med USB' : 'Magnetisk ladekabel')) : null,
+            !$magnet && $usbc ? 'USB-C-kabel' : null,
+            // «USB 5v1A utgang for lading av mobiltelefon»: the lamp charges other things, which says nothing about how it is charged
+            !$magnet && !$usbc && str_contains($s, 'usb') ? (str_contains($s, 'utgang') ? 'Oppladbar, med USB-utgang som lader mobilen' : 'USB-kabel') : null,
+            str_contains($s, 'solcelle') ? 'Solcelle' : null,
+            preg_match('/ladestasjon|ladeboks/u', $s) ? 'Ladestasjon' : null,
+        ]);
+        return $ways ? implode(', ', $ways) : 'Oppladbar';
     }
 
     public static function plain(string $html): string

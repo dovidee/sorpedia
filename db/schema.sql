@@ -4,7 +4,8 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS chat_messages, chat_conversations, spec_reports, analytics_events, mail_outbox, events, support_messages, support_tickets,
+DROP TABLE IF EXISTS shipment_route_points, shipment_positions, shipment_items, shipments, drivers, vehicles,
+  chat_messages, chat_conversations, spec_reports, analytics_events, mail_outbox, events, support_messages, support_tickets,
   manual_steps, manuals, relations, reviews, order_items, orders, cart_items, users,
   stock, warehouses, spec_values, spec_revisions, spec_keys, product_images,
   product_categories, categories, search_synonyms, products;
@@ -225,7 +226,9 @@ CREATE TABLE support_tickets (
   status      ENUM('apen','pagar','lukket') NOT NULL DEFAULT 'apen',
   summary     VARCHAR(300) NULL,
   chat_log    JSON NULL,                            -- the conversation with the mascot before escalation
-  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  product_id  INT UNSIGNED NULL,                    -- the product the customer confirmed the case is about (feature 022)
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY (product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE support_messages (
@@ -278,7 +281,8 @@ CREATE TABLE mail_outbox (
   to_email   VARCHAR(190) NOT NULL,
   subject    VARCHAR(200) NOT NULL,
   body_html  MEDIUMTEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  read_at    TIMESTAMP NULL                         -- opened in the inbox; NULL counts on the inbox icon
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE search_synonyms (

@@ -13,8 +13,9 @@ services:
       DB_PASS: sorpedia
       OLLAMA_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-deepseek-r1:8b}
-      SOREN_FIRST_TOKEN_S: 20
-      SOREN_MAX_ANSWER_S: 150
+      SOREN_FIRST_TOKEN_S: 60
+      SOREN_MAX_THINK_S: 240
+      SOREN_MAX_ANSWER_S: 480
       SOREN_NUM_CTX: ${SOREN_NUM_CTX:-8192}
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [db]

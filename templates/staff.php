@@ -1,8 +1,9 @@
 <?php /** @var array $revs @var array $keys @var array $gaps @var array $reports */ ?>
 <h1>Flettekø <small class="muted"><?= count($revs) ?> endringer venter</small></h1>
+<p><a class="btn small" href="/ansatt/tarn"><?= icon('warehouse') ?>Kontrolltårn</a></p>
 <p class="muted">Endringer fra verifiserte kjøpere i den åpne versjonen. Flett for å flytte verdien til verifisert versjon med kilde «Ansatt», eller avvis for å fjerne den.</p>
 <div id="live-note" class="note" hidden></div>
-<?php if (!$revs): ?><p>Ingen endringer venter.</p><?php endif ?>
+<?php if (!$revs): ?><div class="empty"><div class="empty-mascot" data-soren="lumber"></div><p class="muted">Ingen endringer venter.</p></div><?php endif ?>
 <?php foreach ($revs as $r): ?>
   <article class="rev">
     <header><a href="/produkt/<?= h($r['slug']) ?>?versjon=apen#spesifikasjoner"><b><?= h($r['product']) ?></b></a>

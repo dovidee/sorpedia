@@ -17,7 +17,18 @@ final class Search
     private const CHAT_STOP = ['greit', 'bruke', 'bruker', 'bra', 'best', 'beste', 'bedre', 'hvilken', 'hvilke', 'hvilket', 'lurer', 'tips',
         'anbefale', 'anbefaler', 'bør', 'dere', 'du', 'din', 'ditt', 'mine', 'hei', 'takk', 'ikke', 'eller', 'om', 'da', 'nå', 'her',
         'der', 'være', 'blir', 'få', 'gjøre', 'mye', 'lite', 'god', 'godt', 'gode', 'okei', 'ok', 'ja', 'nei', 'så', 'også', 'mer',
-        'sånn', 'slik', 'passer', 'egentlig', 'helst', 'vet', 'si', 'fortell', 'kort', 'tenke', 'hvorfor', 'forskjellen', 'disse'];
+        'sånn', 'slik', 'passer', 'egentlig', 'helst', 'vet', 'si', 'fortell', 'kort', 'tenke', 'hvorfor', 'forskjellen', 'disse',
+        // Verbs one letter from a product word («feller» would become «filler»)
+        'feller', 'felle', 'felte'];
+
+    /**
+     * Is the term in the text? Words of four letters or more may sit inside a compound («skrue» in «øyeskrue»).
+     * Shorter ones must be a whole word, so «tre» doesn't find «formtre» and «bor» doesn't find «borte».
+     */
+    private static function inside(string $term, string $text): bool
+    {
+        return mb_strlen($term) >= 4 ? str_contains($text, $term) : (bool) preg_match('/(^|\P{L})' . preg_quote($term, '/') . '($|\P{L})/u', $text);
+    }
 
     /** @return array{ids:int[], corrected:?string, matched:array, themes:string[]} */
     public static function run(string $q, int $limit = 60, bool $prefix = false, bool $strict = false): array
@@ -75,6 +86,9 @@ final class Search
             }
             // Strict (Søren): only one typo, and only in long words, so "greit" doesn't become "rett"
             $best = $strict ? (mb_strlen($w) >= 6 ? self::nearest($w, $vocab, 1) : null) : self::nearest($w, $vocab);
+            if ($best !== null && in_array($best, $stop, true)) {
+                $best = null; // «bor» is not a typo for «for»: a correction to a word that is never searched finds only noise
+            }
             if ($strict && $best === null) {
                 continue; // unknown word in a sentence: skip it instead of guessing
             }
@@ -116,22 +130,22 @@ final class Search
         foreach ($rows as $r) {
             $s = 0;
             $hits = 0;
-            foreach ($fixed as $i => $t) {
-                $isLast = $i === count($fixed) - 1;
-                $re = '/(^|\P{L})' . preg_quote($t, '/') . ($prefix && $isLast ? '' : '') . '/u';
-                if (preg_match($re, $r['n'])) {
-                    $s += 6;
+            foreach ($fixed as $t) {
+                $start = '/(^|\P{L})' . preg_quote($t, '/') . '/u';
+                if (preg_match($start, $r['n'])) {
+                    // The whole word ranks above the start of a longer one («tre» above «trekantskrape»)
+                    $s += preg_match('/(^|\P{L})' . preg_quote($t, '/') . '($|\P{L})/u', $r['n']) ? 7 : 6;
                     $hits++;
-                } elseif (str_contains($r['n'], $t)) {
+                } elseif (self::inside($t, $r['n'])) {
                     $s += 3;
                     $hits++;
-                } elseif (str_contains($r['t'], $t)) {
+                } elseif (self::inside($t, $r['t'])) {
                     $s += 1;
                     $hits++;
                 }
             }
             foreach (array_slice($terms, count($fixed)) as $t) {
-                if (str_contains($r['n'], $t)) {
+                if (self::inside($t, $r['n'])) {
                     $s += 4;
                 }
             }

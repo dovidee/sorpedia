@@ -30,10 +30,19 @@ final class ProductRef
         return array_values(array_unique(array_map('intval', $m[2])));
     }
 
-    /** Removes references to products that weren't in the facts. The rest are kept as references. */
+    /**
+     * Removes references to products that weren't in the facts. The rest are kept as references. Bare product IDs the
+     * model copies from the facts («[[291448]]», «[291448]») mean nothing to the customer and are removed, and so are
+     * markers without a product ID («[[pris]]», «[[id]]») and placeholders («[product]»), since there is nothing to fill in.
+     */
     public static function clean(string $text, array $allowed): string
     {
-        return preg_replace_callback(self::PATTERN, fn($m) => in_array((int) $m[2], $allowed, true) ? $m[0] : '', $text);
+        $text = (string) preg_replace('/\s?\[\[?\d{3,9}\]\]?/u', '', $text);
+        $text = (string) preg_replace('/\s?\[\[(?!(?:pris|lager):\d{1,9}\]\])[^\[\]\n]{0,40}\]\]/u', '', $text);
+        $text = (string) preg_replace('/\s?\[(?:product|produkt|produktnavn|product name|navn|name|pris|price|lager|stock)\](?!\])/iu', '', $text);
+        $text = (string) preg_replace_callback(self::PATTERN, fn($m) => in_array((int) $m[2], $allowed, true) ? $m[0] : '', $text);
+        // Brackets a removed marker left empty, or with only a lead-in such as «(som for eksempel )» or «(for example )»
+        return (string) preg_replace('/\s?\(\s*(?:(?:som|such as|like)\s+)?(?:for eksempel|f\.\s?eks\.?|blant annet|for example|e\.g\.)?[\s,:]*\)/iu', '', $text);
     }
 
     /** Fills in the current price and stock from the database. $allowed = null accepts every product in the catalog. */
