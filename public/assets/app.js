@@ -164,6 +164,8 @@ const store = {
   // Remember which groups the customer has opened or closed
   const saved = store.get(OPEN, null, sessionStorage);
   if (saved) $$('details.facet', form).forEach((d) => { if (!d.querySelector('.n-on')) d.open = saved.includes(d.dataset.key); });
+  // Phones: groups without an active filter start closed, so the products are not pushed below a long form
+  else if (matchMedia('(max-width: 899px)').matches) $$('details.facet', form).forEach((d) => { if (!d.querySelector('.n-on')) d.open = false; });
   form.addEventListener('toggle', () => store.set(OPEN, $$('details.facet', form).filter((d) => d.open).map((d) => d.dataset.key), sessionStorage), true);
 
   let ctrl, timer;
@@ -179,10 +181,17 @@ const store = {
       results.innerHTML = doc.getElementById('results').innerHTML;
       $('#result-count').textContent = doc.getElementById('result-count').textContent;
       $('#filters-reset').hidden = doc.getElementById('filters-reset').hidden;
+      // Facet values and counts depend on the other filters, so refresh them. A text field being typed in keeps its node.
+      const active = document.activeElement;
+      const focus = active && form.contains(active) && active.type === 'checkbox' ? [active.name, active.value] : null;
       $$('details.facet', form).forEach((d) => {
-        const n = doc.querySelector(`details.facet[data-key="${CSS.escape(d.dataset.key)}"] summary`);
-        if (n) d.querySelector('summary').innerHTML = n.innerHTML;
+        const n = doc.querySelector(`details.facet[data-key="${CSS.escape(d.dataset.key)}"]`);
+        if (!n) return;
+        d.hidden = n.hidden;
+        if (d.contains(active) && active.type !== 'checkbox') d.querySelector('summary').innerHTML = n.querySelector('summary').innerHTML;
+        else d.innerHTML = n.innerHTML;
       });
+      if (focus) $$('input[type=checkbox]', form).find((i) => i.name === focus[0] && i.value === focus[1])?.focus();
       history.replaceState(null, '', url);
       document.dispatchEvent(new Event('sorpedia:content'));
     } catch (e) { if (e.name !== 'AbortError') form.submit(); }
@@ -261,8 +270,9 @@ window.Soren = (() => {
   let panel, log, es, busy = false;
   let mascot = { set() {}, wave() {}, gust() {}, happy() {}, sad() {}, surprised() {}, state: 'idle' };
 
-  const cardsHtml = (cards) => cards?.length ? '<div class="chat-cards">' + cards.map((c) =>
-    `<a href="${esc(c.url)}">${c.img ? `<img src="${esc(c.img)}" alt="">` : ''}<span>${esc(c.name)}<br><b>${esc(c.price)}</b> ${esc(c.stock)}</span></a>`).join('') + '</div>' : '';
+  // Cards carry only name, price and stock from the database, so they are labelled as coming from the catalogue
+  const cardsHtml = (cards) => cards?.length ? `<div class="chat-cards"><span class="chat-k">${tr('Fra produktkatalogen')}</span>` + cards.map((c) =>
+    `<a href="${esc(c.url)}">${c.img ? `<img src="${esc(c.img)}" alt="">` : ''}<span><span class="cn">${esc(c.name)}</span><span class="cm"><b>${esc(c.price)}</b><span>${esc(c.stock)}</span>${c.manual ? `<span>${tr('Veiledning')}</span>` : ''}</span></span></a>`).join('') + '</div>' : '';
   const html = (it) => {
     if (it.t !== 'bot') return it.t === 'support' ? `<b>${esc(it.name)} (${tr('kundeservice')}):</b> ${esc(it.text)}` : esc(it.text);
     const think = it.think || it.note
@@ -303,13 +313,32 @@ window.Soren = (() => {
 
   const intro = () => {
     push({ t: 'bot', text: tr('Hei, jeg er Søren! Jeg kan finne produkter, forklare hva som passer sammen og svare på spørsmål om spesifikasjoner. Priser og lager henter jeg alltid fra butikken, ikke fra hukommelsen.') });
-    push({ t: 'sys', text: tr('Søren er en språkmodell som kjører lokalt på denne maskinen. Han ser bare offentlig produktinfo fra siden du er på, aldri kontoen din. Det han tenker er generert og kan være feil.') });
+    push({ t: 'sys', text: tr('Søren er en språkmodell som kjører lokalt på denne maskinen. Han ser offentlig produktinfo fra siden du er på. På en ordre eller i Innstillinger ser han også ordrene dine, men aldri navn, e-post, telefon, adresse eller passord. Det han tenker er generert og kan være feil.') });
   };
-  const status = (s) => { const el = $('.chat-status', panel); if (el) el.textContent = s; };
+  // While an answer streams the log is marked busy, so screen readers read the finished answer once instead of every token
+  const status = (s) => { const el = $('.chat-status', panel); if (el) el.textContent = s; log?.setAttribute('aria-busy', s ? 'true' : 'false'); };
+  // Phones: the panel follows the visible viewport, so the on-screen keyboard never covers the message field
+  const phone = matchMedia('(max-width: 767px)');
+  const fit = () => {
+    if (!panel || panel.hidden) return;
+    const vv = window.visualViewport;
+    panel.style.top = phone.matches && vv ? vv.offsetTop + 'px' : '';
+    panel.style.height = phone.matches && vv ? vv.height + 'px' : '';
+    if (log) log.scrollTop = log.scrollHeight;
+  };
+  window.visualViewport?.addEventListener('resize', fit);
+  window.visualViewport?.addEventListener('scroll', fit);
+  // What Søren gets from this page. The explanation opens on tap, since a hover title never shows on a phone.
   const chip = () => {
     const c = $('.page-chip', panel), label = pageLabel();
+    const own = document.querySelector('meta[name=soren-scope]')?.content === 'konto';
     c.hidden = !label;
-    c.innerHTML = `<span>${tr('Søren ser:')}</span> <b>${esc(label)}</b><span class="lock" title="${esc(tr('Søren får bare offentlig produktinfo fra denne siden. Han ser aldri passord, konto, handlekurv eller ordre.'))}">${tr('bare produktinfo')}</span>`;
+    c.innerHTML = `<span>${tr('Søren ser:')}</span> <b>${esc(label)}</b><button type="button" class="lock" aria-expanded="false" aria-controls="soren-scope">${own ? tr('dine ordrer') : tr('bare produktinfo')}</button>`
+      + `<p class="scope" id="soren-scope" hidden>${own
+        ? tr('Søren ser varene, datoen, status, betalingsmåten og angrefristen, så han kan svare på spørsmål om ordren. Han ser aldri navn, e-post, telefon, adresse, passord eller hva du betalte.')
+        : tr('Søren får bare offentlig produktinfo fra denne siden. Han ser aldri passord, handlekurv, navn, e-post eller adresse.')}</p>`;
+    const b = $('.lock', c), p = $('.scope', c);
+    b.onclick = () => { p.hidden = !p.hidden; b.setAttribute('aria-expanded', String(!p.hidden)); };
   };
   // Remember the last page (the field above the message box shows what Søren sees)
   const noteContext = () => {
@@ -321,11 +350,13 @@ window.Soren = (() => {
     panel = document.createElement('section');
     panel.className = 'chat'; panel.hidden = true;
     panel.setAttribute('aria-label', tr('Chat med Søren'));
-    panel.innerHTML = `<header><div class="chat-title"><b>Søren</b><br><small>${tr('KI-assistent, kjører lokalt')}</small><span class="chat-status" aria-live="polite"></span></div>
+    panel.innerHTML = `<header>
+        <div class="chat-title"><b>Søren</b><span class="chat-sys"><span class="sys-t">${tr('KI-assistent, kjører lokalt')}</span><span class="chat-status" aria-live="polite"></span></span></div>
         <div class="chat-btns"><button class="new" type="button" title="${tr('Start en ny samtale')}">${tr('Ny samtale')}</button><button class="x" type="button" aria-label="${tr('Lukk')}">×</button></div></header>
       <div class="log" role="log"></div>
       <div class="page-chip" hidden></div>
-      <form><input name="m" placeholder="${tr('Spør om produkter, mål eller hva som passer')}" autocomplete="off" aria-label="${tr('Melding til Søren')}"><button class="btn small">${tr('Send')}</button></form>
+      <form><label class="sr" for="soren-m">${tr('Spør Søren')}</label>
+        <div class="ask"><input id="soren-m" name="m" placeholder="${tr('Spør om produkter, mål eller hva som passer')}" autocomplete="off"><button class="send" aria-label="${tr('Send')}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div></form>
       <p class="human"><a href="#" data-human>${tr('Snakk med et menneske i stedet')}</a></p>`;
     document.body.append(panel);
     log = $('.log', panel);
@@ -355,8 +386,10 @@ window.Soren = (() => {
   const open = (opts = {}) => {
     warm();
     if (!panel) build();
-    const wasHidden = panel.hidden;
+    const wasHidden = panel.hidden || panel.classList.contains('closing');
+    panel.classList.remove('closing');
     panel.hidden = false;
+    aim();
     document.body.classList.add('chat-open');
     st.open = true;
     chip(); noteContext();
@@ -365,10 +398,25 @@ window.Soren = (() => {
     if (opts.ask && !i.value) { i.value = opts.ask; i.select(); }
     if (pageLabel()) i.placeholder = tr('Spør om {x}', { x: pageLabel() });
     if (!opts.silent) i.focus();
+    fit();
     log.scrollTop = log.scrollHeight;
     persist();
   };
-  const close = () => { panel.hidden = true; document.body.classList.remove('chat-open'); st.open = false; persist(); };
+  // The panel grows out of Søren's head and is pulled back into it: the transform origin sits on the launcher
+  const aim = () => {
+    const f = $('#soren-open')?.getBoundingClientRect(); // offsetLeft/Top ignore the running transform
+    if (f && f.width) panel.style.transformOrigin = `${f.left + f.width / 2 - panel.offsetLeft}px ${f.top + f.height / 2 - panel.offsetTop}px`;
+  };
+  const close = () => {
+    const inside = panel.contains(document.activeElement);
+    document.body.classList.remove('chat-open'); st.open = false; persist();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { panel.hidden = true; }
+    else {
+      aim(); panel.classList.add('closing');
+      panel.addEventListener('animationend', () => { if (panel.classList.contains('closing')) { panel.hidden = true; panel.classList.remove('closing'); } }, { once: true });
+    }
+    if (inside) $('#soren-open')?.focus(); // focus goes back to the launcher
+  };
   const reset = () => {
     es?.close(); es = null;
     st = { open: true, items: [], ticket: null, since: 0, ctx: null, lang: LANG, fresh: true };
@@ -459,10 +507,49 @@ window.Soren = (() => {
     });
     es.onerror = () => { if (es.readyState === EventSource.CLOSED) push({ t: 'sys', text: tr('Mistet kontakten med kundeservice.') }); };
   };
+  // The case is tied to one product from the catalog. Søren does not search for it: the customer confirms the product
+  // on the page, or picks one with the same suggestions as the search field.
+  let picking = false;
+  const pickProduct = () => new Promise((done) => {
+    const box = document.createElement('div');
+    box.className = 'msg bot pick';
+    log.append(box);
+    const finish = (p) => { box.remove(); picking = false; done(p); };
+    const ask = (p) => {
+      box.innerHTML = `<p>${tr('Gjelder saken dette produktet?')}</p><p><b>${esc(p.name)}</b></p>
+        <div class="pick-btns"><button type="button" class="btn small" data-yes>${tr('Ja')}</button><button type="button" class="btn small ghost" data-other>${tr('Et annet produkt')}</button></div>`;
+      $('[data-yes]', box).onclick = () => finish(p);
+      $('[data-other]', box).onclick = search;
+      log.scrollTop = log.scrollHeight;
+    };
+    const search = () => {
+      box.innerHTML = `<label for="pick-q">${tr('Hvilket produkt gjelder saken? Velg fra listen.')}</label><input id="pick-q" autocomplete="off">
+        <ul class="pick-list"></ul><button type="button" class="btn small ghost" data-cancel>${tr('Avbryt')}</button>`;
+      const q = $('#pick-q', box), ul = $('.pick-list', box);
+      let ctrl;
+      q.oninput = async () => {
+        ctrl?.abort();
+        if (q.value.trim().length < 2) { ul.innerHTML = ''; return; }
+        ctrl = new AbortController();
+        const r = await fetch('/api/suggest?q=' + encodeURIComponent(q.value), { signal: ctrl.signal }).then((r) => r.json()).catch(() => null);
+        if (r) ul.innerHTML = r.products.map((p) => `<li><button type="button" data-id="${+p.id}">${esc(p.name)}</button></li>`).join('');
+      };
+      ul.onclick = (e) => { const b = e.target.closest('button[data-id]'); if (b) ask({ id: +b.dataset.id, name: b.textContent }); };
+      $('[data-cancel]', box).onclick = () => finish(null);
+      q.focus();
+      log.scrollTop = log.scrollHeight;
+    };
+    fetch('/api/support/produkt?page=' + encodeURIComponent(location.pathname)).then((r) => r.json()).catch(() => ({}))
+      .then((c) => (c.product ? ask(c.product) : search()));
+  });
   const human = async () => {
     if (st.ticket) return push({ t: 'sys', text: `Du er allerede koblet til kundeservice (sak #${st.ticket}).` });
+    if (picking) return;
+    picking = true;
+    const p = await pickProduct();
+    if (!p) return;
     const r = await fetch('/api/support', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': CSRF },
-      body: JSON.stringify({ product: null }) }).then((r) => r.json()).catch(() => null);
+      body: JSON.stringify({ product: p.id }) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (!r) return push({ t: 'sys', text: tr('Kunne ikke kontakte kundeservice.') });
     st.ticket = r.ticket;
     push({ t: 'sys', text: `Sak #${r.ticket} er opprettet. En fra kundeservice ser hele samtalen og svarer her.` });
@@ -475,7 +562,9 @@ window.Soren = (() => {
 
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-open-soren], #soren-open');
-    if (t) { e.preventDefault(); open({ ask: t.dataset.ask }); }
+    if (!t) return;
+    e.preventDefault();
+    if (t.id === 'soren-open' && panel && !panel.hidden && !panel.classList.contains('closing')) close(); else open({ ask: t.dataset.ask });
   });
   $('#soren-open')?.addEventListener('pointerenter', warm, { once: true });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel && !panel.hidden && panel.contains(document.activeElement)) close(); });
@@ -484,6 +573,25 @@ window.Soren = (() => {
   addEventListener('pagehide', persist);
   if (st.open) open({ silent: true });
   return { open };
+})();
+
+// ---------- Help menu in the category bar: a native popover placed under its button ----------
+// The bar scrolls sideways on small screens, so the menu lives in the top layer instead of inside the bar.
+(() => {
+  const pop = document.getElementById('help-menu');
+  const btn = document.querySelector('[popovertarget="help-menu"]');
+  if (!pop || !btn || !pop.showPopover) return;
+  btn.setAttribute('aria-expanded', 'false');
+  const close = () => pop.hidePopover();
+  pop.addEventListener('toggle', (e) => {
+    const open = e.newState === 'open';
+    btn.setAttribute('aria-expanded', String(open));
+    if (!open) return removeEventListener('scroll', close);
+    const r = btn.getBoundingClientRect();
+    pop.style.top = `${r.bottom + 6}px`;
+    pop.style.left = `${Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8))}px`;
+    addEventListener('scroll', close, { passive: true, once: true });
+  });
 })();
 
 // ---------- Account menu: closes on click outside and with Escape ----------
@@ -525,8 +633,47 @@ window.Soren = (() => {
     try {
       const r = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
       const d = await r.json();
-      msg.textContent = d.message;
-      if (d.ok) setTimeout(() => dlg.close(), 1800); else send.disabled = false;
+      if (!d.ok) { msg.textContent = d.message; send.disabled = false; return; }
+      dlg.close();
+      // Logged in: a receipt is in the inbox, so the counter goes up and the notice links to it
+      const count = document.getElementById('inbox-count');
+      if (count && d.unread !== null) { count.textContent = d.unread; count.hidden = !d.unread; }
+      toast(d.message, d.unread !== null ? { href: '/innboks', label: tr('Se innboksen') } : null);
     } catch { msg.textContent = tr('Klarte ikke å sende. Prøv igjen.'); send.disabled = false; }
   });
+})();
+
+// ---------- Short notice in the bottom left corner. Goes away by itself, or with the cross. ----------
+function toast(text, link = null) {
+  document.querySelector('.toast')?.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.setAttribute('role', 'status');
+  const p = document.createElement('span');
+  p.textContent = text + ' ';
+  if (link) { const a = document.createElement('a'); a.href = link.href; a.textContent = link.label; p.append(a); }
+  const x = document.createElement('button');
+  x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', tr('Lukk'));
+  x.addEventListener('click', () => el.remove());
+  el.append(p, x);
+  document.body.append(el);
+  setTimeout(() => el.remove(), 9000);
+}
+
+// ---------- Home banner: the sawdust sequence starts only once every frame is decoded, so no layer pops in late ----------
+(() => {
+  const hero = $('[data-saw]');
+  if (!hero) return;
+  const loaded = (img) => img.complete ? Promise.resolve() : new Promise((r) => { img.addEventListener('load', r, { once: true }); img.addEventListener('error', r, { once: true }); });
+  Promise.all($$('img', hero).map(loaded)).then(() => requestAnimationFrame(() => hero.classList.add('go')));
+})();
+
+// ---------- Section reveal: each marked section fades in once when it reaches the viewport ----------
+(() => {
+  const els = $$('.reveal');
+  if (!els.length || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }), { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
+  els.forEach((el) => { if (el.getBoundingClientRect().top > innerHeight) { el.classList.add('pending'); io.observe(el); } });
 })();

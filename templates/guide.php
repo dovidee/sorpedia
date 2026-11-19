@@ -6,6 +6,7 @@ $left = isset($answers['oppgave']) ? count(Guide::candidates($answers)) : null;
 <div class="guide">
   <div class="guide-head">
     <div><h1><?= t('Produktguiden') ?></h1><p><?= t('Noen raske spørsmål, fra bredt til smalt. Hvert svar bestemmer neste spørsmål.') ?></p></div>
+    <div class="guide-mascot" data-soren="lumber"></div>
   </div>
   <?php if ($asked): ?>
     <ol class="quiz-done">
@@ -19,7 +20,7 @@ $left = isset($answers['oppgave']) ? count(Guide::candidates($answers)) : null;
     <form method="get" action="/guide" class="quiz" id="quiz">
       <?php foreach ($asked as [$k]): ?><input type="hidden" name="<?= h($k) ?>" value="<?= h($answers[$k]) ?>"><?php endforeach ?>
       <fieldset class="q">
-        <legend><span class="step"><?= t('Spørsmål {n}', ['n' => count($asked) + 1]) ?><?= $left !== null ? ' · ' . t('{n} produkter passer', ['n' => $left]) : '' ?></span><?= h(t($question)) ?></legend>
+        <legend><span class="step"><?= t('Spørsmål {n}', ['n' => count($asked) + 1]) ?><?php if ($left !== null): ?><span class="step-left"><?= t('{n} produkter passer', ['n' => $left]) ?></span><?php endif ?></span><?= h(t($question)) ?></legend>
         <div class="opts">
           <?php foreach ($options as $v => $label): ?>
             <label class="opt"><input type="radio" name="<?= h($key) ?>" value="<?= h((string) $v) ?>" required><span><?= h(t($label)) ?></span></label>

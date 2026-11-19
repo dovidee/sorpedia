@@ -34,6 +34,7 @@ return [
         $out = ProductRef::clean('Den koster [[pris:' . $other . ']] og [[pris:' . $p['id'] . ']].', [(int) $p['id']]);
         check($out === 'Den koster  og [[pris:' . $p['id'] . ']].', 'clean: ' . $out);
         check(ProductRef::resolve('[[pris:999999999]]', null) === '', 'unknown product resolved');
+        check(ProductRef::clean('Lykten [[291448]] og [291449] lades', []) === 'Lykten og lades', 'bare product IDs were kept');
     },
 
     'a price reference becomes the price in the database' => function () use ($one) {

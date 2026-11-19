@@ -1,6 +1,7 @@
 <?php
 // Demo assembly guides (feature 011). The texts are written as examples and are marked as demo.
-// Run from import.php. Also makes PDFs with LibreOffice if it is installed.
+// Run from import.php, or from manual_pdfs.php to print only the PDFs. The PDFs are printed with headless Chrome
+// (scripts/manual_pdf.php); without a browser the PDFs already in public/media/manuals are kept.
 
 declare(strict_types=1);
 
@@ -13,6 +14,13 @@ $manuals = [
         'intro' => 'Slik setter du opp et glassfelt med stendere og dekklist. Regn med cirka en time per felt for to personer.',
         'tools' => 'Vater, tommestokk, blyant, drill med 6 mm bor, skrutrekker, gummiklubbe',
         'match' => 'cat:7678,7680,7679',
+        'en' => ['title' => 'Installing balcony glass with VindFix posts', 'intro' => 'How to put up one glass panel with posts and a top cover. Allow about an hour per panel for two people.',
+            'tools' => 'Spirit level, folding rule, pencil, drill with 6 mm bit, screwdriver, rubber mallet', 'steps' => [
+            ['Measure and mark', 'Measure the width of the glass and add 2 cm. Mark the centre of each post along the railing. Check that the post height suits the glass height, for example an 80.1 cm post for 80 cm glass.'],
+            ['Fix the posts', 'Pre-drill with a 6 mm bit. Screw the posts in place and check with a spirit level that they are plumb both ways before tightening fully.'],
+            ['Fit the glass', 'Lay the rubber strip in the groove. Lift the glass in from above, two people. Tap gently with a rubber mallet until the glass sits evenly.'],
+            ['Fit the top cover', 'Click the top cover onto the glass and the posts. It protects the edge and gives a neat finish.'],
+        ]],
         'steps' => [
             ['Mål opp og merk', 'Mål bredden på glasset og legg til 2 cm. Merk senter for hver stender langs rekkverket. Sjekk at stenderhøyden passer glasshøyden, for eksempel 80,1 cm stender til 80 cm glass.',
                 $svg("<rect x='20' y='90' width='200' height='12'/><line x1='60' y1='70' x2='60' y2='110'/><line x1='180' y1='70' x2='180' y2='110'/><line x1='60' y1='60' x2='180' y2='60' stroke-dasharray='5 5'/><text x='98' y='52' fill='currentColor' stroke='none' font-size='14'>bredde + 2 cm</text>")],
@@ -29,6 +37,13 @@ $manuals = [
         'intro' => 'Et skarpt kjede kutter raskere og tryggere. Bruk riktig rundfil: 4,0 mm til 3/8″ LP og 4,8 mm til .325″.',
         'tools' => 'Rundfil i riktig størrelse, filholder, flatfil og dybdemåler, hansker',
         'match' => 're:sagkjede|rundfil|filsett',
+        'en' => ['title' => 'Sharpening the chainsaw chain', 'intro' => 'A sharp chain cuts faster and more safely. Use the right round file: 4.0 mm for 3/8″ LP and 4.8 mm for .325″.',
+            'tools' => 'Round file in the right size, file holder, flat file and depth gauge, gloves', 'steps' => [
+            ['Lock the bar', 'Clamp the saw in a vice or on a stump. Tension the chain slightly so it does not tip. Wear gloves.'],
+            ['File each tooth', 'Hold the file at 30 degrees, as marked on the file holder. File from the inside out, 3 to 5 strokes per tooth. File every other tooth, turn the saw and do the rest.'],
+            ['Adjust the depth gauges', 'Lay the depth gauge over the chain and file down what sticks up with the flat file. Round off the front edge.'],
+            ['Check and lubricate', 'All teeth should be the same length. Check the chain tension and fill chain oil before you start.'],
+        ]],
         'steps' => [
             ['Lås sverdet', 'Sett sagen fast i en skrustikke eller på en stubbe. Stram kjedet litt så det ikke vipper. Bruk hansker.',
                 $svg("<rect x='30' y='60' width='180' height='26' rx='13'/><rect x='20' y='86' width='40' height='40'/><line x1='40' y1='86' x2='40' y2='126'/>")],
@@ -45,6 +60,13 @@ $manuals = [
         'intro' => 'Velg sjakkel med samme eller én dimensjon større enn kjettingen, og sjekk at arbeidslasten holder for jobben.',
         'tools' => 'Tang eller fastnøkkel, eventuelt stålvaier eller strips for å sikre bolten',
         'match' => 'cat:7504,7499,7220',
+        'en' => ['title' => 'Connecting a shackle and chain safely', 'intro' => 'Choose a shackle of the same size as the chain or one size larger, and check that the working load is enough for the job.',
+            'tools' => 'Pliers or spanner, optionally steel wire or cable ties to secure the pin', 'steps' => [
+            ['Choose the right size', 'An 8 mm chain fits an 8 to 10 mm shackle. Check the working load limit (WLL) on both. The lower one applies.'],
+            ['Insert the pin', 'Place the last chain link in the shackle. Screw the pin all the way in until it bottoms out, then back a quarter turn.'],
+            ['Secure the pin', 'For mooring and fixed installations: secure the pin with a cable tie or wire through the hole so it cannot unscrew.'],
+            ['Load it straight', 'The shackle must be loaded along its length. Side loading greatly reduces its strength.'],
+        ]],
         'steps' => [
             ['Velg riktig dimensjon', 'Kjetting på 8 mm passer sjakkel på 8 til 10 mm. Sjekk arbeidslasten (WLL) på begge. Den laveste gjelder.',
                 $svg("<ellipse cx='70' cy='70' rx='26' ry='16'/><ellipse cx='110' cy='70' rx='26' ry='16'/><path d='M150 45 q40 0 40 25 q0 25 -40 25'/><line x1='150' y1='45' x2='150' y2='95'/>")],
@@ -61,6 +83,13 @@ $manuals = [
         'intro' => 'Med riktig forarbeid og rulleteknikk blir taket jevnt. Mal i én økt uten pause så kantene ikke tørker.',
         'tools' => 'Rulle med skaft, rullebrett, pensel, malertape, sparkel, sandpapir korn 120',
         'match' => 'cat:7364,7179,7193,7206,7253',
+        'en' => ['title' => 'Painting an indoor ceiling without streaks', 'intro' => 'With the right preparation and rolling technique the ceiling comes out even. Paint in one session without breaks so the edges do not dry.',
+            'tools' => 'Roller with pole, roller tray, brush, masking tape, filler, sandpaper grit 120', 'steps' => [
+            ['Fill and sand', 'Fill holes and cracks with filler. Let it dry, sand with grit 120 and wipe off the dust.'],
+            ['Mask the edges', 'Tape along walls, mouldings and lamps. Press the tape down firmly so the paint does not creep under.'],
+            ['Cut in with a brush', 'Paint a 5 cm strip along the edges with a brush before you roll.'],
+            ['Roll wet on wet', 'Roll in sections of about one square metre, first crosswise, then smooth out in one direction, towards the light from the window.'],
+        ]],
         'steps' => [
             ['Sparkle og slip', 'Fyll hull og sprekker med sparkel. La tørke, slip med korn 120 og tørk av støvet.',
                 $svg("<rect x='20' y='20' width='200' height='30'/><circle cx='80' cy='35' r='4'/><path d='M120 70 l40 -20 l10 10 l-40 20 z'/>")],
@@ -77,6 +106,12 @@ $manuals = [
         'intro' => 'Core-modellene bruker magnetisk ladekabel for H/HF og P Core. MH-kabelen passer ikke.',
         'tools' => 'Magnetisk ladekabel for Core-serien, USB-lader',
         'match' => 're:Ledlenser.*Core|Ledlenser Batteri|Ladekabel',
+        'en' => ['title' => 'Charging and replacing the battery in a Ledlenser Core headlamp', 'intro' => 'The Core models use a magnetic charging cable for H/HF and P Core. The MH cable does not fit.',
+            'tools' => 'Magnetic charging cable for the Core series, USB charger', 'steps' => [
+            ['Choose the right cable', 'Use «Ladekabel USB/magnetisk lading H/HF og P Core». The cable for the MH series does not fit Core.'],
+            ['Connect', 'Hold the magnet against the charging point on the back of the battery box. The lamp shows red while charging and green when full.'],
+            ['Replace the battery', 'Open the battery cover, take out the 21700 cell and insert a new one with plus towards the mark. Use Ledlenser Batteri 21700 for H7R Core.'],
+        ]],
         'steps' => [
             ['Velg riktig kabel', 'Bruk «Ladekabel USB/magnetisk lading H/HF og P Core». Kabelen for MH-serien passer ikke Core.',
                 $svg("<rect x='30' y='50' width='70' height='40' rx='10'/><circle cx='65' cy='70' r='10'/><path d='M100 70 h40 q20 0 20 20 v30'/><circle cx='140' cy='70' r='5'/>")],
@@ -88,34 +123,35 @@ $manuals = [
     ],
 ];
 
+require_once __DIR__ . '/manual_pdf.php';
+$pdfDir = APP_ROOT . '/public/media/manuals';
+@mkdir($pdfDir, 0775, true);
+$tmp = APP_ROOT . '/data/manuals-tmp';
+@mkdir($tmp, 0775, true);
+// One PDF per language: {slug}.pdf in Norwegian and {slug}-en.pdf in English. The page links the one matching the language toggle.
+$labels = [
+    'no' => ['lang' => 'nb', 'guide' => 'Veiledning', 'steps' => 'Steg', 'kit' => 'Utstyr', 'need' => 'Du trenger', 'count' => '{n} steg', 'width' => 'bredde',
+        'demo' => 'Demoveiledning, ikke fra produsenten. Følg alltid produsentens anvisning.',
+        'back' => 'Sørpedia er en prototype og er ikke tilknyttet Sør-Tre AS. Veiledningen er laget for demoen.'],
+    'en' => ['lang' => 'en', 'guide' => 'Guide', 'steps' => 'Steps', 'kit' => 'Equipment', 'need' => 'You need', 'count' => '{n} steps', 'width' => 'width',
+        'demo' => 'Demo guide, not from the manufacturer. Always follow the manufacturer\'s instructions.',
+        'back' => 'Sørpedia is a prototype and is not affiliated with Sør-Tre AS. This guide was made for the demo.'],
+];
+foreach ($manuals as $m) {
+    $en = $m['en'] + ['theme' => $m['theme']];
+    $en['steps'] = array_map(fn($t, $s) => [$t[0], $t[1], str_replace('bredde', $labels['en']['width'], $s[2])], $en['steps'], $m['steps']);
+    manual_pdf($m, $labels['no'], $tmp, "$pdfDir/{$m['slug']}.pdf");
+    manual_pdf($en, $labels['en'], $tmp, "$pdfDir/{$m['slug']}-en.pdf");
+}
+if (defined('MANUALS_PDF_ONLY')) {
+    return count($manuals);
+}
+
 $pdo = db();
 $insM = $pdo->prepare('INSERT INTO manuals (slug, title, theme, intro, tools, pdf_path, match_rule) VALUES (?,?,?,?,?,?,?)');
 $insS = $pdo->prepare('INSERT INTO manual_steps (manual_id, step_no, title, body, svg) VALUES (?,?,?,?,?)');
-$pdfDir = APP_ROOT . '/public/media/manuals';
-@mkdir($pdfDir, 0775, true);
-$soffice = trim((string) shell_exec('command -v soffice 2>/dev/null'));
-$tmp = APP_ROOT . '/data/manuals-tmp';
-@mkdir($tmp, 0775, true);
 foreach ($manuals as $m) {
-    $pdf = null;
-    if ($soffice) {
-        $html = '<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;margin:30px}svg{width:300px;color:#1f6b3a}h2{margin-top:28px}.demo{color:#a23a2a}</style></head><body>'
-            . '<h1>' . h($m['title']) . '</h1><p class="demo">Demoveiledning. Ikke fra produsenten.</p><p>' . h($m['intro']) . '</p><p><b>Du trenger:</b> ' . h($m['tools']) . '</p>';
-        foreach ($m['steps'] as $i => [$t, $b, $s]) {
-            // LibreOffice drops inline SVG, so the illustration is added as an image file
-            $file = "{$m['slug']}-" . ($i + 1) . '.svg';
-            file_put_contents("$tmp/$file", str_replace(['currentColor', '<svg '], ['#1f6b3a', '<svg width="360" height="210" '], $s));
-            $html .= '<h2>' . ($i + 1) . '. ' . h($t) . '</h2><p>' . h($b) . '</p><img src="' . $file . '" width="360" height="210">';
-        }
-        file_put_contents("$tmp/{$m['slug']}.html", $html . '</body></html>');
-        shell_exec('cd ' . escapeshellarg($tmp) . ' && timeout 60 ' . escapeshellarg($soffice) . ' --headless --convert-to pdf:writer_web_pdf_Export ' . escapeshellarg("{$m['slug']}.html") . ' --outdir ' . escapeshellarg($pdfDir) . ' >/dev/null 2>&1');
-        if (is_file("$pdfDir/{$m['slug']}.pdf")) {
-            $pdf = "media/manuals/{$m['slug']}.pdf";
-        }
-    }
-    if (!$pdf && is_file("$pdfDir/{$m['slug']}.pdf")) {
-        $pdf = "media/manuals/{$m['slug']}.pdf"; // already generated, e.g. in Docker without LibreOffice
-    }
+    $pdf = is_file("$pdfDir/{$m['slug']}.pdf") ? "media/manuals/{$m['slug']}.pdf" : null;
     $insM->execute([$m['slug'], $m['title'], $m['theme'], $m['intro'], $m['tools'], $pdf, $m['match']]);
     $id = (int) $pdo->lastInsertId();
     foreach ($m['steps'] as $i => [$t, $b, $s]) {

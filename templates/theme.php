@@ -1,9 +1,26 @@
 <?php
-/** @var string $theme @var array $f @var string $sort @var array $facets @var array $products */
+/** @var string $theme @var array $f @var string $sort @var array $facets @var array $products @var array $band */
 $fmt = fn(float $n) => rtrim(rtrim(number_format($n, 1, ',', ' '), '0'), ',');
 ?>
-<p class="crumbs"><a href="/"><?= t('Forsiden') ?></a> / <?= h(theme_name($theme)) ?></p>
-<h1><?= h(theme_name($theme)) ?> <small class="muted" id="result-count"><?= t('{n} produkter', ['n' => count($products)]) ?></small></h1>
+<section class="banner tema-band" data-tema="<?= h($theme) ?>" aria-labelledby="tema-title">
+  <?php // Category photo, keyed by the category slug. Decorative: the heading already names the category
+  $bandImg = ['lys' => 'lysoglykter.png', 'bygg' => 'byggogfeste.png', 'maling' => 'malingogsparkel.png', 'balkong' => 'balkongoglevegg.png',
+    'kjetting' => 'kjettingogløft.png', 'skog' => 'skogogved.png', 'tur' => 'turogfriluft.png'][$theme] ?? null; ?>
+  <?php if ($bandImg): ?>
+  <figure class="banner-photo"><img src="/assets/tema/<?= rawurlencode($bandImg) ?>" alt="" width="1672" height="941" decoding="async"></figure>
+  <?php endif ?>
+  <div class="banner-text band-text">
+    <?php // Every category name is "X og Y" ("X and Y"): the joining word ends line one, so all names break the same way in both languages
+    $nameParts = preg_split('/ (og|and) /u', theme_name($theme), 2, PREG_SPLIT_DELIM_CAPTURE); ?>
+    <h1 id="tema-title"><?= count($nameParts) === 3 ? h($nameParts[0]) . ' ' . h($nameParts[1]) . '<br>' . h($nameParts[2]) : h(theme_name($theme)) ?></h1>
+    <p class="band-desc"><?= h(theme_desc($theme)) ?></p>
+    <dl class="band-figs">
+      <div><dt><?= t('Produkter') ?></dt><dd><?= (int) $band['products'] ?></dd></div>
+      <div><dt><?= t('Filtre') ?></dt><dd><?= (int) $band['filters'] ?></dd></div>
+      <div><dt><?= t('Med monteringsveiledning') ?></dt><dd><?= (int) $band['guides'] ?></dd></div>
+    </dl>
+  </div>
+</section>
 
 <div class="with-side">
 <?php
@@ -21,7 +38,7 @@ $anyOn = $f['pris_min'] !== '' || $f['pris_max'] !== '' || $f['lager'] || array_
     <div class="range"><input name="pris_min" inputmode="numeric" placeholder="<?= t('Fra') ?>" value="<?= h($f['pris_min']) ?>" aria-label="<?= t('Pris fra') ?>"><input name="pris_max" inputmode="numeric" placeholder="<?= t('Til') ?>" value="<?= h($f['pris_max']) ?>" aria-label="<?= t('Pris til') ?>"></div>
   </details>
   <?php $i = 0; foreach ($facets as $k => $fc): $on = $active($k); $i++; ?>
-    <details class="facet" data-key="<?= h($k) ?>" <?= ($on || $i <= 2) ? 'open' : '' ?>>
+    <details class="facet" data-key="<?= h($k) ?>" <?= ($on || $i <= 2) ? 'open' : '' ?> <?= ($fc['type'] === 'values' && !$fc['values']) ? 'hidden' : '' ?>>
       <summary><?= hc(I18n::spec($k, $fc['label'])) ?><?= $fc['unit'] ? ' (' . h($fc['unit']) . ')' : '' ?><?php if ($on): ?> <span class="n-on"><?= $on ?></span><?php endif ?></summary>
       <div>
       <?php if ($fc['type'] === 'range'): ?>
@@ -31,8 +48,8 @@ $anyOn = $f['pris_min'] !== '' || $f['pris_max'] !== '' || $f['lager'] || array_
         </div>
         <small class="muted"><?= t('Oppgitt for {n} produkter', ['n' => $fc['n']]) ?></small>
       <?php else: ?>
-        <?php foreach (array_slice($fc['values'], 0, 10) as $v): ?>
-          <label class="check"><input type="checkbox" name="v[<?= h($k) ?>][]" value="<?= h($v['value_text']) ?>" <?= in_array($v['value_text'], (array) ($f['v'][$k] ?? []), true) ? 'checked' : '' ?>>
+        <?php foreach ($fc['values'] as $vi => $v): $checked = in_array($v['value_text'], (array) ($f['v'][$k] ?? []), true); if ($vi >= 10 && !$checked) continue; ?>
+          <label class="check"><input type="checkbox" name="v[<?= h($k) ?>][]" value="<?= h($v['value_text']) ?>" <?= $checked ? 'checked' : '' ?>>
             <?= hc(I18n::value($v['value_text'])) ?> <small>(<?= $v['n'] ?>)</small></label>
         <?php endforeach ?>
         <?php if ($fc['values'][0]['derived'] ?? false): ?><small class="muted" title="<?= t('Sør-Tre har ikke dette som eget felt. Verdien er tolket fra produktteksten.') ?>"><?= t('Utledet fra produkttekst') ?></small><?php endif ?>
@@ -45,6 +62,7 @@ $anyOn = $f['pris_min'] !== '' || $f['pris_max'] !== '' || $f['lager'] || array_
 
 <div class="results" id="results">
   <div class="sortbar">
+    <p class="result-count" id="result-count"><?= t('{n} produkter', ['n' => count($products)]) ?></p>
     <label><?= t('Sorter') ?>
       <select id="sort-select" onchange="const f=document.getElementById('filters');f.sort.value=this.value;f.requestSubmit ? f.requestSubmit() : f.submit()">
         <?php foreach (['populaer' => 'Mest populære', 'vurdering' => 'Best vurdert', 'pris' => 'Laveste pris', 'pris_desc' => 'Høyeste pris', 'navn' => 'Navn'] as $k => $l): ?>
@@ -58,4 +76,3 @@ $anyOn = $f['pris_min'] !== '' || $f['pris_max'] !== '' || $f['lager'] || array_
   <div class="grid"><?php foreach ($products as $c) { $via = 'tema'; require __DIR__ . '/_card.php'; } ?></div>
 </div>
 </div>
-<div class="compare-bar" id="compare-bar" hidden></div>

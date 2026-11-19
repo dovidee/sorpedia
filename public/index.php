@@ -17,6 +17,8 @@ Privacy::ensure();
 Guide::ensure();
 Auth::ensure();
 ChatHistory::ensure();
+Mail::ensure();
+Tower::ensure();
 Errors::cleanInput();  // "?q[]=" and the like give 400, not a crash
 
 // Security headers: no MIME sniffing, no framing on other sites, no addresses in Referer to other sites
@@ -42,7 +44,9 @@ function route(string $method, string $pattern): ?array
 
 // ---------- Home page ----------
 if (route('GET', '/') !== null) {
-    render('home', ['popular' => Catalog::cards(Catalog::popular(8))], 'Sørpedia');
+    $products = (int) db()->query('SELECT COUNT(*) FROM products')->fetchColumn();
+    render('home', ['popular' => Catalog::cards(Catalog::popular(8)), 'products' => $products,
+        'compare' => array_map(fn($t) => Catalog::compareKeys($t, 4, 3), array_combine(array_keys(Catalog::THEMES), array_keys(Catalog::THEMES)))], 'Sørpedia');
     exit;
 }
 
@@ -63,14 +67,23 @@ if ($m = route('GET', '/tema/([a-z]+)')) {
         render('notfound', [], 'Fant ikke siden');
         exit;
     }
-    $f = ['pris_min' => $_GET['pris_min'] ?? '', 'pris_max' => $_GET['pris_max'] ?? '', 'v' => $_GET['v'] ?? [],
-        'min' => $_GET['min'] ?? [], 'max' => $_GET['max'] ?? [], 'lager' => $_GET['lager'] ?? '', 'veiledning' => $_GET['veiledning'] ?? ''];
+    $f = ['pris_min' => $_GET['pris_min'] ?? '', 'pris_max' => $_GET['pris_max'] ?? '', 'v' => (array) ($_GET['v'] ?? []),
+        'min' => (array) ($_GET['min'] ?? []), 'max' => (array) ($_GET['max'] ?? []), 'lager' => $_GET['lager'] ?? '', 'veiledning' => $_GET['veiledning'] ?? ''];
     $sort = $_GET['sort'] ?? 'populaer';
     $ids = Catalog::filter($theme, $f, $sort);
+    $facets = Catalog::facets($theme, $f);
+    $all = Catalog::themeIds($theme);
     render('theme', [
         'theme' => $theme, 'f' => $f, 'sort' => $sort,
-        'facets' => Catalog::facets($theme, Catalog::themeIds($theme)),
+        'facets' => $facets,
         'products' => Catalog::cards($ids),
+        // Figures for the category band (spec 018): counted from the database, never typed in. Filter groups are the
+        // spec facets plus price.
+        'band' => [
+            'products' => count($all),
+            'filters' => count($facets) + 1,
+            'guides' => count(array_intersect_key(Catalog::manualIds(), array_flip($all))),
+        ],
     ], Catalog::THEMES[$theme][0]);
     exit;
 }
@@ -83,7 +96,6 @@ if ($m = route('GET', '/produkt/([a-z0-9-]+)')) {
         render('notfound', [], 'Fant ikke produktet');
         exit;
     }
-    $_SESSION['seen'] = array_slice(array_unique(array_merge([(int) $p['id']], $_SESSION['seen'] ?? [])), 0, 12);
     $u = current_user();
     $bought = false;
     if ($u) {
@@ -200,9 +212,11 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/meld-feil')) {
     $reason = mb_substr(trim((string) ($_POST['reason'] ?? '')), 0, 300);
     $specs = Catalog::specs((int) $p['id']);
     $v = $specs[$key]['apen'] ?? $specs[$key]['verifisert'] ?? null;
-    $answer = function (bool $ok, string $msg) use ($wantsJson, $p): never {
+    $u = current_user();
+    $answer = function (bool $ok, string $msg) use ($wantsJson, $p, $u): never {
         if ($wantsJson) {
-            json_out(['ok' => $ok, 'message' => $msg], $ok ? 200 : 422);
+            // unread: the new count for the inbox icon. Guests have no inbox.
+            json_out(['ok' => $ok, 'message' => t($msg), 'unread' => $u ? Mail::unread($u['email']) : null], $ok ? 200 : 422);
         }
         flash($msg);
         redirect("/produkt/{$p['slug']}?versjon=apen#spesifikasjoner");
@@ -215,12 +229,22 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/meld-feil')) {
         $answer(false, $reason === '' ? 'Skriv kort hva som er feil.' : "Meldingen ble ikke sendt fordi den $why.");
     }
     $st = db()->prepare('INSERT IGNORE INTO spec_reports (product_id, `key`, value_text, revision_id, reason, session_id, user_id) VALUES (?,?,?,?,?,?,?)');
-    $st->execute([$p['id'], $key, $v['value_text'], $v['revision_id'], $reason, sid(), current_user()['id'] ?? null]);
+    $st->execute([$p['id'], $key, $v['value_text'], $v['revision_id'], $reason, sid(), $u['id'] ?? null]);
     if (!$st->rowCount()) {
         $answer(true, 'Du har allerede meldt fra om denne verdien. En ansatt ser på det.');
     }
     emit('staff', 'report', ['product' => (int) $p['id'], 'name' => $p['name'], 'label' => $specs[$key]['label']]);
     track('spec_report', ['product' => (int) $p['id'], 'key' => $key]);
+    if ($u) {
+        // Receipt in the inbox. The report can be seen and taken back under Innstillinger.
+        Mail::send($u['email'], "Vi har mottatt meldingen din om {$p['name']}",
+            '<p>Takk for at du meldte fra om en mulig feil i den åpne versjonen.</p>'
+            . '<p><b>' . h($p['name']) . '</b><br>' . h($specs[$key]['label']) . ': ' . h(trim($v['value_text'] . ' ' . $specs[$key]['unit'])) . '<br>'
+            . 'Det du skrev: «' . h($reason) . '»</p>'
+            . '<p>En ansatt ser på verdien. Den er ikke endret ennå.</p>'
+            . '<p>Du kan se meldingen eller trekke den tilbake under <a href="/innstillinger#meldinger">Innstillinger</a>.</p>');
+        $answer(true, 'Takk! En ansatt ser på verdien. Den er ikke endret ennå. Du har fått en bekreftelse i innboksen.');
+    }
     $answer(true, 'Takk! En ansatt ser på verdien. Den er ikke endret ennå.');
 }
 
@@ -280,9 +304,59 @@ if (route('GET', '/api/suggest') !== null) {
         'corrected' => $r['corrected'],
         'usecases' => array_map(fn($s) => $s['term'], array_filter($r['matched'], fn($s) => $s['kind'] === 'bruksomrade')),
         'themes' => $themes,
-        'products' => array_map(fn($c) => ['url' => "/produkt/{$c['slug']}", 'name' => $c['name'], 'price' => kr((int) $c['price_ore']),
+        'products' => array_map(fn($c) => ['id' => (int) $c['id'], 'url' => "/produkt/{$c['slug']}", 'name' => $c['name'], 'price' => kr((int) $c['price_ore']),
             'img' => $c['img'] ? "/{$c['img']}" : null], Catalog::cards($r['ids'])),
     ]);
+}
+
+// ---------- Byggelab (feature 023) ----------
+if (route('GET', '/byggelab') !== null) {
+    redirect('/byggelab/lys');
+}
+
+if ($m = route('GET', '/byggelab/([a-z]+)')) {
+    $theme = $m[0];
+    if (!isset(Byggelab::BUILDERS[$theme])) {
+        http_response_code(404);
+        render('notfound', [], 'Fant ikke siden');
+        exit;
+    }
+    render('byggelab', [
+        'theme' => $theme, 'inventory' => Byggelab::inventory($theme), 'categories' => Byggelab::categories($theme),
+        'presets' => Byggelab::presets($theme), 'lanes' => Byggelab::lanes($theme),
+    ], 'Byggelab');
+    exit;
+}
+
+// The check and the test run. Lines are cleaned against the category; everything else comes from the database.
+if ($m = route('POST', '/api/byggelab/([a-z]+)/sjekk')) {
+    $theme = $m[0];
+    if (!isset(Byggelab::BUILDERS[$theme])) {
+        json_out(['error' => 'ukjent bygger'], 404);
+    }
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $test = !empty($in['test']);
+    $r = Byggelab::report($theme, Byggelab::lines($theme, $in['lines'] ?? []), $test);
+    if ($test && $r['items']) {
+        track('lab_test', ['builder' => $theme, 'ids' => array_column($r['items'], 'id'), 'verdict' => $r['verdict'], 'n' => count($r['items'])]);
+    }
+    json_out($r);
+}
+
+// The whole configuration into the cart in one step
+if ($m = route('POST', '/api/byggelab/([a-z]+)/kurv')) {
+    $theme = $m[0];
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $lines = isset(Byggelab::BUILDERS[$theme]) ? Byggelab::lines($theme, $in['lines'] ?? []) : [];
+    if (!$lines) {
+        json_out(['error' => 'tomt oppsett'], 400);
+    }
+    $st = db()->prepare('INSERT INTO cart_items (session_id, product_id, qty, added_via) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE qty = LEAST(qty + VALUES(qty), 99)');
+    foreach ($lines as $id => $qty) {
+        $st->execute([sid(), $id, $qty, 'byggelab']);
+    }
+    track('lab_cart', ['builder' => $theme, 'ids' => array_keys($lines), 'lines' => count($lines)]);
+    json_out(['count' => cart_count()]);
 }
 
 // ---------- Product guide ----------
@@ -421,17 +495,16 @@ if (route('POST', '/kasse') !== null) {
     } elseif (!$u['email_verified_at']) {
         flash('Kjøpet er registrert. Bekreft e-posten din for å bli verifisert kjøper.');
     }
+    $_SESSION['fresh_order'] = $oid; // the order page thanks for the purchase once
     redirect("/ordre/$oid");
 }
 
 if ($m = route('GET', '/ordre/(\d+)')) {
-    $u = current_user() ?? redirect('/logg-inn');
-    $st = db()->prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?');
-    $st->execute([(int) $m[0], $u['id']]);
-    $o = $st->fetch() ?: redirect('/');
-    $st = db()->prepare('SELECT i.qty, i.price_ore, p.name, p.slug FROM order_items i JOIN products p ON p.id = i.product_id WHERE order_id = ?');
-    $st->execute([$o['id']]);
-    render('order', ['o' => $o, 'lines' => $st->fetchAll(), 'verified' => is_verified($u)], "Ordre {$o['id']}");
+    $u = current_user() ?? redirect('/logg-inn?back=' . urlencode($path));
+    $o = Account::order((int) $u['id'], (int) $m[0]) ?? redirect('/innstillinger#ordrer');
+    $fresh = ($_SESSION['fresh_order'] ?? null) === (int) $o['id'];
+    unset($_SESSION['fresh_order']);
+    render('order', ['o' => $o, 'fresh' => $fresh, 'verified' => is_verified($u)], 'Ordre ' . $o['id']);
     exit;
 }
 
@@ -519,18 +592,16 @@ if (route('POST', '/registrer') !== null) {
     }
     $_SESSION['uid'] = (int) db()->lastInsertId();
     $link = "/bekreft/$token";
-    db()->prepare('INSERT INTO mail_outbox (to_email, subject, body_html) VALUES (?,?,?)')->execute([$email, 'Bekreft e-posten din hos Sørpedia',
+    Mail::send($email, 'Bekreft e-posten din hos Sørpedia',
         '<p>Hei ' . h($name) . '!</p><p>Trykk på lenken for å bekrefte e-posten din:</p><p><a href="' . $link . '">Bekreft e-post</a></p>'
-        . '<p>Når e-posten er bekreftet og du har handlet hos oss, blir du verifisert kjøper. Da kan du fylle inn produktinfo og skrive anmeldelser.</p>']);
+        . '<p>Når e-posten er bekreftet og du har handlet hos oss, blir du verifisert kjøper. Da kan du fylle inn produktinfo og skrive anmeldelser.</p>');
     flash('Konto opprettet. Vi har sendt en bekreftelse til innboksen.');
     redirect('/innboks');
 }
 
 if (route('GET', '/innboks') !== null) {
     $u = current_user();
-    $mails = $u ? db()->prepare('SELECT * FROM mail_outbox WHERE to_email = ? ORDER BY id DESC') : null;
-    $mails?->execute([$u['email']]);
-    render('inbox', ['mails' => $mails ? $mails->fetchAll() : []], 'Innboks');
+    render('inbox', ['mails' => $u ? Mail::open($u['email']) : []], 'Innboks');
     exit;
 }
 
@@ -553,8 +624,25 @@ function settings_user(): array
 
 if (route('GET', '/innstillinger') !== null) {
     $u = settings_user();
-    render('settings', ['u' => $u, 'verified' => is_verified($u)], 'Innstillinger');
+    render('settings', ['u' => $u, 'verified' => is_verified($u),
+        'orders' => Account::orders((int) $u['id']), 'reports' => Account::reports((int) $u['id'])], 'Innstillinger');
     exit;
+}
+
+// The full lists behind "Se alle" in Innstillinger
+if ($m = route('GET', '/innstillinger/(ordrer|meldinger)')) {
+    $u = settings_user();
+    $rows = $m[0] === 'ordrer' ? Account::orders((int) $u['id']) : Account::reports((int) $u['id']);
+    render('settings_list', ['kind' => $m[0], 'rows' => $rows], $m[0] === 'ordrer' ? 'Ordrer' : 'Feilmeldinger');
+    exit;
+}
+
+// Take back an error report staff haven't handled yet
+if ($m = route('POST', '/innstillinger/meldinger/(\d+)/trekk')) {
+    $u = settings_user();
+    flash(Account::withdrawReport((int) $u['id'], (int) $m[0])
+        ? 'Meldingen er trukket tilbake.' : 'Meldingen kan ikke trekkes tilbake. Den er allerede behandlet eller trukket.');
+    redirect(safe_back($_POST['back'] ?? '', '/innstillinger#meldinger'));
 }
 
 if (route('POST', '/innstillinger/profil') !== null) {
@@ -647,9 +735,9 @@ if (route('POST', '/innstillinger/epost') !== null) {
             flash('Den e-posten er allerede i bruk.');
             redirect('/innstillinger#epost');
         }
-        db()->prepare('INSERT INTO mail_outbox (to_email, subject, body_html) VALUES (?,?,?)')->execute([$email, 'Bekreft den nye e-posten din',
+        Mail::send($email, 'Bekreft den nye e-posten din',
             '<p>Du har endret e-posten din hos Sørpedia. Trykk på lenken for å bekrefte den:</p><p><a href="/bekreft/' . $token . '">Bekreft e-post</a></p>'
-            . '<p>Var det ikke deg? Bytt passord under Innstillinger.</p>']);
+            . '<p>Var det ikke deg? Bytt passord under Innstillinger.</p>');
         flash('E-posten er endret. Bekreft den nye adressen fra innboksen for å være verifisert kjøper igjen.');
         redirect('/innboks');
     }
@@ -728,6 +816,101 @@ if (route('POST', '/innstillinger/slett') !== null) {
     session_regenerate_id(true);
     flash('Kontoen din er slettet. Bidrag i den åpne versjonen står igjen som «Slettet bruker».');
     redirect('/');
+}
+
+// ---------- Control Tower: staff operations floor (feature 022) ----------
+// Own full-screen shell without the shop layout. Every endpoint checks the role on the server.
+if (route('GET', '/ansatt/tarn') !== null) {
+    if (!has_role('ansatt', 'support', 'admin')) {
+        redirect('/logg-inn?back=/ansatt/tarn');
+    }
+    require APP_ROOT . '/templates/tower.php';
+    exit;
+}
+
+if (str_starts_with($path, '/api/tarn/') && !has_role('ansatt', 'support', 'admin')) {
+    json_out(['error' => 'Ingen tilgang'], 403);
+}
+
+if (route('GET', '/api/tarn/events') !== null) {
+    session_write_close();
+    // The client always names the stations and the types it shows (st=sok,avvik&ty=search,...)
+    $floor = tower_floor();
+    $types = $floor->types($_GET['st'] ?? null, $_GET['ty'] ?? null);
+    $backlog = $floor->backlog();
+    json_out($floor->events($_GET['w'] ?? 'dag', max(0, (int) ($_GET['after'] ?? 0)), $types) + [
+        'products' => $floor->products(Floor::stations($_GET['st'] ?? null)), 'backlog' => $backlog['open'],
+        'congested' => $backlog['congested'], 'tickets' => Tower::tickets(),
+    ]);
+}
+
+if (route('GET', '/api/tarn/throughput') !== null) {
+    session_write_close();
+    $floor = tower_floor();
+    json_out($floor->throughput($_GET['w'] ?? 'dag', $floor->types($_GET['st'] ?? null, $_GET['ty'] ?? null)));
+}
+
+if (route('GET', '/api/tarn/kpi') !== null) {
+    session_write_close();
+    $since = Floor::since($_GET['w'] ?? 'dag', time());
+    $types = tower_floor()->types($_GET['st'] ?? null, $_GET['ty'] ?? null);
+    $k = Tower::kpis($since, $types) + ['quality' => Tower::quality($since, $types, tower_transport()->staleUnderway())];
+    // Turnover and user lists are admin-only on the metrics page; the same applies here
+    if (!has_role('admin')) {
+        unset($k['via'], $k['viaDemo'], $k['users']);
+    }
+    json_out($k);
+}
+
+if (route('GET', '/api/tarn/transport') !== null) {
+    session_write_close();
+    json_out(tower_transport()->list());
+}
+
+if ($m = route('GET', '/api/tarn/sending/(\d+)')) {
+    // Registration number and driver phone only for roles with an operational need (DELIVERY.md 5.9)
+    $s = tower_transport()->one((int) $m[0], has_role('admin', 'support'));
+    session_write_close();
+    $s ? json_out($s) : json_out(['error' => 'Fant ikke sendingen'], 404);
+}
+
+// Søren drafts a reply; staff edit it and send it themselves (DELIVERY.md 5.10). Customer service roles only.
+if ($m = route('POST', '/api/tarn/sak/(\d+)/utkast')) {
+    if (!has_role('support', 'ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    session_write_close();
+    set_time_limit(300);
+    $d = tower_drafts()->ticket((int) $m[0]);
+    $d !== null ? json_out(['draft' => $d]) : json_out(['error' => 'Søren svarte ikke. Skriv svaret selv.'], 503);
+}
+
+if ($m = route('GET', '/api/tarn/sak/(\d+)')) {
+    session_write_close();
+    $t = Tower::ticket((int) $m[0]);
+    $t ? json_out($t) : json_out(['error' => 'Fant ikke saken'], 404);
+}
+
+// Søren's assessment of an error report. Only staff who can decide reports get it; nothing is sent or changed.
+if ($m = route('POST', '/api/tarn/rapport/(\d+)/utkast')) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    session_write_close();
+    set_time_limit(300);
+    $d = tower_drafts()->report((int) $m[0]);
+    $d !== null ? json_out(['draft' => $d]) : json_out(['error' => 'Søren svarte ikke. Vurder meldingen selv.'], 503);
+}
+
+if (route('GET', '/api/tarn/mangler') !== null) {
+    session_write_close();
+    json_out(['missing' => Tower::missing(explode(',', (string) ($_GET['ids'] ?? '')))]);
+}
+
+if ($m = route('GET', '/api/tarn/produkt/(\d+)')) {
+    session_write_close();
+    $p = Tower::product((int) $m[0]);
+    $p ? json_out($p) : json_out(['error' => 'Fant ikke produktet'], 404);
 }
 
 // ---------- Staff: merge queue for the open version (feature 009) ----------
@@ -837,24 +1020,8 @@ if (route('GET', '/admin') !== null) {
     if (!has_role('admin')) {
         redirect('/logg-inn?back=/admin');
     }
-    $pdo = db();
-    $count = fn(string $type) => (int) $pdo->query('SELECT COUNT(*) FROM analytics_events WHERE type = ' . $pdo->quote($type))->fetchColumn();
-    $kpi = [
-        'searches' => $count('search') + $count('search_zero'),
-        'zero' => $count('search_zero'),
-        'guide' => $count('guide_done'),
-        'chat' => $count('chat'),
-        'escalate' => $count('escalate'),
-        'compare' => $count('compare'),
-        'purchases' => $count('purchase'),
-    ];
-    $zeroTerms = $pdo->query("SELECT JSON_UNQUOTE(JSON_EXTRACT(data, '$.q')) q, COUNT(*) n FROM analytics_events WHERE type = 'search_zero' GROUP BY q ORDER BY n DESC LIMIT 10")->fetchAll();
-    $via = $pdo->query("SELECT COALESCE(added_via, 'ukjent') via, COUNT(*) n, SUM(qty * price_ore) ore FROM order_items GROUP BY via ORDER BY n DESC")->fetchAll();
-    $coverage = $pdo->query("SELECT version, source, COUNT(*) n FROM spec_values GROUP BY version, source ORDER BY version, n DESC")->fetchAll();
-    $rel = $pdo->query('SELECT level, kind, COUNT(*) n FROM relations GROUP BY level, kind ORDER BY level')->fetchAll();
-    $users = $pdo->query("SELECT role, COUNT(*) n, SUM(email_verified_at IS NOT NULL) verified FROM users GROUP BY role")->fetchAll();
-    $contrib = $pdo->query("SELECT status, COUNT(*) n FROM spec_revisions GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
-    render('admin', compact('kpi', 'zeroTerms', 'via', 'coverage', 'rel', 'users', 'contrib'), 'Admin');
+    // Same definitions as the Control Tower (src/Tower.php)
+    render('admin', Tower::kpis(), 'Admin');
     exit;
 }
 
@@ -966,8 +1133,8 @@ if (route('POST', '/api/chat') !== null) {
     sse('products', array_map(fn($c) => [
         'url' => "/produkt/{$c['slug']}", 'name' => $c['name'], 'price' => kr((int) $c['price_ore']),
         'img' => $c['img'] ? "/{$c['img']}" : null,
-        'stock' => '· ' . ($c['in_store'] > 0 ? t('{n} i butikk', ['n' => $c['in_store']]) : t($c['online'] > 0 ? 'nettlager' : 'ikke på lager'))
-            . (Catalog::hasManual((int) $c['id']) ? ' · ' . t('Veiledning') : ''),
+        'stock' => $c['in_store'] > 0 ? t('{n} i butikk', ['n' => $c['in_store']]) : t($c['online'] > 0 ? 'nettlager' : 'ikke på lager'),
+        'manual' => Catalog::hasManual((int) $c['id']),
     ], Catalog::cards($cardIds)));
     $mode = 'rask';
     [$ok, $answer] = Chat::answer($messages, $page, $ids, 'sse', $mode, $intent['facts'] ?? '');
@@ -989,6 +1156,13 @@ if (route('POST', '/api/chat') !== null) {
 }
 
 // ---------- Customer service: escalation from Søren to a human (feature 006) ----------
+// The product on the page the chat is open on, so Søren can ask the customer to confirm it. Only the address comes from the browser.
+if (route('GET', '/api/support/produkt') !== null) {
+    $page = PageContext::resolve(is_string($_GET['page'] ?? null) ? $_GET['page'] : null);
+    $p = $page['product'] ? (Catalog::cards([$page['product']])[0] ?? null) : null;
+    json_out(['product' => $p ? ['id' => (int) $p['id'], 'name' => $p['name']] : null]);
+}
+
 if (route('POST', '/api/support') !== null) {
     $in = json_decode(file_get_contents('php://input') ?: '{}', true) ?: [];
     // The conversation comes from the server, not from the browser
@@ -1001,10 +1175,16 @@ if (route('POST', '/api/support') !== null) {
             break;
         }
     }
-    $pid = ($in['product'] ?? null) ? (int) $in['product'] : null;
-    $summary = ($first ?: 'Kunden ba om å snakke med et menneske') . ($pid ? " (produkt $pid)" : '');
-    db()->prepare('INSERT INTO support_tickets (session_id, user_id, summary, chat_log) VALUES (?,?,?,?)')
-        ->execute([sid(), current_user()['id'] ?? null, $summary, json_encode($log, JSON_UNESCAPED_UNICODE)]);
+    // The customer confirmed or picked the product in the chat (feature 022). It must exist in the catalog.
+    $st = db()->prepare('SELECT id FROM products WHERE id = ?');
+    $st->execute([(int) ($in['product'] ?? 0)]);
+    $pid = $st->fetchColumn() ? (int) $in['product'] : null;
+    if ($pid === null) {
+        json_out(['error' => 'Velg produktet saken gjelder'], 400);
+    }
+    $summary = ($first ?: 'Kunden ba om å snakke med et menneske') . " (produkt $pid)";
+    db()->prepare('INSERT INTO support_tickets (session_id, user_id, summary, chat_log, product_id) VALUES (?,?,?,?,?)')
+        ->execute([sid(), current_user()['id'] ?? null, $summary, json_encode($log, JSON_UNESCAPED_UNICODE), $pid]);
     $tid = (int) db()->lastInsertId();
     $_SESSION['tickets'][] = $tid;
     emit('support', 'ticket', ['ticket' => $tid, 'summary' => $summary]);

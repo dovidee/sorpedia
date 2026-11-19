@@ -5,7 +5,7 @@ $total = 0; ?>
   <div class="warn-box"><b><?= t('Obs') ?>:</b> <?= t('{b} passer ikke til {a}.', ['b' => h($b['name']), 'a' => h($a['name'])]) ?> <small><?= h($b['rel']['reason']) ?></small></div>
 <?php endforeach ?>
 <?php if (!$cards): ?>
-  <div class="empty"><div class="empty-mascot" data-soren="basket"></div><p><?= t('Handlekurven er tom.') ?> <a href="/guide"><?= t('Start produktguiden') ?></a>.</p></div>
+  <div class="empty"><div class="empty-mascot" data-soren="cart"></div><p><?= t('Handlekurven er tom.') ?> <a href="/guide"><?= t('Start produktguiden') ?></a>.</p></div>
 <?php else: ?>
   <table class="cart">
     <?php foreach ($cards as $c): $qty = (int) $items[$c['id']]['qty']; $total += $qty * $c['price_ore']; ?>

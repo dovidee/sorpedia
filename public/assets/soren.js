@@ -1,137 +1,131 @@
-// Søren as an animated SVG. The shapes (measured from the original drawing) are in soren-art.js, made by scripts/draw_soren.py.
-// Here the parts are put together and animated: the crown sways, the leaves flutter,
-// the waving arm waves, the eyes blink and show feelings.
-// Usage: <div data-soren="..."></div> or Soren2D.mount(el, { kind }). Controls: set('idle'|'think'|'talk'), wave(), gust(), happy(), sad(), surprised().
-// Variants:
-//   full    all of Søren, only on the home page
-//   head    the face cropped in a circle, in the chat and on the Ask Søren button
-//   basket  all of Søren, standing still with an empty shopping basket (empty cart)
-//   leaf    one of his leaves as an icon, for links like "Spør Søren om dette produktet"
+// Søren as a vector figure, drawn by hand to the proportions of the original character art (960 px canvas).
+// Every leaf in the crown is its own shape with its own gentle motion, arms swing from the shoulder,
+// and props (trolley, hard hat and hammer, plank) belong to their pose. All motion is CSS transforms in app.css.
+// Usage: <div data-soren="pose"></div> or Soren2D.mount(el, { kind }). Controls: set('idle'|'think'|'talk'), wave(), happy(), sad().
+// data-soren values:
+//   (empty)  the default pose, on the home page. With data-greet he waves first.
+//   head     the face and crown in a circle, in the chat and on the Ask Søren button
+//   a pose   default, wave, thinking, cart, hammer, lumber, pointing, shrug or celebrating
+//   leaf     one of his leaves as an icon, for links like "Spør Søren om dette produktet"
 window.Soren2D = (() => {
-  const NS = 'http://www.w3.org/2000/svg';
-  const A = window.SorenArt;
+  const POSES = ['default', 'wave', 'thinking', 'cart', 'hammer', 'lumber', 'pointing', 'shrug', 'celebrating'];
+  const LABELS = { cart: 'Søren med en tom tralle', hammer: 'Søren som snekrer', lumber: 'Søren med en planke' };
   const calm = matchMedia('(prefers-reduced-motion: reduce)');
-  const [L, R] = A.eyes; // left and right eye: cx, cy, rx, ry
-  const BASKET_C = { body: 'oklch(56.6% .205 26)', rim: 'oklch(47% .178 26)', hole: 'oklch(40% .15 26)' };
+  const STATE_POSE = { think: 'thinking', talk: 'pointing' };
+  const ONCE_MS = { wave: 2500, celebrating: 2700, shrug: 4500 };
 
-  // Every leaf (or clump of leaves joined in the drawing) in its own group, so it can flutter.
-  // Small leaves can blow off; the big clumps only flutter a little.
-  const leafGroup = (l, i, loose) => {
-    const small = l.px < 520;
-    return `<g transform="translate(${l.cx} ${l.cy}) rotate(0) scale(1)"${small && !loose ? ` data-leaf="${i}"` : ''}>`
-      + `<g class="sl${small ? '' : ' big'}" style="--d:${((i * 0.37) % 2).toFixed(2)}s"><g transform="translate(${-l.cx} ${-l.cy})">${l.svg}</g></g></g>`;
-  };
-  const CROWN = `<g class="s-crown">${A.leaves.map((l, i) => leafGroup(l, i)).join('')}</g>`;
-  const LOOSE = `<g class="s-loose">${A.loose.map((l, i) => leafGroup(l, i, true)).join('')}</g>`;
-
-  // The eyes from the drawing, plus happy arcs and sad lids laid on top when needed
-  const EYES = `<g class="s-eyes"><g class="s-eyes-open">${A.eyesSvg}
-      <path class="s-lids" d="M${L.cx - L.rx - 3},${L.cy - L.ry * 0.25} L${L.cx + L.rx + 2},${L.cy - L.ry - 3} M${R.cx + R.rx + 3},${R.cy - R.ry * 0.25} L${R.cx - R.rx - 2},${R.cy - R.ry - 3}" stroke="${A.skin}" stroke-width="9" stroke-linecap="round"/></g>
-      <path class="s-eyes-happy" d="M${L.cx - L.rx},${L.cy + 2} q${L.rx},-${L.ry} ${L.rx * 2},0 M${R.cx - R.rx},${R.cy + 2} q${R.rx},-${R.ry} ${R.rx * 2},0" stroke="${A.eyeColor}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-    </g>`;
-  const BUBBLE = `<g class="s-bubble">
-      <circle cx="604" cy="40" r="3.5"/><circle cx="614" cy="27" r="5"/>
-      <ellipse cx="638" cy="2" rx="25" ry="16"/>
-      <circle class="s-dot" cx="628" cy="2" r="3"/><circle class="s-dot" cx="638" cy="2" r="3"/><circle class="s-dot" cx="648" cy="2" r="3"/>
-    </g>`;
-  // Empty shopping basket hanging from the right hand
-  const BASKET = `<g class="s-basket">
-      <path d="M572,302 Q589,276 606,302" stroke="${BASKET_C.rim}" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-      <path d="M565,303 h48 l-5,24 q-1,3 -4,3 h-30 q-3,0 -4,-3 Z" fill="${BASKET_C.body}"/>
-      <g fill="${BASKET_C.hole}">${[0, 1, 2, 3, 4].map((i) => `<rect x="${574 + i * 7.2}" y="309" width="3.4" height="14" rx="1.7"/>`).join('')}</g>
-      <rect x="562" y="300" width="54" height="5.5" rx="2.75" fill="${BASKET_C.rim}"/>
-    </g>`;
-
-  const svg = (kind) => {
-    if (kind === 'head') {
-      return `<svg class="soren soren-head" viewBox="447 76 136 136" aria-hidden="true" xmlns="${NS}"><g class="s-all">${A.body}${CROWN}${EYES}</g></svg>`;
+  // Leaf shapes, base at 0,0 and tip pointing up, 100 units long
+  const OVAL = 'M0,0 C-40,-16 -44,-64 0,-100 C44,-64 40,-16 0,0Z';
+  const OVAL_HALF = 'M0,0 C40,-16 44,-64 0,-100Z';
+  const MAPLE = 'M0,0 L-4,-22 L-30,-18 L-24,-30 L-46,-46 L-34,-50 L-38,-64 L-20,-58 L-16,-66 L-6,-58 L-10,-84 L-2,-80 L0,-96 '
+    + 'L2,-80 L10,-84 L6,-58 L16,-66 L20,-58 L38,-64 L34,-50 L46,-46 L24,-30 L30,-18 L4,-22Z';
+  const OAK = (() => {
+    const side = [];
+    for (let i = 0; i <= 40; i++) {
+      const t = i / 40, s = Math.sin(Math.PI * t);
+      side.push([-(24 * s ** 0.7 + 10 * Math.max(0, Math.sin(5 * Math.PI * t)) * s), -100 * t]);
     }
-    const basket = kind === 'basket';
-    const [x, y, w, h] = A.box;
-    const box = basket ? `${x} ${y} ${w} ${h + 6}` : `${x} ${y - 24} ${w + 36} ${h + 24}`;
-    return `<svg class="soren soren-${kind}" viewBox="${box}" role="img" aria-label="${basket ? 'Søren med en tom handlekurv' : 'Søren, maskoten'}" xmlns="${NS}">
-      ${A.shadow}<g class="s-all">${A.boots}${A.body}${CROWN}${LOOSE}${basket ? BASKET : ''}<g class="s-arm s-arm-r">${A.armR}</g><g class="s-arm s-arm-l">${A.armL}</g>${EYES}</g>
-      ${basket ? '' : BUBBLE}<g class="s-fly"></g></svg>`;
-  };
-  const LEAF_ICON = (() => {
-    const l = A.leafIcon, [x, y, w, h] = l.bbox;
-    return `<svg class="soren-leaf" viewBox="${x - 1} ${y - 1} ${w + 2} ${h + 2}" aria-hidden="true" xmlns="${NS}">${l.svg}</svg>`;
+    const pts = [...side, ...side.slice(0, -1).reverse().map(([x, y]) => [-x, y])];
+    return 'M' + pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L') + 'Z';
   })();
+  const SHADES = ['#D92B2E', '#E23A3B', '#CF2429'];
+  const RIB = (y1, y2) => `<path class="rib" d="M0,${y1} L0,${y2}"/>`;
+  const shape = (type, i) => {
+    const fill = `style="fill:${SHADES[i % 3]}"`;
+    if (type === 'm') return `<path class="lv" ${fill} d="${MAPLE}"/><path class="rib" d="M0,-4 L0,-78 M0,-24 L-32,-48 M0,-24 L32,-48"/>`;
+    if (type === 'k') return `<path class="lv" ${fill} d="${OAK}"/>${RIB(-4, -88)}`;
+    if (type === 's') {
+      const leaflet = (y, a, l) => `<g transform="translate(0 ${y}) rotate(${a}) scale(${l / 100})"><path class="lv" ${fill} d="${OVAL}"/><path class="dk" d="${OVAL_HALF}"/></g>`;
+      return `<path class="stem" d="M0,0 L0,-70"/>${leaflet(-28, -55, 38)}${leaflet(-28, 55, 38)}${leaflet(-50, -45, 34)}${leaflet(-50, 45, 34)}${leaflet(-68, 0, 36)}`;
+    }
+    return `<path class="lv" ${fill} d="${OVAL}"/><path class="dk" d="${OVAL_HALF}"/>${RIB(-6, -86)}`;
+  };
+  const leaf = (type, x, y, a, len, i) => `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${a}) scale(${(len / 100).toFixed(2)})">`
+    + `<g class="lf" style="--d:-${((i * 0.73) % 3).toFixed(2)}s;--t:${(2.6 + ((i * 0.37) % 1.4)).toFixed(2)}s">${shape(type, i)}</g></g>`;
 
-  const rnd = (a, b) => a + Math.random() * (b - a);
+  // The crown: a dome of separate leaves around the top of the trunk. The outer ring sits behind the trunk, the rest in front.
+  const ring = (r, angles, len, types, first) => angles.map((a, j) => {
+    const rad = a * Math.PI / 180;
+    return leaf(types[j % types.length], 487 + r * Math.sin(rad), 300 - r * 0.9 * Math.cos(rad), a, len, first + j);
+  }).join('');
+  const span = (from, to, step) => Array.from({ length: Math.round((to - from) / step) + 1 }, (_, i) => from + i * step);
+  const CROWN_BACK = ring(190, span(-140, 140, 20), 135, ['o', 'o', 'k', 'o', 'm', 'o', 'o', 's', 'o', 'o', 'm', 'o', 'k', 'o', 'o'], 0)
+    + ring(150, span(-120, 120, 40), 125, ['m', 'o', 'k', 'o', 'm', 'o', 'k'], 16);
+  const CROWN_FRONT = ring(100, span(-110, 110, 27.5), 120, ['o', 'm', 'o', 'o', 's', 'o', 'o', 'k', 'o'], 32)
+    + ring(30, span(-75, 75, 30), 110, ['o', 'k', 's', 'o', 'm', 'o'], 44);
+
+  const TRUNK = 'M410,850 C400,790 388,720 386,650 C384,590 378,520 380,470 C368,450 352,428 338,402 C346,396 352,396 356,400 '
+    + 'C366,414 376,428 384,436 C386,400 382,360 376,330 C370,305 356,288 344,276 C356,270 366,272 374,280 C392,298 404,310 418,318 '
+    + 'C432,300 440,284 446,270 C454,268 462,270 466,276 C466,292 470,306 480,316 C494,300 506,286 516,272 C524,270 530,272 534,278 '
+    + 'C538,294 548,306 562,314 C580,300 596,286 614,272 C624,272 632,276 636,282 C620,300 610,320 606,340 C604,380 606,410 610,436 '
+    + 'C622,428 640,414 652,400 C658,398 664,400 666,406 C650,428 630,448 614,470 C616,520 610,590 604,650 C600,720 588,790 580,850 '
+    + 'L512,850 C506,830 500,815 492,812 C484,815 478,830 474,850Z';
+  const TRUNK_SHADE = 'M606,340 C604,380 606,410 610,436 C616,520 610,590 604,650 C600,720 588,790 580,850 L556,850 C566,780 576,700 580,640 C586,560 586,480 582,400 C580,370 590,350 606,340Z';
+  const BARK = 'M455,560 c6,30 4,60 -2,90 M520,600 c-4,24 -2,48 4,70 M430,700 c-4,20 -2,40 2,56 M560,480 c4,20 4,40 0,60 M410,520 c3,16 3,30 0,44';
+  // A hanging arm with root fingers and a leaf sprig on the shoulder (left side; the right arm is its mirror image)
+  const ARM = `<path class="skin" d="M392,610 C360,630 330,670 322,720 C318,750 314,780 318,800 C322,812 330,812 334,804 C336,814 344,818 350,810 `
+    + `C354,816 362,816 364,806 C362,786 358,766 356,746 C360,712 372,688 394,676Z"/><path class="bark" d="M340,700 c-6,16 -8,32 -6,46"/>`
+    + `<g transform="translate(352 650) rotate(-40) scale(.6)"><g class="lf" style="--d:-1.1s;--t:3.1s">${shape('s', 1)}</g></g>`;
+  const MIRROR = 'matrix(-1 0 0 1 974 0)';
+  const BOOT = `<path class="boot" d="M396,822 L478,822 L482,900 C482,920 478,932 470,934 L372,934 C352,934 348,920 352,908 C356,896 372,890 392,888Z"/>`
+    + `<path class="rim" d="M395,822 L479,822 L480,842 L396,842Z"/><path class="shine" d="M412,856 C410,872 411,884 414,894 M376,912 C384,906 392,904 400,904"/>`;
+  const EYES = `<g class="look"><g class="eyes"><g class="open"><ellipse cx="436" cy="440" rx="21" ry="34"/><ellipse cx="538" cy="440" rx="21" ry="34"/>`
+    + `<circle class="hi" cx="444" cy="425" r="8"/><circle class="hi" cx="546" cy="425" r="8"/></g>`
+    + `<path class="happy" d="M416,446 q20,-28 40,0 M518,446 q20,-28 40,0"/></g></g>`;
+  const TROLLEY = `<g class="cart"><path class="metal" d="M673,700 L715,700 M695,700 L707,915 L875,915 M700,770 L740,770 M703,840 L743,840"/>`
+    + `<circle class="tyre" cx="732" cy="935" r="20"/><circle class="tyre" cx="855" cy="935" r="20"/><circle class="hub" cx="732" cy="935" r="6"/><circle class="hub" cx="855" cy="935" r="6"/></g>`;
+  const HAT = `<g class="hat"><path d="M300,300 C300,170 390,110 487,110 C584,110 674,170 674,300Z"/><path class="ridge" d="M487,116 L487,296 M420,128 C400,170 392,230 392,296 M554,128 C574,170 582,230 582,296"/>`
+    + `<path d="M260,300 L714,300 C714,322 700,330 680,330 L294,330 C274,330 260,322 260,300Z"/></g>`;
+  const HAMMER = `<g class="hammer"><path class="handle" d="M645,800 L735,690"/><rect class="head" x="-55" y="-17" width="110" height="34" rx="6" transform="translate(735 690) rotate(39)"/></g>`;
+  const STUMP = `<g class="stump"><rect class="wood" x="700" y="790" width="100" height="148" rx="8"/><ellipse class="cut" cx="750" cy="792" rx="50" ry="12"/>`
+    + `<path class="grain" d="M720,820 v90 M772,830 v80"/><path class="nail" d="M746,792 v-16 M736,776 h20"/></g>`;
+  const PLANK = `<g class="plank" transform="rotate(-10 560 760)"><rect class="wood" x="300" y="722" width="520" height="76" rx="6"/>`
+    + `<path class="grain" d="M330,744 C420,738 520,750 640,742 M360,776 C470,770 600,782 790,772"/><rect class="cut" x="806" y="722" width="14" height="76" rx="4"/></g>`;
+
+  const svg = (kind, label) => {
+    const head = kind === 'head';
+    return `<svg class="soren" viewBox="${head ? '317 250 340 340' : '110 0 820 960'}" ${head ? 'aria-hidden="true"' : `role="img" aria-label="${label}"`} xmlns="http://www.w3.org/2000/svg">`
+      + `<ellipse class="shadow" cx="487" cy="940" rx="160" ry="16"/>${STUMP}<g class="all">${TROLLEY}`
+      + `<g class="crown">${CROWN_BACK}</g><path class="skin flat" d="${TRUNK}"/><path class="shade" d="${TRUNK_SHADE}"/><path class="outline" d="${TRUNK}"/><path class="bark" d="${BARK}"/>`
+      + `${BOOT}<g transform="${MIRROR}">${BOOT}</g><g class="crown">${CROWN_FRONT}</g>${EYES}${HAT}${PLANK}`
+      + `<g class="arm arm-l"><g class="arm-in">${ARM}</g></g><g class="arm arm-r"><g class="arm-in">${HAMMER}<g transform="${MIRROR}">${ARM}</g></g></g></g></svg>`;
+  };
+  const LEAF_ICON = '<img class="soren-leaf" src="/assets/brand/sorpedia-leaf.png" alt="">';
 
   const mount = (el, opts = {}) => {
     const kind = opts.kind || 'full';
-    el.innerHTML = svg(kind);
-    const root = el.querySelector('svg');
-    const fly = root.querySelector('.s-fly');
-    const still = kind === 'basket' || opts.still;
+    const home = POSES.includes(kind) ? kind : 'default';
+    const still = !!opts.still;
+    el.innerHTML = svg(kind, LABELS[home] || 'Søren, maskoten');
+    const root = el.firstChild;
     if (still) root.classList.add('still');
-    let state = 'idle', timers = [];
-    const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.push(t); return t; };
+    let state = 'idle', timer = 0;
 
-    const set = (s) => { state = s; root.dataset.state = s; if (s === 'think') gust(2); };
-    const pulse = (cls, ms) => { if (still) return; root.classList.add(cls); later(() => root.classList.remove(cls), ms); };
-    const wave = () => { if (!calm.matches && kind === 'full') pulse('waving', 2000); };
-    // Feelings show in the eyes: happy arcs, sad lids, big eyes when surprised
-    const happy = () => { pulse('glad', 1600); if (!calm.matches && kind === 'full') pulse('hop', 900); };
-    const sad = () => pulse('sad', 2600);
-    const surprised = () => pulse('wide', 700);
-    const blink = () => pulse('blink', 170);
-
-    // Gust of wind: some small leaves come loose and fly away, then grow back. The head in the chat only rustles its leaves.
-    const gust = (n = rnd(2, 4) | 0) => {
-      if (calm.matches || still) return;
-      root.classList.add('rustle'); later(() => root.classList.remove('rustle'), 1200);
-      if (!fly) return;
-      const pool = [...root.querySelectorAll('.s-crown [data-leaf]')].filter((g) => !g.classList.contains('gone'));
-      for (let k = 0; k < n && pool.length; k++) {
-        const g = pool.splice((Math.random() * pool.length) | 0, 1)[0];
-        const m = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute('transform'));
-        if (!m) continue;
-        const wrap = document.createElementNS(NS, 'g');
-        wrap.setAttribute('transform', `translate(${m[1]} ${m[2]})`);
-        wrap.innerHTML = `<g class="flying">${g.querySelector('.sl').innerHTML}</g>`;
-        fly.append(wrap);
-        g.classList.add('gone');
-        const dx = rnd(70, 170), dy = rnd(-30, 70), spin = rnd(260, 620) * (Math.random() < 0.5 ? -1 : 1);
-        const a = wrap.firstChild.animate([
-          { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
-          { transform: `translate(${dx * 0.35}px,${dy * 0.2 - 18}px) rotate(${spin * 0.3}deg)`, opacity: 1, offset: 0.3 },
-          { transform: `translate(${dx}px,${dy}px) rotate(${spin}deg)`, opacity: 0 },
-        ], { duration: rnd(1500, 2300), easing: 'cubic-bezier(.3,.1,.5,1)', delay: k * 90 });
-        a.onfinish = () => wrap.remove();
-        later(() => g.classList.remove('gone'), rnd(2600, 4200));
-      }
+    const show = (p) => { root.dataset.pose = p; };
+    const rest = () => show(STATE_POSE[state] || home);
+    const set = (s) => { clearTimeout(timer); state = s; rest(); };
+    // A pose for a moment, then back to what the state calls for
+    const once = (p) => { if (still || calm.matches) return; clearTimeout(timer); show(p); timer = setTimeout(rest, ONCE_MS[p]); };
+    const blink = () => { root.classList.add('blink'); setTimeout(() => root.classList.remove('blink'), 140); };
+    const life = () => {
+      if (!root.isConnected) return;
+      if (!still && !calm.matches && !document.hidden) blink();
+      setTimeout(life, 2600 + Math.random() * 2600);
     };
+    const none = () => {};
 
-    // Life at rest: blinks. The full Søren also waves now and then and loses a leaf once in a while.
-    const loop = () => {
-      if (!root.isConnected) return timers.forEach(clearTimeout);
-      if (!calm.matches && !document.hidden) {
-        blink();
-        const r = Math.random();
-        if (kind === 'full' && state === 'idle' && r < 0.18) gust();
-        else if (kind === 'full' && state === 'idle' && r < 0.26 && opts.lively !== false) wave();
-      }
-      later(loop, rnd(2600, 5200));
-    };
-    set('idle');
-    if (!still && !calm.matches) later(loop, rnd(800, 2000));
-    if (opts.greet) later(wave, 300);
-    return { el: root, kind, set, wave, gust, happy, sad, surprised, blink, get state() { return state; } };
+    rest();
+    if (opts.greet) once('wave');
+    setTimeout(life, 1500);
+    return { el: root, kind, set, wave: () => once('wave'), happy: () => once('celebrating'), sad: () => once('shrug'),
+      gust: none, surprised: none, blink, get state() { return state; } };
   };
 
   const auto = () => document.querySelectorAll('[data-soren]:not([data-soren-on])').forEach((el) => {
     el.dataset.sorenOn = '1';
     const kind = el.dataset.soren || 'full';
     if (kind === 'leaf') { el.innerHTML = LEAF_ICON; return; }
-    const c = mount(el, { kind, greet: el.hasAttribute('data-greet'), lively: !el.hasAttribute('data-quiet'), still: el.hasAttribute('data-still') });
-    el.soren = c;
-    if (kind === 'full') {
-      el.addEventListener('mouseenter', () => c.wave());
-      el.addEventListener('click', () => { if (!el.closest('a,button')) c.gust(); });
-    }
+    el.soren = mount(el, { kind, greet: el.hasAttribute('data-greet'), still: el.hasAttribute('data-still') });
   });
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', auto) : auto();
   return { mount, auto, LEAF_ICON };

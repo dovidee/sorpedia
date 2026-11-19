@@ -39,6 +39,7 @@ Digital product guide and knowledge base ("Wikipedia for products") built as a d
 ```
 php scripts/scrape.php          # fetches products from sor-tre.no into data/raw/
 php scripts/import.php          # builds the database from data/raw + seed data
+php scripts/transport-demo.php  # replaces only the demo shipments (Control Tower map)
 php -S localhost:8080 -t public # development server
 php tests/run.php               # unit tests (needs the database)
 php evals/run.php               # golden dataset and the chat's fixed safety replies

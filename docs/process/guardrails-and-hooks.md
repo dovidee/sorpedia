@@ -97,7 +97,7 @@ Source: `public/index.php` (route `POST /api/chat`), `src/Chat.php`, `src/ChatHi
 | Product cards | Up to 4, from the database by search, with price and stock from the database |
 | Buyer text in the prompt | Quoted as data, hidden if it looks like an instruction (`Guard::forPrompt`, `Guard::forProse`) |
 | While streaming | Profanity censored. Stopped if a sentence of at least five words repeats, or the same eight words appear three times (not counting product facts). Stopped after 1200 characters of answer |
-| Time limits | First text within `SOREN_FIRST_TOKEN_S` (20). Whole answer within `SOREN_MAX_ANSWER_S` (150). Out of time while thinking: the thinking is cut and he gets 90 seconds to answer from it |
+| Time limits | First text within `SOREN_FIRST_TOKEN_S` (60). Thinking within `SOREN_MAX_THINK_S` (240); past that, or when the thinking uses up the tokens left in the context window, the thinking is stopped and a second call writes the full answer from it (up to 1200 tokens, 180 seconds). Whole answer within `SOREN_MAX_ANSWER_S` (480), a guard against a hung model. Text cut by a deadline or the token budget ends at the last whole sentence |
 | Ollama down or too slow | A rule-based answer from the catalog, and a note that says so |
 | Saving | The question and answer are saved together after the answer, with references instead of numbers. No answer, nothing saved. Conversations expire 24 hours after the last message, at most 40 messages are kept |
 | Guide summary | Follows into the chat on other pages for three hours, until the customer starts a new conversation |

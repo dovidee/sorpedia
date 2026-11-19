@@ -140,6 +140,11 @@ foreach ($products as $id => $p) {
 $pdo->commit();
 done("$n rader");
 
+// 6b. Transport (demo), see scripts/transport-demo.php
+step('Transport (demo)');
+require_once __DIR__ . '/transport-demo.php';
+done(seed_transport($pdo, $root) . ' sendinger');
+
 // 7. Users. All seeded users have the password "admin".
 step('Brukere (passord: admin)');
 $hash = password_hash('admin', PASSWORD_ARGON2ID);

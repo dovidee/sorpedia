@@ -15,4 +15,3 @@
   <?php if ($fallback): ?><h2><?= t('Kanskje dette?') ?></h2><div class="grid"><?php foreach ($fallback as $c) { $via = 'sok'; require __DIR__ . '/_card.php'; } ?></div><?php endif ?>
 <?php endif ?>
 <div class="grid"><?php foreach ($products as $c) { $via = 'sok'; require __DIR__ . '/_card.php'; } ?></div>
-<div class="compare-bar" id="compare-bar" hidden></div>

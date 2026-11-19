@@ -15,7 +15,6 @@ if (preg_match('#^/tema/([a-z0-9_-]+)#', $path, $mm)) {
     $st->execute([$mm[1]]);
     $activeTheme = $st->fetchColumn() ?: null;
 }
-$inGuide = str_starts_with($path, '/guide');
 // Light or dark: a personal setting. Guests and "Som enheten" (match device) follow the operating system.
 $themeAttr = match ($u['theme'] ?? 'system') { 'lys' => ' data-theme="light"', 'mork' => ' data-theme="dark"', default => '' };
 $en = lang() === 'en';
@@ -29,22 +28,24 @@ $flag = $en
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf" content="<?= csrf() ?>">
-<meta name="soren-page" content="<?= h(t(PageContext::resolve($_SERVER['REQUEST_URI'] ?? '/')['label'])) ?>">
+<?php $sorenCtx = PageContext::resolve($_SERVER['REQUEST_URI'] ?? '/'); ?>
+<meta name="soren-page" content="<?= h(t($sorenCtx['label'])) ?>">
+<meta name="soren-scope" content="<?= in_array($sorenCtx['kind'], ['ordre', 'konto'], true) ? 'konto' : 'produkt' ?>">
 <title><?= h($title ? t($title) : 'Sørpedia') ?> | Sørpedia</title>
 <meta name="color-scheme" content="<?= match ($u['theme'] ?? 'system') { 'lys' => 'light', 'mork' => 'dark', default => 'light dark' } ?>">
 <meta name="lang" content="<?= $en ? 'en' : 'no' ?>">
 <script>window.I18N = <?= json_encode($en ? I18nEn::JS : new stdClass(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;</script>
+<link rel="icon" type="image/png" href="/assets/brand/sorpedia-badge.png">
 <link rel="stylesheet" href="/assets/app.css?v=<?= filemtime(APP_ROOT . '/public/assets/app.css') ?>">
-<script src="/assets/soren-art.js?v=<?= filemtime(APP_ROOT . '/public/assets/soren-art.js') ?>" defer></script>
 <script src="/assets/soren.js?v=<?= filemtime(APP_ROOT . '/public/assets/soren.js') ?>" defer></script>
 <script src="/assets/app.js?v=<?= filemtime(APP_ROOT . '/public/assets/app.js') ?>" defer></script>
 </head>
-<body>
-<div class="demo-bar"><span><?= t('Demo. Produkter og bilder er hentet fra sor-tre.no. Lager, brukere, anmeldelser og ordrer er oppdiktet. Ingen ekte betaling.') ?></span>
+<body<?= $activeTheme ? ' data-tema="' . h($activeTheme) . '"' : '' ?>>
+<div class="demo-bar"><span><?= t('Varene og bildene er fra sor-tre.no. Lager, kunder, anmeldelser og ordrer er laget for demoen, og du betaler ingenting.') ?></span>
   <a class="lang-flag" href="/sprak/<?= $en ? 'no' : 'en' ?>?back=<?= urlencode($here) ?>" hreflang="<?= $en ? 'nb' : 'en' ?>" lang="<?= $en ? 'nb' : 'en' ?>" title="<?= $en ? 'Bytt til norsk' : 'Switch to English' ?>"><?= $flag ?><span><?= $en ? 'Norsk' : 'English' ?></span></a></div>
 <header class="top">
   <div class="wrap top-row">
-    <a class="logo" href="/"><span class="logo-mark">S</span>Sørpedia</a>
+    <a class="logo" href="/"><img src="/assets/brand/sorpedia-full.png" alt="Sørpedia" width="3487" height="875"><span class="logo-ink" aria-hidden="true"></span><span class="logo-shine" aria-hidden="true"></span></a>
     <form class="search" action="/sok" role="search" autocomplete="off">
       <div class="q-wrap"><span class="q-ghost" id="ghost" aria-hidden="true"></span><input name="q" id="q" type="search" placeholder="<?= t('Søk etter produkt eller hva du skal gjøre, f.eks. «male tak»') ?>" value="<?= h($_GET['q'] ?? '') ?>" aria-label="<?= t('Søk') ?>" aria-describedby="q-tip" spellcheck="false"></div>
       <span id="q-tip" hidden><?= t('Trykk Tab for å fullføre det grå forslaget.') ?></span>
@@ -61,7 +62,7 @@ $flag = $en
           <?php endforeach ?>
         </select></label>
       </form>
-      <?php if ($u): ?><a class="ico" href="/innboks" title="<?= t('Innboks') ?>"<?= str_starts_with($path, '/innboks') ? ' aria-current="page"' : '' ?>><?= icon('inbox') ?><span class="sr"><?= t('Innboks') ?></span></a><?php endif ?>
+      <?php if ($u): $unread = Mail::unread($u['email']); ?><a class="ico count-link" id="inbox-link" href="/innboks" title="<?= t('Innboks') ?>"<?= str_starts_with($path, '/innboks') ? ' aria-current="page"' : '' ?>><?= icon('inbox') ?><span class="sr"><?= t('Innboks') ?>,</span><b id="inbox-count"<?= $unread ? '' : ' hidden' ?>><?= $unread ?></b><span class="sr"><?= t('uleste') ?></span></a><?php endif ?>
       <details class="menu" data-menu>
         <summary class="ico" title="<?= t($u ? 'Kontoen din' : 'Logg inn eller registrer deg') ?>">
           <?php if ($u && $u['avatar']): ?><img class="avatar" src="/profilbilde?v=<?= h(substr($u['avatar'], 0, 8)) ?>" alt=""><?php else: ?><?= icon('user-round') ?><?php endif ?>
@@ -91,15 +92,21 @@ $flag = $en
     </nav>
   </div>
   <nav class="wrap themes">
-    <a href="/guide" class="guide-link"<?= $inGuide ? ' aria-current="page"' : '' ?>><span data-soren="leaf"></span><?= t('Produktguide') ?></a>
+    <?php $helpHere = str_starts_with($path, '/guide') || str_starts_with($path, '/byggelab'); ?>
+    <button type="button" class="guide-link help-btn<?= $helpHere ? ' is-here' : '' ?>" popovertarget="help-menu" aria-haspopup="true"><?= icon('life-buoy') ?><?= t('Hjelp') ?><?= icon('chevron-down', 'chev') ?></button>
+    <div class="help-pop" id="help-menu" popover>
+      <a href="/guide"<?= str_starts_with($path, '/guide') ? ' aria-current="page"' : '' ?>><?= icon('compass') ?><span><b><?= t('Produktguide') ?></b><small><?= t('Svar på noen spørsmål og få forslag med alt som hører til.') ?></small></span></a>
+      <a href="/byggelab"<?= str_starts_with($path, '/byggelab') ? ' aria-current="page"' : '' ?>><?= icon('blocks') ?><span><b><?= t('Byggelab') ?></b><small><?= t('Sett sammen produkter, se hva som passer og testkjør oppsettet.') ?></small></span></a>
+    </div>
     <?php foreach (Catalog::THEMES as $k => [$n]): ?><a href="/tema/<?= $k ?>"<?= $activeTheme === $k ? ' aria-current="page"' : '' ?>><?= icon(Icons::THEMES[$k]) ?><?= h(t($n)) ?></a><?php endforeach ?>
   </nav>
 </header>
 <?php if ($msg): ?><div class="wrap"><div class="flash"><?= h(t($msg)) ?></div></div><?php endif ?>
 <main class="wrap"><?= $content ?></main>
+<div class="compare-bar" id="compare-bar" hidden></div>
 <footer class="wrap foot">
-  <p><?= t('Sørpedia er en prototype. Ikke tilknyttet Sør-Tre AS. Spesifikasjoner merket «Utledet» eller «Kjøper» er ikke kontrollert av Sør-Tre.') ?></p>
+  <p><?= t('Sørpedia er en prototype og er ikke tilknyttet Sør-Tre AS. Spesifikasjoner merket «Utledet» eller «Kjøper» er ikke kontrollert av Sør-Tre.') ?></p>
 </footer>
-<button class="soren-fab" id="soren-open" aria-label="<?= t('Spør Søren') ?>"><span class="av" data-soren="head"></span><span><?= t('Spør Søren') ?></span></button>
+<button class="soren-fab" id="soren-open" aria-label="<?= t('Spør Søren') ?>"><span class="av" data-soren="head"></span></button>
 </body>
 </html>

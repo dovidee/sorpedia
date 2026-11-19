@@ -9,13 +9,17 @@ $missing = array_diff_key(
     array_filter($allKeys, fn($k) => true),
     $specs
 );
-$themeKeys = db()->prepare("SELECT `key` FROM spec_keys WHERE themes IS NULL OR FIND_IN_SET(?, themes)");
-$themeKeys->execute([$p['theme']]);
-$missing = array_intersect_key($missing, array_flip($themeKeys->fetchAll(PDO::FETCH_COLUMN)));
+// Unknown rows only for what matters for this type of product (a gas stove has no magnification). Types no rule knows
+// fall back to the keys of the theme.
+$relevant = Usage::keys($p['name']);
+if (Usage::rule($p['name']) === null) {
+    $themeKeys = db()->prepare("SELECT `key` FROM spec_keys WHERE themes IS NULL OR FIND_IN_SET(?, themes)");
+    $themeKeys->execute([$p['theme']]);
+    $relevant = $themeKeys->fetchAll(PDO::FETCH_COLUMN);
+}
+$missing = array_intersect_key($missing, array_flip($relevant));
 ?>
-<p class="crumbs"><a href="/"><?= t('Forsiden') ?></a> / <a href="/tema/<?= h($p['theme']) ?>"><?= h(theme_name($p['theme'])) ?></a></p>
-
-<div class="pdp">
+<div class="pdp" data-tema="<?= h($p['theme']) ?>">
   <section class="gallery" data-gallery>
     <div class="stage">
       <?php if ($images): ?>
@@ -71,6 +75,23 @@ $missing = array_intersect_key($missing, array_flip($themeKeys->fetchAll(PDO::FE
     <p class="ask-soren"><a href="#" data-open-soren data-ask="<?= h(t('Fortell meg kort om {name}. Hva passer den til, og hva bør jeg tenke på?', ['name' => $p['name']])) ?>"><span data-soren="leaf"></span> <?= t('Spør Søren om dette produktet') ?></a></p>
   </section>
 </div>
+
+<?php $usage = Usage::needs((int) $p['id'], $p['name']); if ($usage): ?>
+<section class="block usage">
+  <h2><?= t('Bruk og tilbehør') ?> <?= source_badge('utledet', t('Regel ut fra produkttypen. Sjekk produktteksten før du kjøper.')) ?></h2>
+  <p><?= h($usage['use']) ?></p>
+  <?php if ($usage['has'] || $usage['not']): ?>
+    <h3><?= t('Du trenger også') ?></h3>
+    <?php foreach ($usage['has'] as $need): ?>
+      <p class="need"><?= h(ucfirst($need['text'])) ?></p>
+      <div class="grid"><?php foreach ($need['cards'] as $c) { require __DIR__ . '/_card.php'; } ?></div>
+    <?php endforeach ?>
+    <?php if ($usage['not']): ?>
+      <p class="need muted"><?= t('Selges ikke her') ?>: <?= h(implode(', ', $usage['not'])) ?></p>
+    <?php endif ?>
+  <?php endif ?>
+</section>
+<?php endif ?>
 
 <?php if ($rel['passer']): ?>
 <section class="block">
@@ -193,4 +214,3 @@ $missing = array_intersect_key($missing, array_flip($themeKeys->fetchAll(PDO::FE
   <div class="grid"><?php foreach (array_slice($rel['kjopt'], 0, 4) as $c) { unset($c['rel']); $via = 'kjopt_sammen'; require __DIR__ . '/_card.php'; } ?></div>
 </section>
 <?php endif ?>
-<div class="compare-bar" id="compare-bar" hidden></div>

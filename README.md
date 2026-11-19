@@ -1,3 +1,4 @@
+![sorpedia](images/sorpedia-full.png)
 # Sørpedia
 
 Demo web store for Sør-Tre, a Norwegian hardware store.
@@ -19,6 +20,7 @@ Open http://localhost:8080. The first start builds the database from `data/raw`.
 
 ```
 docker compose exec app php scripts/import.php   # rebuild the database
+docker compose exec app php scripts/transport-demo.php   # refresh only the demo shipments on the Control Tower map
 docker compose down -v                           # delete the database
 ```
 

@@ -218,3 +218,21 @@ function person(mixed $s): string
 {
     return hc(preg_replace('/\s*\(demo\)\s*$/iu', '', (string) $s));
 }
+
+/** Control Tower floor wired to the database and the system clock. Checks build ControlFloor with in-memory parts. */
+function tower_floor(): ControlFloor
+{
+    return new ControlFloor(new PdoFloorStore(db()), new SystemClock());
+}
+
+/** Control Tower transport wired to the database and the system clock. */
+function tower_transport(): Transport
+{
+    return new Transport(new PdoShipmentStore(db()), new SystemClock());
+}
+
+/** Staff drafts wired to the database and the local model. */
+function tower_drafts(): Drafts
+{
+    return new Drafts(new PdoDraftStore(db()), new OllamaDraftModel());
+}

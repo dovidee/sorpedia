@@ -1,6 +1,7 @@
 <?php /** @var array $tickets @var array $msgs */ ?>
 <h1>Kundeservice <small class="muted"><?= count($tickets) ?> åpne saker</small></h1>
 <p class="muted">Saker der kunden ba Søren om et menneske. Du ser hele samtalen med Søren først, så slipper kunden å forklare på nytt. Nye saker og meldinger kommer inn automatisk.</p>
+<?php if (!$tickets): ?><div class="empty"><div class="empty-mascot" data-soren="lumber"></div><p class="muted">Ingen åpne saker.</p></div><?php endif ?>
 <div class="tickets" id="tickets">
 <?php foreach ($tickets as $t): ?>
   <article class="ticket" data-ticket="<?= (int) $t['id'] ?>">
