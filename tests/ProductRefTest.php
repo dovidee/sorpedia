@@ -37,6 +37,14 @@ return [
         check(ProductRef::clean('Lykten [[291448]] og [291449] lades', []) === 'Lykten og lades', 'bare product IDs were kept');
     },
 
+    'single-bracket references are checked like double ones, and links are removed' => function () use ($one) {
+        $id = (int) $one()['id'];
+        $out = ProductRef::clean("Lager [lager:$id], pris [pris:999999999].", [$id]);
+        check($out === "Lager [[lager:$id]], pris .", 'single brackets: ' . $out);
+        $out = ProductRef::clean('Bruk ([GP AAA](https://www.example.no/batteri-pris-78)) eller se https://example.no/x og www.example.no.', []);
+        check($out === 'Bruk (GP AAA) eller se og', 'links: ' . $out);
+    },
+
     'a price reference becomes the price in the database' => function () use ($one) {
         $p = $one();
         check(ProductRef::resolve('Pris [[pris:' . $p['id'] . ']]', [(int) $p['id']]) === 'Pris ' . kr((int) $p['price_ore']), 'wrong price');

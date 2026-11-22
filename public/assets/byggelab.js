@@ -2,6 +2,7 @@
 // The browser only holds the list of product IDs and quantities. Every number shown (price, stock, specifications,
 // compatibility) comes back from /api/byggelab/{theme}/sjekk, which reads the database.
 import * as THREE from 'three';
+import { tour } from './tour.js';
 
 const cfg = JSON.parse(document.getElementById('lab-cfg').textContent);
 const L = cfg.L;
@@ -15,7 +16,7 @@ const num = (n) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).f
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
 const INV = new Map(cfg.inventory.map((p) => [p.id, p]));
-const short = (name) => String(name).split(/\s+[–-]\s+/u)[0];
+const short = (name) => String(name).split(/\s+[\u2013-]\s+/u)[0];
 const SVG = (d) => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const I = {
   plus: SVG('<path d="M5 12h14"/><path d="M12 5v14"/>'),
@@ -69,12 +70,25 @@ function remove(id) {
   commit(fill(L.hRemove, { name: nameOf(id) }), () => { S.lines = S.lines.filter((l) => l.id !== id); if (S.sel === id) S.sel = null; });
   announce(fill(L.hRemove, { name: nameOf(id) }));
 }
+// Moves a line before another line (or to the end when before is null); the bench lays lanes out in line order
+function move(id, before) {
+  if (id === before) return;
+  commit(fill(L.hMove, { name: nameOf(id) }), () => {
+    const line = S.lines.find((l) => l.id === id);
+    const rest = S.lines.filter((l) => l.id !== id);
+    const at = before === null ? rest.length : rest.findIndex((l) => l.id === before);
+    rest.splice(at < 0 ? rest.length : at, 0, line);
+    S.lines = rest;
+    S.sel = id;
+  });
+  announce(fill(L.hMove, { name: nameOf(id) }));
+}
 function setQty(id, n) {
   n = Math.max(1, Math.min(99, n));
   commit(fill(L.hQty, { name: nameOf(id), n }), () => { S.lines = S.lines.map((l) => (l.id === id ? { ...l, qty: n } : l)); S.sel = id; });
 }
 function load(lines, label) {
-  commit(label, () => { S.lines = Object.entries(lines).map(([id, qty]) => ({ id: +id, qty: +qty })).filter((l) => INV.has(l.id)); S.sel = null; S.link = null; });
+  commit(label, () => { S.lines = (Array.isArray(lines) ? lines : Object.entries(lines)).map(([id, qty]) => ({ id: +id, qty: +qty })).filter((l) => INV.has(l.id)); S.sel = null; S.link = null; });
 }
 
 function changed() {
@@ -97,10 +111,10 @@ function syncUrl() {
 function fromUrl() {
   const c = new URLSearchParams(location.search).get('c');
   if (!c) return null;
-  const lines = {};
+  const lines = []; // pairs, so the order in the address is kept (an object would sort numeric keys)
   for (const part of c.split(',').slice(0, cfg.max)) {
     const [id, qty] = part.split(':').map((x) => parseInt(x, 10));
-    if (INV.has(id)) lines[id] = Math.max(1, Math.min(99, qty || 1));
+    if (INV.has(id) && !lines.some((l) => l[0] === id)) lines.push([id, Math.max(1, Math.min(99, qty || 1))]);
   }
   return Object.keys(lines).length ? lines : null;
 }
@@ -143,10 +157,11 @@ function renderList() {
   const rows = cfg.inventory.filter((p) => (S.cat === 'alle' || p.cats.includes(+S.cat)) && (!q || p.name.toLowerCase().includes(q)));
   list.innerHTML = rows.length ? rows.map((p) => {
     const n = inCfg.get(p.id);
-    const facts = p.facts.slice(0, 2).map((f) => `<span>${esc(f.label)} <b>${esc(f.value)}</b></span>`).join('');
+    const facts = p.facts.slice(0, 1).map((f) => `<span>${esc(f.label)} <b>${esc(f.value)}</b></span>`).join('');
+    // A tile per part, as on a tool rack: picture first, then name, price and one fact
     return `<li class="lab-item${n ? ' in' : ''}" draggable="true" data-id="${p.id}">
-      ${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy" width="52" height="52">` : '<span class="noimg"></span>'}
-      <span><span class="nm">${esc(p.name)}</span><span class="mt"><b>${kr(p.price_ore)}</b>${facts}${n ? `<span>× ${n}</span>` : ''}</span></span>
+      ${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy" width="120" height="96">` : '<span class="noimg"></span>'}
+      <span class="nm">${esc(p.name)}</span><span class="mt"><b>${kr(p.price_ore)}</b>${n ? `<span class="cnt">× ${n}</span>` : ''}</span>${facts ? `<span class="fx">${facts}</span>` : ''}
       <button type="button" data-add="${p.id}" aria-label="${esc(L.add)}: ${esc(p.name)}" title="${esc(n ? L.added : L.add)}">${I.plus}</button></li>`;
   }).join('') : `<li class="none">${esc(L.noHits)}</li>`;
 }
@@ -173,6 +188,10 @@ list.addEventListener('pointerdown', (e) => {
     li.style.touchAction = 'none';
     li.setPointerCapture(e.pointerId);
   }, 250);
+  // touch-action is read when the touch starts, so setting it after the hold is too late. A non-passive touchmove
+  // that cancels the default keeps the browser from scrolling (and firing pointercancel) once the drag has begun.
+  const noScroll = (t) => { if (ghost) t.preventDefault(); };
+  li.addEventListener('touchmove', noScroll, { passive: false });
   const over = (x, y) => { const r = view.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
   const move = (m) => {
     if (!ghost) { if (Math.hypot(m.clientX - e.clientX, m.clientY - e.clientY) > 8) end(); return; }
@@ -186,6 +205,7 @@ list.addEventListener('pointerdown', (e) => {
     li.removeEventListener('pointermove', move);
     li.removeEventListener('pointerup', end);
     li.removeEventListener('pointercancel', end);
+    li.removeEventListener('touchmove', noScroll);
     li.style.touchAction = '';
     if (!ghost) return;
     ghost.remove();
@@ -312,6 +332,7 @@ function save() {
   store.set(SAVES, all);
   renderSaved();
   announce(fill(L.saveDone, { name }));
+  logEvent('lagret');
 }
 $('#lab-saved').addEventListener('click', (e) => {
   const all = store.get(SAVES, {});
@@ -329,6 +350,12 @@ $('#lab-saved').addEventListener('click', (e) => {
   }
 });
 
+// Tells Control Tower a configuration was saved or exported. Fire and forget: the browser keeps working without it.
+function logEvent(what) {
+  fetch(`/api/byggelab/${cfg.theme}/logg`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': cfg.csrf, Accept: 'application/json' }, body: JSON.stringify({ what, lines: S.lines }),
+  }).catch(() => {});
+}
 function download(name, text, type) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type }));
@@ -342,6 +369,7 @@ function exportList() {
   const r = S.report;
   if (!r?.items.length) return;
   const rows = r.items.map((i) => [i.id, `"${i.name.replace(/"/g, '""')}"`, i.qty, money(i.price_ore), money(i.price_ore * i.qty)].join(';'));
+  logEvent('liste');
   download(`byggelab-${cfg.theme}.csv`, `﻿${L.csvHead}\n${rows.join('\n')}\n;;;;${money(r.totals.price_ore)}\n`, 'text/csv;charset=utf-8');
 }
 function downloadReport() {
@@ -360,6 +388,7 @@ async function toCart() {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': cfg.csrf, Accept: 'application/json' }, body: JSON.stringify({ lines: S.lines }),
   }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
   if (!r) return announce(L.cartFail);
+  S.inCart = true;
   const c = $('#cart-count');
   if (c) c.textContent = r.count;
   const b = $('[data-act=cart]');
@@ -403,7 +432,10 @@ $('.lab-bar').addEventListener('click', (e) => {
   ({ undo, redo, save, export: exportList, cart: toCart, run })[b.dataset.act]?.();
 });
 document.addEventListener('keydown', (e) => {
-  if (!(e.ctrlKey || e.metaKey) || e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  // Delete or Backspace removes the selected product
+  if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel !== null && !e.ctrlKey && !e.metaKey) { e.preventDefault(); remove(S.sel); return; }
+  if (!(e.ctrlKey || e.metaKey)) return;
   const k = e.key.toLowerCase();
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); } else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); }
 });
@@ -414,7 +446,7 @@ const scene = (() => {
   const labels = $('#lab-labels');
   let gl = null;
   try {
-    const r = new THREE.WebGLRenderer({ antialias: true });
+    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     if (!r.getContext()) throw new Error('no context');
     gl = r;
   } catch { gl = null; }
@@ -444,13 +476,16 @@ const scene = (() => {
   gl.setPixelRatio(Math.min(devicePixelRatio, 2));
   view.prepend(gl.domElement);
   const sc = new THREE.Scene();
-  sc.background = new THREE.Color(0x141a17);
+  // Transparent: the studio backdrop behind the canvas comes from CSS (--lab-view), so it follows light and dark mode
+  gl.setClearColor(0x000000, 0);
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400);
   sc.add(new THREE.HemisphereLight(0xf2efe6, 0x1b231f, 1.7));
   const sun = new THREE.DirectionalLight(0xffffff, 1.3);
   sun.position.set(14, 30, 10);
   sc.add(sun);
-  const grid = new THREE.GridHelper(120, 60, 0x26302b, 0x1d2622);
+  const grid = new THREE.GridHelper(120, 60, 0x7f8a85, 0x7f8a85);
+  grid.material.transparent = true;
+  grid.material.opacity = 0.18;
   grid.position.y = -0.4;
   sc.add(grid);
 
@@ -593,7 +628,7 @@ const scene = (() => {
       });
     });
     if (nodes.size) {
-      bench = new THREE.Mesh(new THREE.BoxGeometry(widest * gapX + 1.2, 0.2, rows.length * gapZ - 0.6), new THREE.MeshStandardMaterial({ color: 0x1a221e, roughness: 1 }));
+      bench = new THREE.Mesh(new THREE.BoxGeometry(widest * gapX + 1.2, 0.2, rows.length * gapZ - 0.6), new THREE.MeshStandardMaterial({ color: 0x8b9490, roughness: 0.55, metalness: 0.35 }));
       bench.position.y = -0.3;
       bench.add(new THREE.LineSegments(new THREE.EdgesGeometry(bench.geometry), new THREE.LineBasicMaterial({ color: 0x2f3b35 })));
       world.add(bench);
@@ -725,7 +760,7 @@ const scene = (() => {
     nodes.forEach((n) => {
       const [x, y] = project(n.pos.clone().setY(n.top + 3.1));
       const it = n.item;
-      h += `<span class="lab-lbl${S.sel === it.id ? ' sel' : ''}${weakest === n ? ' warn' : ''}" style="left:${x}px;top:${y}px">${esc(short(it.name))}<small>${it.qty > 1 ? `${it.qty} × ` : ''}${kr(it.price_ore)}${weakest === n ? ` · ${esc(weakestLabel)}` : ''}</small></span>`;
+      h += `<span class="lab-lbl${S.sel === it.id ? ' sel' : ''}${weakest === n ? ' warn' : ''}" style="left:${x}px;top:${y}px"><b>${esc(short(it.name))}</b><small>${it.qty > 1 ? `${it.qty} × ` : ''}${kr(it.price_ore)}${weakest === n ? ` · ${esc(weakestLabel)}` : ''}</small></span>`;
     });
     laneLabels.forEach((l) => { const [x, y] = project(l.pos); h += `<span class="lab-lane" style="left:${x}px;top:${y}px">${esc(L.lanes[l.k] || l.k)}</span>`; });
     beams.forEach((b) => { const [x, y] = project(b.pos); h += `<span class="lab-beam" style="left:${x}px;top:${y}px">${esc(b.text)}</span>`; });
@@ -746,26 +781,125 @@ const scene = (() => {
 
   // ---------- Pointer: drag to turn, click to pick, wheel to zoom ----------
   const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+  const floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hitPt = new THREE.Vector3();
   let down = null;
-  gl.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, t: theta, moved: false }; gl.domElement.setPointerCapture(e.pointerId); });
-  gl.domElement.addEventListener('pointermove', (e) => {
-    if (!down) return;
-    const dx = e.clientX - down.x;
-    if (Math.abs(dx) > 4) down.moved = true;
-    if (down.moved) { theta = down.t - dx * 0.008; placeCam(); }
-  });
-  gl.domElement.addEventListener('pointerup', (e) => {
-    if (!down) return;
-    const moved = down.moved;
-    down = null;
-    if (moved) return;
+  function aim(e) {
     const r = gl.domElement.getBoundingClientRect();
     mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(mouse, cam);
-    const hit = ray.intersectObjects(world.children, true).find((h) => h.object.userData.id || h.object.userData.link);
+  }
+  function hitAt(e) {
+    aim(e);
+    return ray.intersectObjects(world.children, true).find((h) => h.object.userData.id || h.object.userData.link);
+  }
+  // Point on the bench plane in world (unrotated) coordinates
+  function benchPoint(e) {
+    aim(e);
+    if (!ray.ray.intersectPlane(floor, hitPt)) return null;
+    return world.worldToLocal(hitPt.clone());
+  }
+  function onBench(p) {
+    if (!bench || !p) return false;
+    const b = bench.geometry.parameters;
+    return Math.abs(p.x - bench.position.x) <= b.width / 2 + 0.4 && Math.abs(p.z - bench.position.z) <= b.depth / 2 + 0.4;
+  }
+  // Where a dragged item lands: before the first item in its lane to its right, else after the last
+  function dropBefore(n, p) {
+    const lane = [...nodes.values()].filter((x) => x.item.lane === n.item.lane && x !== n).sort((a, b) => a.pos.x - b.pos.x);
+    const next = lane.find((x) => x.pos.x > p.x);
+    if (next) return next.item.id;
+    const last = lane[lane.length - 1];
+    if (!last) return undefined; // alone in its lane: nothing to reorder
+    const after = S.lines.findIndex((l) => l.id === last.item.id);
+    return S.lines[after + 1]?.id ?? null;
+  }
+  gl.domElement.addEventListener('pointerdown', (e) => {
+    menuClose();
+    if (e.button !== 0) return;
+    const hit = hitAt(e);
+    const id = hit?.object.userData.id;
+    down = { x: e.clientX, y: e.clientY, t: theta, moved: false, id: id ?? null, node: id ? nodes.get(id) : null };
+    gl.domElement.setPointerCapture(e.pointerId);
+  });
+  gl.domElement.addEventListener('pointermove', (e) => {
+    if (!down) return;
+    const dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if (Math.hypot(dx, dy) > 5) down.moved = true;
+    if (!down.moved) return;
+    if (down.node) {
+      // Carry the product above the bench; it turns red when it would be removed on release
+      const p = benchPoint(e);
+      if (!p) return;
+      down.p = p;
+      down.node.group.position.set(p.x, 0.9, p.z);
+      const out = !onBench(p);
+      down.node.edge.material.color.set(out ? 0xe5483b : 0xf0b44c);
+      view.classList.toggle('lab-out', out);
+      dirty = true;
+    } else { theta = down.t - dx * 0.008; placeCam(); }
+  });
+  gl.domElement.addEventListener('pointerup', (e) => {
+    if (!down) return;
+    const d = down;
+    down = null;
+    view.classList.remove('lab-out');
+    if (d.moved && d.node) {
+      d.node.group.position.copy(d.node.pos);
+      dirty = true;
+      if (!d.p) return;
+      if (!onBench(d.p)) { remove(d.id); return; }
+      const before = dropBefore(d.node, d.p);
+      const idx = S.lines.findIndex((l) => l.id === d.id);
+      if (before === undefined || S.lines[idx + 1]?.id === before || (before === null && idx === S.lines.length - 1)) { highlight(); return; }
+      move(d.id, before);
+      return;
+    }
+    if (d.moved) return;
+    const hit = hitAt(e);
     if (hit?.object.userData.link) selectLink(hit.object.userData.link);
     else selectItem(hit ? hit.object.userData.id : null);
   });
+  gl.domElement.addEventListener('pointercancel', () => { if (down?.node) { down.node.group.position.copy(down.node.pos); dirty = true; } down = null; view.classList.remove('lab-out'); });
+
+  // ---------- Right-click menu on a product: remove, one more, one less ----------
+  const menu = $('#lab-menu');
+  function menuClose() { if (!menu.hidden) { menu.hidden = true; menu.innerHTML = ''; } }
+  gl.domElement.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const id = hitAt(e)?.object.userData.id;
+    if (!id) { menuClose(); return; }
+    selectItem(id);
+    const line = S.lines.find((l) => l.id === id);
+    const r = view.getBoundingClientRect();
+    menu.setAttribute('aria-label', fill(L.menu, { name: nameOf(id) }));
+    menu.innerHTML = `<button type="button" role="menuitem" data-m="more">${esc(L.menuMore)}</button>
+      <button type="button" role="menuitem" data-m="less"${line && line.qty > 1 ? '' : ' disabled'}>${esc(L.menuLess)}</button>
+      <button type="button" role="menuitem" data-m="remove" class="danger">${esc(L.menuRemove)}</button>`;
+    menu.dataset.id = id;
+    menu.hidden = false;
+    menu.style.left = `${Math.min(e.clientX - r.left, r.width - menu.offsetWidth - 8)}px`;
+    menu.style.top = `${Math.min(e.clientY - r.top, r.height - menu.offsetHeight - 8)}px`;
+    menu.querySelector('button').focus();
+  });
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-m]');
+    if (!b) return;
+    const id = +menu.dataset.id, line = S.lines.find((l) => l.id === id);
+    menuClose();
+    if (!line) return;
+    if (b.dataset.m === 'remove') remove(id);
+    else setQty(id, line.qty + (b.dataset.m === 'more' ? 1 : -1));
+  });
+  menu.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { menuClose(); gl.domElement.focus(); }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const bs = [...menu.querySelectorAll('button:not([disabled])')];
+      const i = bs.indexOf(document.activeElement);
+      bs[(i + (e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length].focus();
+    }
+  });
+  document.addEventListener('pointerdown', (e) => { if (!menu.hidden && !menu.contains(e.target)) menuClose(); });
   gl.domElement.addEventListener('wheel', (e) => {
     e.preventDefault();
     cam.zoom = Math.max(0.3, Math.min(4, cam.zoom * (e.deltaY > 0 ? 0.9 : 1.1)));
@@ -800,5 +934,23 @@ const scene = (() => {
 // ---------- Start: the address, else the first example, so the lab never opens empty ----------
 renderSaved();
 const start = fromUrl() || cfg.presets[0]?.lines || {};
-S.lines = Object.entries(start).map(([id, qty]) => ({ id: +id, qty: +qty })).filter((l) => INV.has(l.id));
+S.lines = (Array.isArray(start) ? start : Object.entries(start)).map(([id, qty]) => ({ id: +id, qty: +qty })).filter((l) => INV.has(l.id));
 changed();
+
+// ---------- Guided tour: the whole workflow, learned by doing (public/assets/tour.js) ----------
+let base = 0;
+const TS = L.tour.steps;
+const step = (i, sel, more = {}) => ({ ...TS[i], sel, ...more });
+const labTour = tour('byggelab', [
+  step(0, '.lab-builders'),
+  step(1, '.lab-inv', { before: () => { base = S.lines.length; }, done: () => S.lines.length > base }),
+  step(2, '#lab-view'),
+  step(3, '#lab-side'),
+  step(4, '#lab-side', { before: () => { base = S.lines.length; }, done: () => S.lines.length < base }),
+  step(5, '.lab-bar-group'),
+  step(6, '[data-act=run]', { done: () => !!S.run && !S.running }),
+  step(7, '.lab-bar-group:nth-child(2)'),
+  step(8, '[data-act=cart]', { done: () => !!S.inCart }),
+  step(9, '.cart-link'),
+], L.tour.ui);
+$('#lab-tour').addEventListener('click', () => labTour.start());

@@ -27,7 +27,7 @@ final class PdoShipmentStore implements ShipmentStore
         $rows = $this->pdo->query("SELECT s.id, s.ref, s.direction, s.status, s.origin_city, s.dest_city, s.is_demo,
                 UNIX_TIMESTAMP(s.eta) eta, UNIX_TIMESTAMP(s.planned_arrival) planned_arrival, UNIX_TIMESTAMP(s.actual_arrival) actual_arrival,
                 v.fleet_no, v.type vehicle_type,
-                p.lat, p.lng, p.heading, UNIX_TIMESTAMP(p.observed_at) observed_at
+                p.lat, p.lng, p.heading, UNIX_TIMESTAMP(p.observed_at) observed_at, p.source pos_source
             FROM shipments s LEFT JOIN vehicles v ON v.id = s.vehicle_id
             LEFT JOIN shipment_positions p ON p.id = (SELECT id FROM shipment_positions WHERE shipment_id = s.id ORDER BY observed_at DESC, id DESC LIMIT 1)
             ORDER BY s.status = 'levert', s.eta")->fetchAll();
@@ -62,8 +62,9 @@ final class PdoShipmentStore implements ShipmentStore
         $st->execute([$s['driver_id']]);
         $driver = $st->fetch() ?: null;
         unset($s['vehicle_id'], $s['driver_id']);
-        $st = $this->pdo->prepare('SELECT i.product_id, p.name, i.qty, i.weight_kg, i.weight_basis, i.handling_unit
-            FROM shipment_items i JOIN products p ON p.id = i.product_id WHERE i.shipment_id = ? ORDER BY p.name');
+        $st = $this->pdo->prepare("SELECT i.product_id, p.name, p.slug, i.qty, i.weight_kg, i.weight_basis, i.handling_unit,
+                (SELECT path_m FROM product_images m WHERE m.product_id = p.id ORDER BY m.kind = 'sortre' DESC, m.sort, m.id LIMIT 1) img
+            FROM shipment_items i JOIN products p ON p.id = i.product_id WHERE i.shipment_id = ? ORDER BY p.name");
         $st->execute([$id]);
         $items = $st->fetchAll();
         $st = $this->pdo->prepare('SELECT lat, lng, heading, UNIX_TIMESTAMP(observed_at) observed_at, UNIX_TIMESTAMP(received_at) received_at, source

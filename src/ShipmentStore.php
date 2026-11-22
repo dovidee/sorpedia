@@ -7,7 +7,7 @@ declare(strict_types=1);
  *
  * Row shapes, all timestamps as Unix seconds or null:
  *   all():  list of {id, ref, direction, status, origin_city, dest_city, is_demo, eta, planned_arrival, actual_arrival,
- *           fleet_no, vehicle_type, lat, lng, heading, observed_at, route: list<[lat, lng, source]>}
+ *           fleet_no, vehicle_type, lat, lng, heading, observed_at, pos_source, route: list<[lat, lng, source]>}
  *           lat/lng/heading/observed_at are the latest position, null without one.
  *   find(): {shipment: {id, ref, direction, status, origin_city, origin_point, dest_city, dest_point, container_ref,
  *           container_type, eta_source, weight_declared_kg, weight_measured_kg, delay_reason, is_demo, warehouse,

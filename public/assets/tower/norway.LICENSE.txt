@@ -1,2 +1,4 @@
-norway.json: mainland Norway outline, simplified from Natural Earth 1:50m Cultural Vectors, Admin 0 Countries (version 5.1.2).
-Natural Earth data is in the public domain. https://www.naturalearthdata.com/about/terms-of-use/
+norway.json: Norway and neighbouring coastlines, county borders, lakes, roads and towns, cut and simplified from
+Natural Earth 1:10m Cultural and Physical Vectors (admin 0 countries, admin 1 states and provinces, lakes, roads,
+populated places), github.com/nvkelso/natural-earth-vector. Natural Earth data is in the public domain.
+https://www.naturalearthdata.com/about/terms-of-use/

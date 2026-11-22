@@ -178,9 +178,9 @@ flowchart TD
     MAIL --> CONF["GET /bekreft/{token}<br/>email_verified_at set"]
 
     CU --> ROLE{"has_role()"}
-    ROLE -->|"ansatt, admin"| R1["/ansatt, POST /ansatt/*"]
-    ROLE -->|"support, ansatt, admin"| R2["/support, ticket channels"]
-    ROLE -->|"admin"| R3["/admin"]
+    ROLE -->|"ansatt, support, admin"| R1["/ansatt/tarn, /api/tarn/*"]
+    ROLE -->|"ansatt, admin"| R2["POST /ansatt/revisjon, /ansatt/rapport"]
+    ROLE -->|"support, ansatt, admin"| R3["POST /support/{id}/lukk, ticket channels"]
     CU --> VER{"is_verified()<br/>confirmed email AND<br/>a paid order"}
     VER -->|"yes"| R4["Edit the Open version<br/>write a review"]
     CU -->|"logged in"| R5["/kasse, /ordre/{id},<br/>/innstillinger/*"]
@@ -196,9 +196,9 @@ flowchart TD
     class R1,R2,R3,R4,R5 route
 ```
 
-Login is a session cookie, renewed with `session_regenerate_id()` at login, logout, password change and account deletion. The four roles are `bruker`, `ansatt`, `support` and `admin`, stored on the user row. "Verified" is not a role: it is computed on each request as a confirmed email plus at least one paid order. Pages for staff redirect to login when access is missing. The staff POST actions under `/ansatt` answer 403; closing a support case without the role does nothing and redirects. The demo users are listed in the README.
+Login is a session cookie, renewed with `session_regenerate_id()` at login, logout, password change and account deletion. The four roles are `bruker`, `ansatt`, `support` and `admin`, stored on the user row. "Verified" is not a role: it is computed on each request as a confirmed email plus at least one paid order. The Control Tower redirects to login when access is missing; it is the only staff page. The staff POST actions `/ansatt/revisjon/{id}` and `/ansatt/rapport/{id}` answer 403; closing a support case without the role does nothing and redirects. The demo users are listed in the README.
 
-Sources: `src/Auth.php`, `src/helpers.php` (`current_user`, `has_role`, `is_verified`), `public/index.php` (routes `/logg-inn`, `/logg-ut`, `/registrer`, `/bekreft/{token}`, `/ansatt`, `/support`, `/admin`, `settings_user()`).
+Sources: `src/Auth.php`, `src/helpers.php` (`current_user`, `has_role`, `is_verified`), `public/index.php` (routes `/logg-inn`, `/logg-ut`, `/registrer`, `/bekreft/{token}`, `/ansatt/tarn`, `/ansatt/*`, `/support/{id}/lukk`, `settings_user()`).
 
 ## 6. Live updates
 
@@ -220,8 +220,7 @@ flowchart LR
     W6 --> EV
     EV -->|"every 0.7 s:<br/>id > last id AND channel IN (...)"| API["GET /api/stream?ch=...<br/>checks access per channel<br/>closes after 25 s"]
     API -->|"SSE with id:"| R1["Chat panel, app.js<br/>ticket:{id}"]
-    API -->|"SSE with id:"| R2["/support page<br/>support + ticket:{id}"]
-    API -->|"SSE with id:"| R3["/ansatt page<br/>staff"]
+    API -->|"SSE with id:"| R2["Control Tower, tower.js<br/>ticket:{id}"]
     NS["Not implemented:<br/>no page listens to<br/>product:{id} or stock"]
     EV -.- NS
 
@@ -231,7 +230,7 @@ flowchart LR
     classDef gap fill:#FFB6C1,stroke:#DC143C,stroke-width:2px,color:#000000
     class W1,W2,W3,W4,W5,W6,API step
     class EV data
-    class R1,R2,R3 client
+    class R1,R2 client
     class NS gap
 ```
 
@@ -239,7 +238,7 @@ A change writes a row to `events`. Buyer edits, staff merges and rejects, and ch
 
 **Not implemented:** events on `product:{id}` and `stock` are written, but no page subscribes to them, so product pages and stock do not update live.
 
-Sources: `src/helpers.php` (`emit`), `public/index.php` (route `GET /api/stream` and every `emit(` call), `public/assets/app.js`, `templates/support.php`, `templates/staff.php`.
+Sources: `src/helpers.php` (`emit`), `public/index.php` (route `GET /api/stream` and every `emit(` call), `public/assets/app.js`, `public/assets/tower.js`.
 
 ## 7. Security boundaries
 

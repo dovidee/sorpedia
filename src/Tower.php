@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Control Tower reads that carry no rules of their own: the product inspector, tickets, combined missing keys,
- * data quality and the KPI definitions shared with /admin (specs/022-control-tower).
+ * data quality and the KPI definitions (specs/022-control-tower).
  * Floor rules live in Floor and ControlFloor, transport in ShipmentRules and Transport, drafts in DraftPrompt and Drafts.
  */
 final class Tower
@@ -13,8 +13,13 @@ final class Tower
     {
         $pdo = db();
         PdoShipmentStore::ensure($pdo);
+        Gulv::ensure($pdo);
+        Drill::ensure($pdo);
+        Refund::ensure($pdo);
+        Supply::ensure($pdo);
         if (!$pdo->query("SHOW COLUMNS FROM support_tickets LIKE 'product_id'")->fetch()) {
-            $pdo->exec('ALTER TABLE support_tickets ADD COLUMN product_id INT UNSIGNED NULL AFTER chat_log, ADD KEY (product_id)');
+            // IF NOT EXISTS: two first requests can both see the column missing, and the second must not fail
+            $pdo->exec('ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS product_id INT UNSIGNED NULL AFTER chat_log, ADD KEY IF NOT EXISTS product_id (product_id)');
         }
     }
 
@@ -27,10 +32,30 @@ final class Tower
             WHERE t.status <> 'lukket' ORDER BY t.id DESC LIMIT 30")->fetchAll();
     }
 
+    /** Every ticket for the customer service view, open first, then newest. Customers are shown by alias only. */
+    public static function desk(): array
+    {
+        return db()->query("SELECT t.id, t.status, t.summary, t.product_id, p.name product, UNIX_TIMESTAMP(t.created_at) at, " . Privacy::sql() . " customer,
+                (SELECT COUNT(*) FROM support_messages m WHERE m.ticket_id = t.id) messages,
+                (SELECT sender FROM support_messages m WHERE m.ticket_id = t.id ORDER BY m.id DESC LIMIT 1) last_from,
+                (SELECT UNIX_TIMESTAMP(MAX(created_at)) FROM support_messages m WHERE m.ticket_id = t.id) last_at
+            FROM support_tickets t LEFT JOIN users u ON u.id = t.user_id LEFT JOIN products p ON p.id = t.product_id
+            ORDER BY t.status = 'lukket', t.id DESC LIMIT 60")->fetchAll();
+    }
+
+    /** Search terms without results since a time, most frequent first, with the latest event so staff can act on it. */
+    public static function failedSearches(int $since): array
+    {
+        $st = db()->prepare("SELECT JSON_UNQUOTE(JSON_EXTRACT(data, '$.q')) q, COUNT(*) n, MAX(id) event, UNIX_TIMESTAMP(MAX(created_at)) at
+            FROM analytics_events WHERE type = 'search_zero' AND created_at >= FROM_UNIXTIME(?) GROUP BY q ORDER BY n DESC, at DESC LIMIT 30");
+        $st->execute([$since]);
+        return $st->fetchAll();
+    }
+
     /** One ticket with its stored chat log and the messages added since. */
     public static function ticket(int $id): ?array
     {
-        $st = db()->prepare("SELECT t.id, t.status, t.summary, t.chat_log, t.product_id, p.name product, UNIX_TIMESTAMP(t.created_at) at, " . Privacy::sql() . " customer
+        $st = db()->prepare("SELECT t.id, t.status, t.summary, t.chat_log, t.product_id, p.name product, p.slug, UNIX_TIMESTAMP(t.created_at) at, " . Privacy::sql() . " customer
             FROM support_tickets t LEFT JOIN users u ON u.id = t.user_id LEFT JOIN products p ON p.id = t.product_id WHERE t.id = ?");
         $st->execute([$id]);
         $t = $st->fetch();
@@ -126,12 +151,20 @@ final class Tower
             FROM support_tickets t WHERE t.product_id = ? AND t.status IN ('apen','pagar') ORDER BY t.id");
         $st->execute([$id]);
         $tickets = $st->fetchAll();
+        // Documented relationships only: both products, the kind and Sør-Tre's own reason (rule-based ones are counted on the floor)
+        $st = db()->prepare("SELECT o.id, o.name, r.kind, r.level, r.reason,
+                (SELECT path_m FROM product_images i WHERE i.product_id = o.id ORDER BY kind = 'sortre' DESC, sort LIMIT 1) img
+            FROM relations r JOIN products o ON o.id = IF(r.product_a = ?, r.product_b, r.product_a)
+            WHERE (r.product_a = ? OR r.product_b = ?) AND r.level = 'dokumentert' ORDER BY r.kind = 'passer_ikke' DESC, o.name LIMIT 20");
+        $st->execute([$id, $id, $id]);
+        $relations = $st->fetchAll();
         $st = db()->prepare('SELECT s.id, s.ref, s.status, s.origin_city, s.dest_city, UNIX_TIMESTAMP(s.eta) eta, i.qty, s.is_demo
             FROM shipment_items i JOIN shipments s ON s.id = i.shipment_id
             WHERE i.product_id = ? AND s.direction = "inn" AND s.status IN ' . PdoShipmentStore::underwayIn() . ' ORDER BY s.eta');
         $st->execute([$id]);
         return [
-            'id' => $id, 'name' => $card['name'], 'slug' => $card['slug'], 'theme' => $card['theme'], 'price_ore' => (int) $card['price_ore'],
+            'relations' => $relations,
+            'id' => $id, 'name' => $card['name'], 'slug' => $card['slug'], 'theme' => $card['theme'], 'price_ore' => (int) $card['price_ore'], 'img' => $card['img'] ?? null,
             'stock' => $stock, 'stock_demo' => true,
             'specs' => $specs, 'missing' => $missing, 'revisions' => $revisions, 'reports' => $reports,
             'tickets' => $tickets, 'inbound' => $st->fetchAll(),

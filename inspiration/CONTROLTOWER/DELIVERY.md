@@ -220,11 +220,11 @@ the transport map (5.9) and product-linked tickets (5.10).
 The Control Tower replaces three existing staff pages with one panel:
 `Flettekø` (`/ansatt`, merge queue and error reports), `Måltall`
 (`/admin`, KPIs) and `Kundeservice` (`/support`, tickets). Existing POST
-actions for those pages are reused, not duplicated. The old routes stay
-working until the Control Tower covers all of their actions. The Control
-Tower now covers them all (merge and reject, remove value and correct,
-ticket list with the chat log, reply and close); retiring the old pages is
-a separate decision.
+actions for those pages are reused, not duplicated. The Control Tower
+covers all of their actions (merge and reject, remove value and correct,
+ticket list with the chat log, reply and close), and the old GET pages
+are retired: `/ansatt`, `/support` and `/admin` return 404. Their POST
+actions remain and redirect back to `/ansatt/tarn`.
 5.1 Shell, route and access
 Route: `GET /ansatt/tarn` (exact path may follow existing route naming).
 Access: `has_role('ansatt', 'support', 'admin')`, checked server-side on
@@ -234,8 +234,8 @@ to all staff; turnover by source and users by role stay restricted to
 `admin`.
 The Control Tower has its own full-screen shell. It does not use the shop
 `layout.php` navigation, header, footer, banners or the Søren chat
-launcher. A single back arrow at the top left returns to the previous
-staff page. Headers are one or two words. No explanatory paragraphs.
+launcher. A single back arrow at the top left returns to the shop front
+page (the old staff pages no longer exist). Headers are one or two words. No explanatory paragraphs.
 5.2 Visual direction and rendering
 Dark pine-charcoal background, muted industrial-green belts, birch and
 amber parcels, Sør-Tre red only for exceptions. Monospace for IDs,
@@ -316,6 +316,12 @@ actions, linked open tickets, and inbound shipment if any.
 Multi-select (shift-click or drag box): count per type, per station,
 time span, and for products the combined missing specification keys.
 Actions are only shown when they call an existing authorized route.
+Event actions (`src/EventDesk.php`, `/api/tarn/hendelse/{id}`): related
+searches with the same term, mark as reviewed (`event_reviews`; the
+event row is never changed), product mapping of the search term
+(`produkt:ID` in `search_synonyms`, roles `ansatt` and `admin` only),
+and an improvement task (`improvement_tasks`) that is listed in the
+empty inspector until closed.
 5.7 Live and history
 Live: the client polls an authorized JSON endpoint
 (`GET /api/tarn/events?after=<id>`) every 5 seconds for new

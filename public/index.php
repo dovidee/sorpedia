@@ -11,11 +11,28 @@ require __DIR__ . '/../src/bootstrap.php';
 require __DIR__ . '/../src/helpers.php';
 Errors::install();     // no PHP messages to the customer, everything is logged with a reference
 
+// Public REST API and its documentation: stateless, so it is answered before any session or cookie exists
+$apiPath = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '/', '/');
+if ($apiPath === '/api' || $apiPath === '/api/v1/docs') {
+    header('Location: ' . PublicApi::DOCS, true, 301);
+    exit;
+}
+// WooCommerce webhooks keep products in step with the shop (src/WooSync.php). Signed, so no session and no CSRF token
+if ($apiPath === '/api/integrations/woocommerce/webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $headers = array_change_key_case(function_exists('getallheaders') ? (getallheaders() ?: []) : [], CASE_LOWER);
+    [$code, $out] = WooSync::receive((string) file_get_contents('php://input'), $headers, config()['wc_webhook_secret']);
+    json_out($out, $code);
+}
+if ($apiPath === PublicApi::DOCS || $apiPath === PublicApi::BASE || str_starts_with($apiPath, PublicApi::BASE . '/')) {
+    PublicApi::serve($_SERVER['REQUEST_METHOD'], $apiPath);
+}
+
 session_name('sorpedia');
 session_start(['cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_secure' => !empty($_SERVER['HTTPS']), 'use_strict_mode' => true]);
 Privacy::ensure();
 Guide::ensure();
 Auth::ensure();
+Audit::ensure();
 ChatHistory::ensure();
 Mail::ensure();
 Tower::ensure();
@@ -132,12 +149,17 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/rediger')) {
     $newValue = trim((string) ($_POST['new_value'] ?? ''));
     // Protection against prompt injection: a value must be a value, not an order to Søren (src/Guard.php)
     $types = db()->query('SELECT `key`, datatype FROM spec_keys')->fetchAll(PDO::FETCH_KEY_PAIR);
+    // The form sends every field. Only the values the buyer changed are checked and saved, so an existing value
+    // (for example «4 x LED» in a number field) never blocks an edit somewhere else.
+    $openValue = fn(string $key) => $specs[$key]['apen']['value_text'] ?? (isset($specs[$key]) ? Catalog::effective($specs[$key])['value_text'] ?? '' : '');
+    $incoming = array_filter($incoming, fn($val, $key) => $val !== '' && $val !== $openValue((string) $key), ARRAY_FILTER_USE_BOTH);
     foreach (array_merge($incoming, ['ny spesifikasjonstype' => $newLabel, 'ny verdi' => $newValue, 'enhet' => (string) ($_POST['new_unit'] ?? ''),
         'kommentar' => (string) ($_POST['comment'] ?? '')]) as $what => $val) {
         $why = Moderation::reason((string) $val)
             ?? ($what === 'kommentar' ? Guard::injectionInProse((string) $val) : Guard::suspicious((string) $val))
-            // Number fields (weight, length, lumen) only take numbers
-            ?? ((($types[$what] ?? '') === 'number' && trim((string) $val) !== '' && !Guard::isNumberish((string) $val)) ? 'må være et tall, for eksempel «1,5» eller «220»' : null);
+            // Measured fields with a unit (weight, length, lumen) only take numbers. Keys read from free text in Sør-Tre's
+            // tables (x_*) keep their own format, such as «4 x LED» or «3/8″ LP»
+            ?? ((isset(Extract::KEYS[$what]) && ($types[$what] ?? '') === 'number' && trim((string) $val) !== '' && !Guard::isNumberish((string) $val)) ? 'må være et tall, for eksempel «1,5» eller «220»' : null);
         if ($why) {
             track('injection_blocked', ['product' => (int) $p['id'], 'field' => (string) $what]);
             flash("Endringen ble ikke lagret: «" . Moderation::censor(mb_substr((string) $val, 0, 60)) . "» $why. Skriv bare selve verdien, for eksempel «220» eller «Varmgalvanisert stål».");
@@ -152,8 +174,7 @@ if ($m = route('POST', '/produkt/([a-z0-9-]+)/rediger')) {
         $incoming[$key] = $newValue;
     }
     foreach ($incoming as $key => $val) {
-        $cur = isset($specs[$key]) ? Catalog::effective($specs[$key])['value_text'] ?? '' : '';
-        $open = $specs[$key]['apen']['value_text'] ?? $cur;
+        $open = $openValue((string) $key);
         if ($val !== '' && $val !== $open && mb_strlen($val) <= 120) {
             $diff[] = ['key' => $key, 'from' => $open ?: null, 'to' => $val];
         }
@@ -335,12 +356,28 @@ if ($m = route('POST', '/api/byggelab/([a-z]+)/sjekk')) {
         json_out(['error' => 'ukjent bygger'], 404);
     }
     $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
-    $test = !empty($in['test']);
-    $r = Byggelab::report($theme, Byggelab::lines($theme, $in['lines'] ?? []), $test);
-    if ($test && $r['items']) {
-        track('lab_test', ['builder' => $theme, 'ids' => array_column($r['items'], 'id'), 'verdict' => $r['verdict'], 'n' => count($r['items'])]);
+    $lines = Byggelab::lines($theme, $in['lines'] ?? []);
+    $rep = Byggelab::report($theme, $lines, !empty($in['test']));
+    if ($lines) {
+        // What Control Tower needs about a configuration: the products, the verdict and what was missing (no customer data)
+        $links = array_count_values(array_column($rep['links'], 'status'));
+        track(empty($in['test']) ? 'lab_check' : 'lab_test', ['builder' => $theme, 'ids' => array_keys($lines), 'verdict' => $rep['verdict'],
+            'conflicts' => $links['ikke'] ?? 0, 'unknown' => $links['ukjent'] ?? 0,
+            'missing' => array_map(fn($m) => mb_substr($m['text'], 0, 160), array_slice([...$rep['missing'], ...$rep['warnings']], 0, 6))]);
     }
-    json_out($r);
+    json_out($rep);
+}
+
+// Saving and exporting happen in the browser; only the fact and the products are recorded
+if ($m = route('POST', '/api/byggelab/([a-z]+)/logg')) {
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $type = ['lagret' => 'lab_save', 'liste' => 'lab_list'][$in['what'] ?? ''] ?? null;
+    $lines = isset(Byggelab::BUILDERS[$m[0]]) ? Byggelab::lines($m[0], $in['lines'] ?? []) : [];
+    if ($type === null || !$lines) {
+        json_out(['error' => 'ukjent hendelse'], 400);
+    }
+    track($type, ['builder' => $m[0], 'ids' => array_keys($lines)]);
+    json_out(['ok' => true]);
 }
 
 // The whole configuration into the cart in one step
@@ -369,6 +406,9 @@ if (route('GET', '/guide') !== null) {
         $_SESSION['guide'] = ['a' => $answers, 'at' => time()];
         render('guide_result', ['res' => $res, 'answers' => $answers], 'Forslag fra Søren');
     } else {
+        // One row per question shown, so Control Tower can see where customers leave the guide
+        $q = Guide::next($answers);
+        track('guide_step', ['question' => $q[0] ?? null, 'answered' => count($answers)] + $answers);
         render('guide', ['answers' => $answers], 'Produktguide');
     }
     exit;
@@ -383,9 +423,8 @@ if (route('POST', '/guide/svar') !== null) {
     if ($wanted !== '') {
         $theme = array_map('intval', Catalog::themeIds($a['oppgave'] ?? ''));
         $hit = current(array_intersect(Search::run($wanted)['ids'], $theme));
-        if ($hit && Guide::learn($a, (int) $hit)) {
-            track('guide_feedback', ['product' => (int) $hit, 'wanted' => $wanted] + $a);
-        }
+        // Recorded also without a hit: an unmet need is what product opportunities are built from
+        track('guide_feedback', ['product' => $hit && Guide::learn($a, (int) $hit) ? (int) $hit : null, 'wanted' => $wanted] + $a);
         flash('Takk! Guiden lærer av svaret ditt.');
         redirect('/sok?' . http_build_query(['q' => $wanted]));
     }
@@ -531,6 +570,53 @@ if (route('POST', '/logg-inn') !== null) {
     redirect(safe_back($_POST['back'] ?? '/'));
 }
 
+// ---------- Forgotten password: a one-time link by email, valid for Auth::RESET_MINUTES ----------
+if (route('GET', '/glemt-passord') !== null) {
+    render('password_forgot', [], 'Glemt passord');
+    exit;
+}
+
+if (route('POST', '/glemt-passord') !== null) {
+    $r = Auth::startReset(mb_strtolower(trim((string) ($_POST['email'] ?? ''))));
+    if ($r) {
+        $link = '/nytt-passord/' . $r['token'];
+        $id = Mail::send($r['email'], 'Nytt passord hos Sørpedia',
+            '<p>Hei ' . h($r['name']) . '!</p><p>Noen ba om et nytt passord for kontoen din. Lenken virker i ' . Auth::RESET_MINUTES . ' minutter og kan brukes en gang:</p>'
+            . '<p><a href="' . $link . '">Velg nytt passord</a></p><p>Ba du ikke om dette, kan du se bort fra e-posten. Passordet ditt er ikke endret.</p>');
+        // The prototype has no real email: this session may read the message it just asked for in the demo inbox
+        $_SESSION['inbox'] = [...array_slice($_SESSION['inbox'] ?? [], -4), $id];
+    }
+    // Same answer whether the address has an account or not
+    flash('Finnes det en konto med den e-posten, har vi sendt en lenke for nytt passord til innboksen.');
+    redirect('/innboks');
+}
+
+if ($m = route('GET', '/nytt-passord/([a-f0-9]{64})')) {
+    if (Auth::resetUser($m[0]) === null) {
+        flash('Lenken er brukt eller utløpt. Be om en ny.');
+        redirect('/glemt-passord');
+    }
+    render('password_reset', ['token' => $m[0]], 'Nytt passord');
+    exit;
+}
+
+if ($m = route('POST', '/nytt-passord/([a-f0-9]{64})')) {
+    $pw = (string) ($_POST['password'] ?? '');
+    if (strlen($pw) < 8 || $pw !== (string) ($_POST['repeat'] ?? '')) {
+        flash(strlen($pw) < 8 ? 'Passordet må ha minst 8 tegn.' : 'Passordene er ikke like.');
+        redirect('/nytt-passord/' . $m[0]);
+    }
+    if (!Auth::finishReset($m[0], $pw)) {
+        flash('Lenken er brukt eller utløpt. Be om en ny.');
+        redirect('/glemt-passord');
+    }
+    // Any session that was logged in before is not trusted with the new password
+    unset($_SESSION['uid']);
+    session_regenerate_id(true);
+    flash('Passordet er endret. Logg inn med det nye.');
+    redirect('/logg-inn');
+}
+
 if (route('POST', '/logg-ut') !== null) {
     unset($_SESSION['uid']);
     ChatHistory::forget();
@@ -565,6 +651,12 @@ if ($m = route('GET', '/veiledning/([a-z0-9-]+)')) {
 }
 
 // ---------- Registration and email confirmation (feature 005) ----------
+// Terms of use and privacy notice (feature 046), linked from the footer, the register form and the chat
+if (route('GET', '/vilkar') !== null) {
+    render('legal', [], 'Vilkår og personvern');
+    exit;
+}
+
 if (route('GET', '/registrer') !== null) {
     render('register', [], 'Registrer deg');
     exit;
@@ -577,6 +669,9 @@ if (route('POST', '/registrer') !== null) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $name === '' || strlen($pw) < 8) {
         flash('Fyll inn navn, gyldig e-post og passord på minst 8 tegn.');
         redirect('/registrer');
+    } elseif (empty($_POST['terms'])) {
+        flash('Du må godta vilkårene for å opprette konto.');
+        redirect('/registrer');
     } elseif ($why = Moderation::reason($name) ?? Moderation::reason(explode('@', $email)[0])) {
         // The first name can be shown on contributions if the user chooses it, so it must be suitable for all ages
         flash("Navnet eller e-postadressen $why. Velg noe annet.");
@@ -584,7 +679,7 @@ if (route('POST', '/registrer') !== null) {
     }
     $token = bin2hex(random_bytes(16));
     try {
-        db()->prepare('INSERT INTO users (email, name, alias_salt, password_hash, verify_token, warehouse_id) VALUES (?,?,?,?,?,?)')
+        db()->prepare('INSERT INTO users (email, name, alias_salt, password_hash, verify_token, warehouse_id, terms_at) VALUES (?,?,?,?,?,?,NOW())')
             ->execute([$email, $name, Privacy::newSalt(), password_hash($pw, PASSWORD_ARGON2ID), $token, warehouse_id()]);
     } catch (PDOException) {
         flash('Det finnes allerede en bruker med den e-posten.');
@@ -601,7 +696,7 @@ if (route('POST', '/registrer') !== null) {
 
 if (route('GET', '/innboks') !== null) {
     $u = current_user();
-    render('inbox', ['mails' => $u ? Mail::open($u['email']) : []], 'Innboks');
+    render('inbox', ['mails' => $u ? Mail::open($u['email']) : Mail::byIds($_SESSION['inbox'] ?? [])], 'Innboks');
     exit;
 }
 
@@ -755,6 +850,7 @@ if (route('POST', '/innstillinger/passord') !== null) {
         flash('Passordene er ikke like.');
     } else {
         db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([password_hash($new, PASSWORD_ARGON2ID), $u['id']]);
+        Audit::log('sikkerhet', 'password_change', 'konto #' . $u['id']);
         session_regenerate_id(true);
         flash('Passordet er endret.');
     }
@@ -820,6 +916,22 @@ if (route('POST', '/innstillinger/slett') !== null) {
 
 // ---------- Control Tower: staff operations floor (feature 022) ----------
 // Own full-screen shell without the shop layout. Every endpoint checks the role on the server.
+// Demo Hub (feature 033): an overview page for the demo. Staff only, figures counted on the request.
+if (route('GET', '/presentasjon') !== null) {
+    if (!has_role('ansatt', 'support', 'admin')) {
+        redirect('/logg-inn?back=/presentasjon');
+    }
+    $count = fn(string $type) => (int) db()->query('SELECT COUNT(*) FROM analytics_events WHERE type = ' . db()->quote($type))->fetchColumn();
+    $s = Presentation::stats();
+    $m = ['lab' => $count('lab_check') + $count('lab_test'), 'chat' => $count('chat'), 'escalate' => $count('escalate'), 'zero' => $count('search_zero'),
+        'guide' => $count('guide_done'), 'buyer' => (int) db()->query("SELECT COUNT(*) FROM spec_values WHERE source = 'bruker'")->fetchColumn()];
+    // The guided demo (feature 045) shows one headlamp in stock in the receiving store, with the chat's known questions
+    $demoProduct = (string) db()->query("SELECT p.slug FROM products p JOIN stock s ON s.product_id = p.id AND s.warehouse_id = " . Supply::HOME . "
+        WHERE p.name LIKE 'Ledlenser H7R Core%' AND s.in_store > 0 ORDER BY p.id LIMIT 1")->fetchColumn();
+    require APP_ROOT . '/templates/presentation.php';
+    exit;
+}
+
 if (route('GET', '/ansatt/tarn') !== null) {
     if (!has_role('ansatt', 'support', 'admin')) {
         redirect('/logg-inn?back=/ansatt/tarn');
@@ -840,14 +952,68 @@ if (route('GET', '/api/tarn/events') !== null) {
     $backlog = $floor->backlog();
     json_out($floor->events($_GET['w'] ?? 'dag', max(0, (int) ($_GET['after'] ?? 0)), $types) + [
         'products' => $floor->products(Floor::stations($_GET['st'] ?? null)), 'backlog' => $backlog['open'],
-        'congested' => $backlog['congested'], 'tickets' => Tower::tickets(),
+        'congested' => $backlog['congested'], 'tickets' => Tower::tickets(), 'tasks' => Gulv::tasks(),
     ]);
+}
+
+// Gulv (feature 032): products and shipments on the floor, Varemottak and the improvement tasks beside it
+if (route('GET', '/api/tarn/gulv') !== null) {
+    session_write_close();
+    json_out(Gulv::data() + ['tickets' => Tower::tickets()]);
+}
+
+// KPI drill-downs (feature 032): the records behind a number. Read-only, except marking a conversation as read.
+if ($m = route('GET', '/api/tarn/innsyn/(sok|samtaler|byggelab)')) {
+    session_write_close();
+    $days = Drill::days($_GET['dager'] ?? null);
+    $since = time() - $days * 86400;
+    json_out(['days' => $days, 'rows' => match ($m[0]) {
+        'sok' => Drill::searches($since),
+        'samtaler' => Drill::conversations($since),
+        default => Drill::lab($since),
+    }]);
+}
+if ($m = route('GET', '/api/tarn/innsyn/samtale/(chat|ticket)/(\d+)')) {
+    session_write_close();
+    $c = Drill::conversation($m[0], (int) $m[1]);
+    $c ? json_out($c) : json_out(['error' => 'Fant ikke samtalen'], 404);
+}
+if ($m = route('POST', '/api/tarn/innsyn/samtale/(\d+)/lest')) {
+    json_out(['ok' => Drill::review((int) $m[0], (int) current_user()['id'])]);
+}
+
+// One place for improvement tasks: created from a product, a report, a relationship, an opportunity or a search
+if (route('POST', '/api/tarn/oppgave') !== null) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    $r = Gulv::create(json_decode((string) file_get_contents('php://input'), true) ?: [], (int) current_user()['id']);
+    $r ? json_out($r) : json_out(['error' => 'Oppgaven trenger en tittel, og produktet må finnes'], 400);
+}
+
+if ($m = route('POST', '/api/tarn/oppgave/(\d+)/status')) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    Gulv::move((int) $m[0], (string) ($in['status'] ?? ''), (int) current_user()['id'], isset($in['outcome']) ? (string) $in['outcome'] : null)
+        ? json_out(['ok' => true]) : json_out(['error' => 'Ukjent oppgave eller status'], 400);
 }
 
 if (route('GET', '/api/tarn/throughput') !== null) {
     session_write_close();
     $floor = tower_floor();
     json_out($floor->throughput($_GET['w'] ?? 'dag', $floor->types($_GET['st'] ?? null, $_GET['ty'] ?? null)));
+}
+
+if (route('GET', '/api/tarn/lagerflyt') !== null) {
+    session_write_close();
+    json_out(Insight::stockFlow(time()));
+}
+
+if (route('GET', '/api/tarn/innsikt') !== null) {
+    session_write_close();
+    json_out(Insight::build(time()));
 }
 
 if (route('GET', '/api/tarn/kpi') !== null) {
@@ -862,9 +1028,19 @@ if (route('GET', '/api/tarn/kpi') !== null) {
     json_out($k);
 }
 
+// The overview page (feature 030): KPIs, warehouses, activity and route status in one read
+if (route('GET', '/api/tarn/oversikt') !== null) {
+    session_write_close();
+    $list = tower_transport()->list();
+    $open = array_values(array_filter($list['rows'], fn($r) => $r['status'] !== 'levert'));
+    json_out(Overview::build(time(), has_role('admin'), $list['rows'], Ferries::current($open), Conditions::current($open)['items']));
+}
+
 if (route('GET', '/api/tarn/transport') !== null) {
     session_write_close();
-    json_out(tower_transport()->list());
+    $list = tower_transport()->list();
+    $open = array_values(array_filter($list['rows'], fn($r) => $r['status'] !== 'levert'));
+    json_out($list + ['conditions' => Conditions::current($open), 'ferries' => Ferries::current($open), 'vehicles' => Supply::vehicles()]);
 }
 
 if ($m = route('GET', '/api/tarn/sending/(\d+)')) {
@@ -872,6 +1048,89 @@ if ($m = route('GET', '/api/tarn/sending/(\d+)')) {
     $s = tower_transport()->one((int) $m[0], has_role('admin', 'support'));
     session_write_close();
     $s ? json_out($s) : json_out(['error' => 'Fant ikke sendingen'], 404);
+}
+
+// The transport simulation (feature 043): one clock for every demo vehicle, demo rows only (DemoDelivery, Supply)
+if (route('POST', '/api/tarn/sim/tick') !== null) {
+    session_write_close();
+    json_out(DemoDelivery::tick());
+}
+
+// Play, pause, speed or scenario (real conditions or a simulated storm). Movement, weather, ferries, delays and notifications follow it.
+if (route('POST', '/api/tarn/sim/styr') !== null) {
+    session_write_close();
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    DemoDelivery::control((string) ($in['what'] ?? ''), (int) ($in['rate'] ?? 0), (string) ($in['scenario'] ?? ''))
+        ? json_out(DemoDelivery::tick()) : json_out(['error' => 'Ukjent handling'], 400);
+}
+
+// A trip played again from its start with the current scenario; received goods are never received twice
+if ($m = route('POST', '/api/tarn/sim/(\d+)/igjen')) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    session_write_close();
+    DemoDelivery::replay((int) $m[0]) ? json_out(DemoDelivery::tick()) : json_out(['error' => 'Fant ikke turen'], 404);
+}
+
+// A demo trip without goods from a free vehicle to a point on the map
+if (route('POST', '/api/tarn/sim/tur') !== null) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $id = is_numeric($in['lat'] ?? null) && is_numeric($in['lng'] ?? null) ? Supply::tour((int) ($in['vehicle'] ?? 0), (float) $in['lat'], (float) $in['lng']) : null;
+    $id ? json_out(['id' => $id]) : json_out(['error' => 'Bilen er opptatt, eller punktet ligger utenfor kartet'], 400);
+}
+
+// The order list and who can fetch what: picks, vehicles with the stores in reach, and the assignment for a batch
+if (route('GET', '/api/tarn/bestilling') !== null) {
+    session_write_close();
+    $only = isset($_GET['biler']) ? array_values(array_filter(array_map('intval', explode(',', (string) $_GET['biler'])))) : null;
+    json_out(Supply::overview($only));
+}
+
+if (route('GET', '/api/tarn/bestilling/mangler') !== null) {
+    session_write_close();
+    json_out(Supply::missing());
+}
+
+if (route('POST', '/api/tarn/bestilling') !== null) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $id = Supply::add((int) ($in['product'] ?? 0), (int) ($in['qty'] ?? 1), (int) current_user()['id']);
+    $id ? json_out(['id' => $id]) : json_out(['error' => 'Fant ikke produktet'], 400);
+}
+
+if ($m = route('POST', '/api/tarn/bestilling/(\d+)/fjern')) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    Supply::remove((int) $m[0]) ? json_out(['ok' => true]) : json_out(['error' => 'Linjen er allerede bestilt eller fjernet'], 409);
+}
+
+// Orders picks with vehicles: {"plan": {vehicle id: [pick ids]}}. Units leave the source store's shelf now.
+if (route('POST', '/api/tarn/bestill') !== null) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $plan = [];
+    foreach ((array) ($in['plan'] ?? []) as $vid => $ids) {
+        $plan[(int) $vid] = array_values(array_map('intval', (array) $ids));
+    }
+    $r = Supply::order($plan, (int) current_user()['id']);
+    $r['made'] ? json_out($r) : json_out($r + ['error' => 'Ingen av varene kunne bestilles med de valgte bilene'], 409);
+}
+
+// Goods in: a delivered shipment is checked in and leaves Varemottak
+if ($m = route('POST', '/api/tarn/sending/(\d+)/mottatt')) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    DemoDelivery::checkIn((int) $m[0]) ? json_out(['ok' => true]) : json_out(['error' => 'Sendingen er ikke levert, eller allerede mottatt'], 409);
 }
 
 // Søren drafts a reply; staff edit it and send it themselves (DELIVERY.md 5.10). Customer service roles only.
@@ -885,10 +1144,50 @@ if ($m = route('POST', '/api/tarn/sak/(\d+)/utkast')) {
     $d !== null ? json_out(['draft' => $d]) : json_out(['error' => 'Søren svarte ikke. Skriv svaret selv.'], 503);
 }
 
+// Staff ask Søren about the store. The server counts the facts first; Søren only words them and changes nothing.
+if (route('POST', '/api/tarn/soren') !== null) {
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $question = trim((string) ($in['q'] ?? ''));
+    if ($question === '') {
+        json_out(['error' => 'Skriv et spørsmål'], 400);
+    }
+    session_write_close();
+    set_time_limit(300);
+    $facts = StaffBrief::facts(time());
+    $answer = tower_drafts()->staff($question, $facts);
+    $answer !== null ? json_out(['answer' => $answer, 'facts' => $facts]) : json_out(['error' => 'Søren svarte ikke. Tallene under er det Søren ville brukt.', 'facts' => $facts], 503);
+}
+
+// Customer service view: every recent ticket and this week's searches without results
+if (route('GET', '/api/tarn/kundeservice') !== null) {
+    session_write_close();
+    json_out(['tickets' => Tower::desk(), 'searches' => Tower::failedSearches(time() - 7 * 86400)]);
+}
+
+// Refund a whole order (lines omitted) or chosen lines from a ticket. Demo payment: no money moves.
+if ($m = route('POST', '/api/tarn/sak/(\d+)/refusjon')) {
+    if (!has_role('support', 'ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $want = null;
+    if (isset($in['lines']) && is_array($in['lines'])) {
+        $want = [];
+        foreach ($in['lines'] as $pid => $qty) {
+            $want[(int) $pid] = (int) $qty;
+        }
+    }
+    $r = Refund::apply((int) $m[0], (int) ($in['order'] ?? 0), $want, (int) current_user()['id']);
+    if ($r['ok']) {
+        Audit::log('admin', 'refund', 'ordre #' . (int) ($in['order'] ?? 0), ['case' => (int) $m[0], 'ore' => $r['total_ore']]);
+    }
+    $r['ok'] ? json_out($r) : json_out($r, 409);
+}
+
 if ($m = route('GET', '/api/tarn/sak/(\d+)')) {
     session_write_close();
     $t = Tower::ticket((int) $m[0]);
-    $t ? json_out($t) : json_out(['error' => 'Fant ikke saken'], 404);
+    $t ? json_out($t + ['orders' => Refund::orders((int) $m[0])]) : json_out(['error' => 'Fant ikke saken'], 404);
 }
 
 // Søren's assessment of an error report. Only staff who can decide reports get it; nothing is sent or changed.
@@ -913,27 +1212,44 @@ if ($m = route('GET', '/api/tarn/produkt/(\d+)')) {
     $p ? json_out($p) : json_out(['error' => 'Fant ikke produktet'], 404);
 }
 
-// ---------- Staff: merge queue for the open version (feature 009) ----------
-if (route('GET', '/ansatt') !== null) {
-    if (!has_role('ansatt', 'admin')) {
-        redirect('/logg-inn?back=/ansatt');
-    }
-    $revs = db()->query("SELECT r.*, " . Privacy::sql() . " author, p.name product, p.slug FROM spec_revisions r JOIN products p ON p.id = r.product_id
-        LEFT JOIN users u ON u.id = r.user_id WHERE r.status = 'aktiv' ORDER BY r.created_at")->fetchAll();
-    $keys = db()->query('SELECT `key`, label, unit FROM spec_keys')->fetchAll(PDO::FETCH_UNIQUE);
-    $gaps = db()->query("SELECT * FROM (SELECT k.label, COUNT(DISTINCT p.id) - COUNT(DISTINCT v.product_id) missing, COUNT(DISTINCT p.id) total
-        FROM spec_keys k JOIN products p ON FIND_IN_SET(p.theme, k.themes)
-        LEFT JOIN spec_values v ON v.`key` = k.`key` AND v.product_id = p.id
-        WHERE k.is_facet = 1 GROUP BY k.`key`, k.label) g WHERE missing > 0 ORDER BY missing / total DESC LIMIT 12")->fetchAll();
-    $reports = db()->query("SELECT r.product_id, r.`key`, MAX(r.id) id, COUNT(*) n, MIN(r.created_at) created_at,
-            GROUP_CONCAT(r.reason ORDER BY r.id SEPARATOR '\n') reasons, p.name product, p.slug, k.label, k.unit, v.value_text, v.source
-        FROM spec_reports r JOIN products p ON p.id = r.product_id JOIN spec_keys k ON k.`key` = r.`key`
-        LEFT JOIN spec_values v ON v.product_id = r.product_id AND v.`key` = r.`key` AND v.version = 'apen'
-        WHERE r.status = 'apen' GROUP BY r.product_id, r.`key` ORDER BY n DESC, created_at")->fetchAll();
-    render('staff', ['revs' => $revs, 'keys' => $keys, 'gaps' => $gaps, 'reports' => $reports], 'Flettekø');
-    exit;
+// One event: review state, related searches, product mapping and improvement tasks (EventDesk)
+if ($m = route('GET', '/api/tarn/hendelse/(\d+)')) {
+    session_write_close();
+    $d = EventDesk::detail((int) $m[0]);
+    $d ? json_out($d) : json_out(['error' => 'Fant ikke hendelsen'], 404);
 }
 
+if ($m = route('POST', '/api/tarn/hendelse/(\d+)/sett')) {
+    // Marker vurdert or Ignorer (CONTROLTOWER-TRIAGE.md): a review outcome, never a task
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    EventDesk::review((int) $m[0], (int) current_user()['id'], (string) ($in['outcome'] ?? 'vurdert')) ? json_out(['ok' => true]) : json_out(['error' => 'Fant ikke hendelsen'], 404);
+}
+
+// A mapping changes what every customer gets for the search term, so only catalogue staff may add one (as with revisions)
+if ($m = route('POST', '/api/tarn/hendelse/(\d+)/kobling')) {
+    if (!has_role('ansatt', 'admin')) {
+        json_out(['error' => 'Ingen tilgang'], 403);
+    }
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $ok = EventDesk::map((int) $m[0], (int) ($in['product'] ?? 0));
+    if ($ok) {
+        Audit::log('admin', 'search_mapping', 'hendelse #' . (int) $m[0], ['product' => (int) ($in['product'] ?? 0)]);
+    }
+    $ok ? json_out(['ok' => true]) : json_out(['error' => 'Hendelsen har ikke et søkeord, eller produktet finnes ikke'], 400);
+}
+
+if ($m = route('POST', '/api/tarn/hendelse/(\d+)/oppgave')) {
+    $in = json_decode((string) file_get_contents('php://input'), true) ?: [];
+    $product = isset($in['product']) && $in['product'] !== '' && $in['product'] !== null ? (int) $in['product'] : null;
+    $id = EventDesk::task((int) $m[0], $product, (string) ($in['title'] ?? ''), (int) current_user()['id']);
+    $id ? json_out(['id' => $id]) : json_out(['error' => 'Skriv en tittel. Produktet må finnes.'], 400);
+}
+
+if ($m = route('POST', '/api/tarn/oppgave/(\d+)/lukk')) {
+    EventDesk::close((int) $m[0], (int) current_user()['id']) ? json_out(['ok' => true]) : json_out(['error' => 'Fant ikke en åpen oppgave'], 404);
+}
+
+// ---------- Staff actions posted from the Control Tower (features 009 and 022) ----------
 if ($m = route('POST', '/ansatt/revisjon/(\d+)')) {
     if (!has_role('ansatt', 'admin')) {
         http_response_code(403);
@@ -960,11 +1276,19 @@ if ($m = route('POST', '/ansatt/revisjon/(\d+)')) {
         }
         $pdo->prepare('UPDATE spec_revisions SET status = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?')
             ->execute([$approve ? 'flettet' : 'avvist', current_user()['id'], $rid]);
+        Audit::log('admin', $approve ? 'revision_merge' : 'revision_reject', 'endring #' . $rid, ['product' => (int) $r['product_id']]);
         emit("product:{$r['product_id']}", 'revision', ['product' => (int) $r['product_id'], 'status' => $approve ? 'flettet' : 'avvist']);
+        // The tasks this change settles move to Fullført or Avvist; the reply names those that stay open
+        $tasks = Gulv::settle($rid, (int) $r['product_id'], json_decode($r['diff'], true) ?: [], $approve, (int) current_user()['id']);
         $pdo->commit();
+        if (str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {
+            json_out(['ok' => true, 'status' => $approve ? 'flettet' : 'avvist', 'diff' => json_decode($r['diff'], true), 'tasks' => $tasks]);
+        }
         flash($approve ? 'Flettet inn i verifisert versjon.' : 'Avvist og fjernet fra åpen versjon.');
+    } elseif (str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {
+        json_out(['error' => 'Endringen er allerede behandlet'], 409);
     }
-    redirect('/ansatt');
+    redirect('/ansatt/tarn');
 }
 
 // Staff handle an error report: close it, or remove the value from the open version
@@ -984,45 +1308,53 @@ if ($m = route('POST', '/ansatt/rapport/(\d+)')) {
         // The same value can be reported by several people: all reports about it are closed
         db()->prepare("UPDATE spec_reports SET status = 'lukket', handled_by = ? WHERE product_id = ? AND `key` = ? AND status = 'apen'")
             ->execute([current_user()['id'], $r['product_id'], $r['key']]);
+        Audit::log('admin', $remove ? 'report_remove' : 'report_close', 'feilmelding #' . (int) $r['id'], ['product' => (int) $r['product_id'], 'key' => $r['key']]);
         flash($remove ? 'Verdien er fjernet fra den åpne versjonen.' : 'Meldingen er lukket. Verdien står som før.');
     }
-    redirect('/ansatt#meldinger');
+    redirect('/ansatt/tarn');
 }
 
-// ---------- Customer service panel (feature 006) ----------
-if (route('GET', '/support') !== null) {
-    if (!has_role('support', 'ansatt', 'admin')) {
-        redirect('/logg-inn?back=/support');
+// ---------- Admin: security log, staff actions, backups and the error log (admin role only) ----------
+if (route('GET', '/admin') !== null) {
+    if (!has_role('admin')) {
+        current_user() ? http_response_code(403) : redirect('/logg-inn?back=/admin');
+        render('notfound', [], 'Ingen tilgang');
+        exit;
     }
-    $tickets = db()->query("SELECT t.*, " . Privacy::sql() . " customer FROM support_tickets t LEFT JOIN users u ON u.id = t.user_id
-        WHERE t.status <> 'lukket' ORDER BY t.id DESC LIMIT 30")->fetchAll();
-    $msgs = [];
-    if ($tickets) {
-        $in = implode(',', array_column($tickets, 'id'));
-        foreach (db()->query("SELECT * FROM support_messages WHERE ticket_id IN ($in) ORDER BY id") as $mm) {
-            $msgs[$mm['ticket_id']][] = $mm;
-        }
+    $backups = [];
+    foreach (glob(APP_ROOT . '/data/backups/sorpedia-*.sql.gz') ?: [] as $f) {
+        $backups[] = ['name' => basename($f), 'at' => (int) filemtime($f), 'bytes' => (int) filesize($f)];
     }
-    render('support', ['tickets' => $tickets, 'msgs' => $msgs], 'Kundeservice');
+    usort($backups, fn($a, $b) => $b['at'] <=> $a['at']);
+    // The last lines of the error log; each has the reference the customer was shown
+    $log = APP_ROOT . '/data/logs/errors.log';
+    $errors = is_file($log) ? array_slice(file($log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [], -20) : [];
+    render('admin', ['brute' => Audit::bruteForce(), 'security' => Audit::recent('sikkerhet', 40), 'actions' => Audit::recent('admin', 40),
+        'ops' => Audit::recent('drift', 20), 'backups' => $backups, 'errors' => array_reverse($errors)], 'Admin');
     exit;
 }
 
+// A backup on request. Runs the same script as the nightly job, as a local process; nothing leaves the server.
+if (route('POST', '/admin/sikkerhetskopi') !== null) {
+    if (!has_role('admin')) {
+        http_response_code(403);
+        exit;
+    }
+    Audit::log('admin', 'backup_request');
+    // Under Apache PHP_BINARY is empty; the CLI is on PATH in the image
+    exec(escapeshellarg(PHP_SAPI === 'cli-server' && PHP_BINARY !== '' ? PHP_BINARY : 'php') . ' ' . escapeshellarg(APP_ROOT . '/scripts/backup.php') . ' 2>&1', $out, $code);
+    flash($code === 0 ? 'Sikkerhetskopien er tatt.' : 'Sikkerhetskopien feilet. Se driftsloggen.');
+    redirect('/admin#kopier');
+}
+
+// ---------- Customer service: tickets are answered in the Control Tower (features 006 and 022) ----------
 if ($m = route('POST', '/support/(\d+)/lukk')) {
     if (has_role('support', 'ansatt', 'admin')) {
         db()->prepare("UPDATE support_tickets SET status = 'lukket' WHERE id = ?")->execute([(int) $m[0]]);
+        Audit::log('admin', 'case_close', 'sak #' . (int) $m[0]);
         emit('ticket:' . (int) $m[0], 'message', ['from' => 'support', 'name' => 'Kundeservice', 'body' => 'Saken er lukket. Takk for at du tok kontakt!']);
     }
-    redirect('/support');
-}
-
-// ---------- Admin: metrics (business-context KPI) ----------
-if (route('GET', '/admin') !== null) {
-    if (!has_role('admin')) {
-        redirect('/logg-inn?back=/admin');
-    }
-    // Same definitions as the Control Tower (src/Tower.php)
-    render('admin', Tower::kpis(), 'Admin');
-    exit;
+    redirect('/ansatt/tarn');
 }
 
 // ---------- Compare (feature 007) ----------
@@ -1126,31 +1458,134 @@ if (route('POST', '/api/chat') !== null) {
         sse('done', true);
         exit;
     }
-    // Questions about the whole catalog (guides, best rated, cheapest): the database finds the answer, Søren explains it
-    $intent = ($kind = CatalogIntent::detect(Chat::lastUser($messages))) ? CatalogIntent::build($kind, Chat::lastUser($messages), $page) : null;
-    $ids = $intent ? array_slice($intent['ids'], 0, 3) : Chat::context($messages, $page);
-    $cardIds = $intent ? $intent['ids'] : Chat::cardIds($messages, $page);
-    sse('products', array_map(fn($c) => [
+    // Greetings, thanks, «hvem er du» and filler: a fixed reply from PHP, no model, no catalogue lookup (feature 042)
+    $t0 = microtime(true);
+    // Only the functional fixed replies stay fixed (a human, stop, the store, the weather, arithmetic). Greetings, thanks,
+    // questions about Søren, jokes and small talk go to the model, so Søren answers what was actually said.
+    $quick = QuickReply::match($q);
+    if ($quick && in_array($quick['route'], ['menneske', 'stopp', 'butikk', 'forhold', 'forhold_ansatt', 'regning'], true)) {
+        sse('token', $quick['text']);
+        if ($quick['route'] === 'menneske') {
+            sse('handoff', true); // the panel opens the same customer service request as «Snakk med et menneske»
+        }
+        ChatHistory::record($conv, $owner, $q, $quick['text'], true);
+        Trace::add('route', ['via' => 'chat', 'route' => 'fast:' . $quick['route'], 'ms' => round((microtime(true) - $t0) * 1000, 2)]);
+        track('chat', ['product' => $page['product'], 'page' => $page['kind'], 'llm' => false, 'intent' => 'fast:' . $quick['route'], 'lang' => Chat::$lang]);
+        sse('done', true);
+        exit;
+    }
+    // One product list (ProductRetriever, feature 034) for the facts, the cards and the memory of this conversation.
+    // Questions about the whole catalog (cheapest, best rated) are answered by the database inside it (CatalogIntent).
+    $found = ProductRetriever::forChat($messages, $page, ChatHistory::lastProducts($conv, $owner));
+    $intent = $found['intent'];
+    $kind = $found['kind'];
+    $ids = $found['ids'];
+    $cardIds = $found['cards'];
+    // A model the catalogue doesn't have: the server says so (feature 036). With nothing else to answer, the model is not asked.
+    $notSold = AnswerGuard::notSold($found['unknown']);
+    $cards = fn(array $list) => array_map(fn($c) => [
         'url' => "/produkt/{$c['slug']}", 'name' => $c['name'], 'price' => kr((int) $c['price_ore']),
         'img' => $c['img'] ? "/{$c['img']}" : null,
         'stock' => $c['in_store'] > 0 ? t('{n} i butikk', ['n' => $c['in_store']]) : t($c['online'] > 0 ? 'nettlager' : 'ikke på lager'),
         'manual' => Catalog::hasManual((int) $c['id']),
-    ], Catalog::cards($cardIds)));
-    $mode = 'rask';
-    [$ok, $answer] = Chat::answer($messages, $page, $ids, 'sse', $mode, $intent['facts'] ?? '');
-    if (!$ok) {
-        sse('info', t(match (Chat::$lastError) {
-            'treg' => 'Søren brukte for lang tid, så her er svaret fra katalogen i stedet.',
-            default => 'Språkmodellen (Ollama) svarer ikke. Søren bruker enkle regler i stedet.',
-        }));
-        $answer = trim($intent['answer'] ?? Chat::fallback($cardIds, Chat::lastUser($messages), $page));
-        if ($answer !== '') {
-            sse('token', ProductRef::resolve($answer)); // stored with references, shown with today's price
+    ], Catalog::cards($list));
+    sse('products', $cards($cardIds));
+    if ($notSold !== '') {
+        sse('token', $notSold . ($ids ? "\n\n" : ''));
+        if (!$ids) {
+            ChatHistory::record($conv, $owner, $q, $notSold, true, []);
+            track('chat', ['product' => $page['product'], 'page' => $page['kind'], 'llm' => false, 'found' => 0, 'intent' => 'ikke_solgt', 'lang' => Chat::$lang]);
+            sse('done', true);
+            exit;
         }
     }
-    // Saved only when there is an answer, so a failed request leaves no question without an answer
-    ChatHistory::record($conv, $owner, $q, (string) $answer);
-    track('chat', ['product' => $page['product'], 'page' => $page['kind'], 'llm' => $ok, 'found' => count($ids), 'intent' => $kind ?: null, 'lang' => Chat::$lang]);
+    // «Hva koster de to sammen?» and nothing more: the server adds the prices, the model is not asked (feature 035)
+    $sum = AnswerGuard::pureTotal($q) ? AnswerGuard::totalSentence($ids) : null;
+    if ($sum !== null) {
+        sse('token', ProductRef::resolve($sum));
+        ChatHistory::record($conv, $owner, $q, $sum, true, $ids);
+        track('chat', ['product' => $page['product'], 'page' => $page['kind'], 'llm' => false, 'found' => count($ids), 'intent' => 'sum', 'lang' => Chat::$lang]);
+        sse('done', true);
+        exit;
+    }
+    // Price, stock, specifications, comparisons, fit and catalogue rankings: the server writes the answer (feature 039).
+    // The model is asked only for advice and explanations, or when the server can't tell which product the question is about.
+    $t = microtime(true);
+    $fact = FactAnswer::answer($q, $ids, $found['why'], null, $intent);
+    Trace::add('route', ['via' => 'chat', 'question' => $q, 'ids' => $ids, 'cards' => $cardIds, 'intent' => $kind ?: null, 'unknown' => $found['unknown'],
+        'fact_ms' => round((microtime(true) - $t) * 1000, 1), 'server_answer' => $fact !== null]);
+    if ($fact !== null) {
+        $answer = trim($notSold . "\n\n" . $fact['text']);
+        sse('token', ProductRef::resolve($fact['text']));
+        Trace::add('answer', ['by' => 'server', 'kind' => $fact['kind'], 'ids' => $fact['ids'], 'text' => $fact['text'], 'shown' => ProductRef::resolve($fact['text'])]);
+        ChatHistory::record($conv, $owner, $q, $answer, true, $ids);
+        track('chat', ['product' => $page['product'], 'page' => $page['kind'], 'llm' => false, 'found' => count($ids), 'intent' => 'fakta', 'lang' => Chat::$lang]);
+        sse('done', true);
+        exit;
+    }
+    // Everything else (feature 041): the model reads the question into fixed fields (Understand), and PHP decides, filters
+    // and ranks from the database (ShopAnswer). That answer is then the fact base for Søren's own reply below.
+    sse('status', t('Søren leser spørsmålet …'));
+    $u = Understand::read($q);
+    // Allowlist: the catalogue answers only when there is a clear shopping reason. The cart or orders; looking for a kind of
+    // product the customer named; or a question about a product the customer named or points at («denne», «den», «dette»).
+    // Everything else is conversation: the model answers in Søren's voice, with the page only as background.
+    $named = array_filter($found['why'] ?? [], fn($w) => array_intersect_key($w['signals'] ?? [], array_flip(['sku', 'model', 'exact_name'])));
+    $points = (bool) preg_match('/\b(denne|dette|den|disse|det her|this|it)\b/iu', $q);
+    $shopping = in_array($u['intent'], ['handlekurv', 'ordre'], true)
+        || ($u['intent'] === 'finn_produkt' && $u['type'] !== null)
+        || ($u['intent'] === 'om_produktet' && ($named || $points));
+    if (!$shopping) {
+        $onPage = $points ? array_values(array_filter($ids, fn($id) => isset($found['why'][$id]['signals']['page']))) : [];
+        // Asking for products without naming a type («hva bør jeg ha med på grilltur»): the catalogue's matches are his facts,
+        // so he suggests real products instead of inventing them
+        // Products the message's own words found (not only the page or earlier answers) count too, whatever intent the model
+        // guessed; they are stored with the answer, so «hvor finner jeg de produktene?» can point back to them
+        $matched = array_values(array_filter($ids, fn($id) => array_diff(array_keys($found['why'][$id]['signals'] ?? []), ['page', 'history'])));
+        $wants = $u['intent'] === 'finn_produkt' || $matched;
+        if ($wants) {
+            $onPage = array_slice($u['intent'] === 'finn_produkt' ? $ids : $matched, 0, 8);
+        }
+        sse('products', $wants ? $cards($onPage) : []);
+        [$ok, $spoken] = Chat::answer($messages, $points || $wants ? $page : ['text' => ''] + $page, $onPage, 'sse', 'rask', '', '', false);
+        if (!$ok || trim($spoken) === '') {
+            $spoken = t('Beklager, nå hang jeg meg opp. Kan du si det en gang til?');
+            sse('token', $spoken);
+        }
+        Trace::add('answer', ['by' => $ok ? 'modell' : 'server', 'kind' => 'samtale', 'ids' => $onPage, 'text' => $spoken]);
+        ChatHistory::record($conv, $owner, $q, $spoken, true, $onPage);
+        track('chat', ['product' => $page['product'], 'page' => $page['kind'], 'llm' => $ok, 'found' => 0, 'intent' => 'samtale', 'lang' => Chat::$lang]);
+        sse('done', true);
+        exit;
+    }
+    $r = ShopAnswer::answer($q, $u, $found, $page);
+    Trace::add('understood', ['source' => $u['source'], 'intent' => $u['intent'], 'type' => $u['type'][1] ?? null, 'requirements' => $u['requirements'],
+        'budget_ore' => $u['budget_ore'], 'dropped' => $u['dropped'], 'answer_kind' => $r['kind']]);
+    $answer = $r['text'];
+    sse('products', $cards($r['ids'])); // the cards are the answer's products; earlier cards don't belong to a cart answer or small talk
+    if ($r['kind'] === 'avklaring' && !$r['ids'] && $page['kind'] !== 'guide') {
+        // Søren to the guide: only when the customer wants help choosing and has not said what they need
+        sse('guide', ['url' => '/guide', 'label' => t('Start produktguiden')]);
+    }
+    // Søren talks: apart from the cart and orders, the model writes the reply in his own words. The server's answer and the
+    // products' database facts are its facts, and Chat::answer checks every sentence against them (prices, stock and product
+    // references). If the model fails or is too slow, the server's answer is shown as it is.
+    $by = 'server';
+    if (!in_array($r['kind'], ['handlekurv', 'ordre'], true)) {
+        $draft = "Svaret fra katalogen (fakta du skal bygge på; forklar det med egne ord, varmt og konkret, og knytt det til det kunden spør om):\n" . $answer;
+        [$ok, $spoken] = Chat::answer($messages, $page, $r['ids'] ?: $ids, 'sse', 'rask', trim($draft . "\n\n" . ($intent['facts'] ?? '')), '', false);
+        if ($ok && trim($spoken) !== '') {
+            $answer = $spoken;
+            $by = 'modell';
+        }
+    }
+    if ($by === 'server') {
+        sse('token', ProductRef::resolve($answer)); // stored with references, shown with today's price
+    }
+    Trace::add('answer', ['by' => $by, 'kind' => $r['kind'], 'ids' => $r['ids'], 'text' => $answer, 'shown' => ProductRef::resolve($answer)]);
+    ChatHistory::record($conv, $owner, $q, trim($notSold . "\n\n" . $answer), true, $r['ids'] ?: $ids);
+    track('chat', ['product' => $page['product'], 'page' => $page['kind'], 'llm' => $by === 'modell' || $u['source'] === 'modell', 'found' => count($r['ids']),
+        'intent' => $r['kind'], 'lang' => Chat::$lang]);
     sse('done', true);
     exit;
 }
@@ -1183,8 +1618,10 @@ if (route('POST', '/api/support') !== null) {
         json_out(['error' => 'Velg produktet saken gjelder'], 400);
     }
     $summary = ($first ?: 'Kunden ba om å snakke med et menneske') . " (produkt $pid)";
-    db()->prepare('INSERT INTO support_tickets (session_id, user_id, summary, chat_log, product_id) VALUES (?,?,?,?,?)')
-        ->execute([sid(), current_user()['id'] ?? null, $summary, json_encode($log, JSON_UNESCAPED_UNICODE), $pid]);
+    // The ticket keeps its own copy of the chat and a link to the conversation, so the Control Tower can open both
+    Drill::ensure(db());
+    db()->prepare('INSERT INTO support_tickets (session_id, user_id, summary, chat_log, product_id, conversation_id) VALUES (?,?,?,?,?,?)')
+        ->execute([sid(), current_user()['id'] ?? null, $summary, json_encode($log, JSON_UNESCAPED_UNICODE), $pid, isset($_SESSION['chat_conv']) ? (int) $_SESSION['chat_conv'] : null]);
     $tid = (int) db()->lastInsertId();
     $_SESSION['tickets'][] = $tid;
     emit('support', 'ticket', ['ticket' => $tid, 'summary' => $summary]);

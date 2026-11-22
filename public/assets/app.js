@@ -209,6 +209,29 @@ const store = {
   form.addEventListener('change', () => setTimeout(() => form.submit(), 150));
 })();
 
+// ---------- Guide steps: the drawing of the step in the middle of the screen acts out the step, earlier steps show their end ----------
+(() => {
+  const list = document.querySelector('.man-list');
+  if (!list || !('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const steps = [...list.children].filter((li) => li.querySelector('.man-media .m-a'));
+  if (!steps.length) return;
+  list.classList.add('man-anim');
+  const play = (li, again) => {
+    steps.forEach((s) => { if (s !== li && s.compareDocumentPosition(li) & Node.DOCUMENT_POSITION_FOLLOWING) { s.classList.remove('play'); s.classList.add('done'); } });
+    if (li.classList.contains('play') && !again) return;
+    li.classList.remove('play', 'done');
+    void li.offsetWidth; // restart from the first frame
+    li.classList.add('play');
+  };
+  const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && play(e.target, false)), { rootMargin: '-40% 0px -40% 0px' });
+  steps.forEach((li) => io.observe(li));
+  // A step chosen in the index plays again from the start
+  document.querySelectorAll('.man-index a[href^="#steg-"]').forEach((a) => a.addEventListener('click', () => {
+    const li = document.getElementById(a.getAttribute('href').slice(1));
+    if (steps.includes(li)) play(li, true);
+  }));
+})();
+
 // ---------- Demo users: click to fill in ----------
 $$('.demo-users tr').forEach((tr) => tr.addEventListener('click', () => {
   $('input[name=email]').value = tr.dataset.email; $('input[name=password]').value = 'admin'; $('input[name=password]').focus();
@@ -274,13 +297,13 @@ window.Soren = (() => {
   const cardsHtml = (cards) => cards?.length ? `<div class="chat-cards"><span class="chat-k">${tr('Fra produktkatalogen')}</span>` + cards.map((c) =>
     `<a href="${esc(c.url)}">${c.img ? `<img src="${esc(c.img)}" alt="">` : ''}<span><span class="cn">${esc(c.name)}</span><span class="cm"><b>${esc(c.price)}</b><span>${esc(c.stock)}</span>${c.manual ? `<span>${tr('Veiledning')}</span>` : ''}</span></span></a>`).join('') + '</div>' : '';
   const html = (it) => {
-    if (it.t !== 'bot') return it.t === 'support' ? `<b>${esc(it.name)} (${tr('kundeservice')}):</b> ${esc(it.text)}` : esc(it.text);
+    if (it.t !== 'bot') return it.t === 'support' ? `<b>${esc(it.name)} (${tr('kundeservice')}):</b> ${esc(it.text)}` : esc(it.text) + (it.link ? ` <a href="${esc(it.link)}">${esc(it.label)}</a>` : '');
     const think = it.think || it.note
       ? `<details class="think"${it.pending && !it.text ? ' open' : ''}><summary>${tr('Sørens resonnement (generert, kan være feil)')}</summary>${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}${esc(it.think)}${it.cut ? `<span class="note cut">${esc(it.cut)}</span>` : ''}</details>` : '';
     // Quotes around the whole answer are removed
     const text = it.pending ? it.text : it.text.replace(/^\s*[“"«„]+/u, '').replace(/[”"»]+\s*$/u, '');
     const body = it.text ? esc(text) : (it.wait ? `<span class="muted">${esc(it.wait)}</span>` : (it.pending ? `<span class="muted">${tr('Søren tenker …')}</span>` : ''));
-    return think + body + cardsHtml(it.cards);
+    return think + body + cardsHtml(it.cards) + (it.guide && !it.pending ? `<a class="btn small ghost chat-guide" href="${esc(it.guide.url)}">${esc(it.guide.label)}</a>` : '');
   };
   // Søren stands next to his answers as a small head. Only the newest head is alive (thinks, blinks),
   // the older ones stand still, so the chat doesn't fill up with movement.
@@ -313,10 +336,19 @@ window.Soren = (() => {
 
   const intro = () => {
     push({ t: 'bot', text: tr('Hei, jeg er Søren! Jeg kan finne produkter, forklare hva som passer sammen og svare på spørsmål om spesifikasjoner. Priser og lager henter jeg alltid fra butikken, ikke fra hukommelsen.') });
-    push({ t: 'sys', text: tr('Søren er en språkmodell som kjører lokalt på denne maskinen. Han ser offentlig produktinfo fra siden du er på. På en ordre eller i Innstillinger ser han også ordrene dine, men aldri navn, e-post, telefon, adresse eller passord. Det han tenker er generert og kan være feil.') });
+    push({ t: 'sys', text: tr('Søren er en språkmodell som kjører lokalt på denne maskinen. Han ser offentlig produktinfo fra siden du er på. På en ordre eller i Innstillinger ser han også ordrene dine, men aldri navn, e-post, telefon, adresse eller passord. Det han tenker er generert og kan være feil.'), link: '/vilkar#personvern', label: tr('Personvern') });
   };
   // While an answer streams the log is marked busy, so screen readers read the finished answer once instead of every token
   const status = (s) => { const el = $('.chat-status', panel); if (el) el.textContent = s; log?.setAttribute('aria-busy', s ? 'true' : 'false'); };
+  // While Søren answers, the send button shows that it waits, instead of ignoring the click without a word.
+  // The field stays open, so the next question can be written in the meantime.
+  const setBusy = (b) => {
+    busy = b;
+    const btn = panel && $('.send', panel);
+    if (!btn) return;
+    btn.setAttribute('aria-disabled', String(b));
+    btn.title = b ? tr('Vent til Søren har svart') : '';
+  };
   // Phones: the panel follows the visible viewport, so the on-screen keyboard never covers the message field
   const phone = matchMedia('(max-width: 767px)');
   const fit = () => {
@@ -364,7 +396,8 @@ window.Soren = (() => {
     $('.new', panel).onclick = reset;
     $('form', panel).onsubmit = (e) => {
       e.preventDefault(); const i = $('input', panel); const v = i.value.trim();
-      if (!v || busy) return;
+      if (busy) { status(tr('Vent til Søren har svart')); return; }
+      if (!v) return;
       i.value = ''; st.ticket ? toHuman(v) : send(v);
     };
     $('[data-human]', panel).onclick = (e) => { e.preventDefault(); human(); };
@@ -447,6 +480,8 @@ window.Soren = (() => {
         else if (ev === 'token') { it.text += data; it.wait = ''; if (mascot.state !== 'talk') { mascot.set('talk'); status(tr('svarer …')); } }
         else if (ev === 'answer_reset') { it.text = ''; it.wait = data || ''; }
         else if (ev === 'products') it.cards = data;
+        else if (ev === 'guide') it.guide = data;
+        else if (ev === 'handoff') setTimeout(() => human(), 700);
         else if (ev === 'think_cut') it.cut = data;
         else if (ev === 'status') { it.wait = data; status(tr('våkner …')); }
         else if (ev === 'info') { push({ t: 'sys', text: data }); if (/katalogen|svarer ikke|catalogue|not responding/.test(data)) it.fellBack = true; }
@@ -460,16 +495,16 @@ window.Soren = (() => {
     it.pending = false; it.wait = ''; draw(it);
     mascot.set('idle');
     it.fellBack ? mascot.sad() : mascot.happy();
-    status(''); busy = false; persist();
+    status(''); setBusy(false); persist();
   };
   const failed = (it) => {
     if (leaving) { persist(); return; } // the customer is changing page: the next page keeps reading, don't show an error
     it.pending = false; if (!it.text) it.text = tr('Beklager, noe gikk galt. Prøv igjen, eller snakk med et menneske.'); draw(it);
-    mascot.set('idle'); mascot.sad(); status(''); busy = false; persist();
+    mascot.set('idle'); mascot.sad(); status(''); setBusy(false); persist();
   };
 
   const send = async (text) => {
-    busy = true;
+    setBusy(true);
     noteContext();
     push({ t: 'me', text });
     const it = push({ t: 'bot', text: '', think: '', note: '', cards: [], pending: true });
@@ -486,7 +521,7 @@ window.Soren = (() => {
 
   // New page: keep reading the answer Søren was working on when the customer changed page
   const resume = async (it) => {
-    busy = true; mascot.set(it.text ? 'talk' : 'think'); status(it.text ? tr('svarer …') : tr('tenker …'));
+    setBusy(true); mascot.set(it.text ? 'talk' : 'think'); status(it.text ? tr('svarer …') : tr('tenker …'));
     try {
       const r = await fetch(`/api/chat/${encodeURIComponent(it.job)}?from=${it.seen || 0}`);
       if (!r.ok || !r.body) throw new Error('http ' + r.status);

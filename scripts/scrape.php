@@ -11,16 +11,9 @@ declare(strict_types=1);
 const API = 'https://www.sor-tre.no/wp-json/wc/store/v1';
 const PER_SUBCAT = 40;
 
-// Subcategory ID at Sør-Tre => theme in our guide (see docs/context/product-taxonomy.md)
-const SUBCATS = [
-    7111 => 'lys', 7129 => 'lys', 7117 => 'lys', 7160 => 'lys',
-    7207 => 'bygg', 7137 => 'bygg', 7138 => 'bygg', 7663 => 'bygg', 7118 => 'bygg', 7128 => 'bygg',
-    7364 => 'maling', 7179 => 'maling', 7193 => 'maling', 7206 => 'maling', 7253 => 'maling',
-    7678 => 'balkong', 7680 => 'balkong', 7679 => 'balkong',
-    7499 => 'kjetting', 7504 => 'kjetting', 7220 => 'kjetting',
-    7070 => 'skog', 7079 => 'skog', 7088 => 'skog', 7087 => 'skog',
-    7246 => 'tur', 7258 => 'tur',
-];
+// Subcategory ID at Sør-Tre => theme in our guide. One list, shared with the webhook sync (src/WooSync.php)
+require __DIR__ . '/../src/WooSync.php';
+const SUBCATS = WooSync::CATEGORY_THEME;
 
 // Single products from other categories needed for the "goes well with" demo:
 // Ledlenser batteries and charging cables (one of them says explicitly "Passer ikke Core").

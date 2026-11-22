@@ -18,6 +18,22 @@
 </div>
 
 <?php
+// Find or build (PRODUCTINTELLIGENCE connection 1): the same product IDs go to the comparison or into the theme's Byggelab
+$pickIds = array_map(fn($c) => (int) $c['id'], $res['picks']);
+$labIds = array_slice(array_values(array_unique([...$pickIds, ...array_map(fn($c) => (int) $c['id'], $res['bundle'])])), 0, 8);
+?>
+<section class="guide-next" aria-labelledby="gn-h">
+  <h2 id="gn-h"><?= t('Vil du bare sammenligne disse produktene, eller bygge et komplett oppsett?') ?></h2>
+  <div class="ga-row">
+    <a class="btn small ghost" href="/sammenlign?ids=<?= h(implode(',', array_slice($pickIds, 0, 4))) ?>"><?= t('Sammenlign forslagene') ?></a>
+    <?php if (isset(Byggelab::BUILDERS[$res['theme']])): ?>
+      <a class="btn small" href="/byggelab/<?= h($res['theme']) ?>?c=<?= h(implode(',', array_map(fn($id) => "$id:1", $labIds))) ?>"><?= t('Bygg oppsettet i Byggelab') ?></a>
+    <?php endif ?>
+  </div>
+  <p class="muted small"><?= t('Byggelab åpner med forslagene lagt inn, og sjekker hva som passer sammen.') ?></p>
+</section>
+
+<?php
 $hidden = implode('', array_map(fn($k, $v) => '<input type="hidden" name="a[' . h($k) . ']" value="' . h($v) . '">', array_keys($answers), $answers));
 ?>
 <section class="guide-ask" aria-labelledby="ga-h">

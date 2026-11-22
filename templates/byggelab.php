@@ -8,6 +8,22 @@
 [$builderName, $builderDesc] = Byggelab::BUILDERS[$theme];
 $v = fn(string $f) => filemtime(APP_ROOT . '/public/assets/' . $f);
 $L = [
+    'tour' => [
+        'ui' => ['of' => t('{i} av {n}'), 'next' => t('Neste'), 'back' => t('Tilbake'), 'close' => t('Lukk omvisningen'), 'finish' => t('Ferdig'),
+            'doIt' => t('Gjør det, så går omvisningen videre.')],
+        'steps' => [
+            ['title' => t('Velg hva du skal bygge'), 'text' => t('Sju byggere, en per kategori. Hver sjekker sine egne regler, for eksempel batterier mot lykter eller kjetting mot sjakler.')],
+            ['title' => t('Legg til et produkt'), 'text' => t('Finn et produkt i listen og trykk pluss, eller dra det inn på benken. Søket og kategoriene snevrer inn listen.')],
+            ['title' => t('Arbeidsbenken'), 'text' => t('Oppsettet i 3D, en rad per type. Dra for å snu, klikk et produkt for å velge det.')],
+            ['title' => t('Sjekken'), 'text' => t('Totalpris, vekt når den er kjent, hva som mangler, og hvert par med status: dokumentert, regelutledet, ukjent eller passer ikke, alltid med grunnen.')],
+            ['title' => t('Fjern et produkt'), 'text' => t('Velg et produkt på benken eller i panelet og trykk Fjern. Delete-tasten virker også.')],
+            ['title' => t('Angre og historikk'), 'text' => t('Alt kan angres og gjøres om. Historikken viser hvert steg.')],
+            ['title' => t('Testkjør'), 'text' => t('Går gjennom produktene, spesifikasjonene og koblingene steg for steg og lager en rapport. Det er en sjekk av dataene, ikke en garanti for at oppsettet er trygt.')],
+            ['title' => t('Lagre, eksporter og spør Søren'), 'text' => t('Lagre oppsettet, last ned handlelisten, eller spør Søren om akkurat dette oppsettet.')],
+            ['title' => t('Legg oppsettet i kurven'), 'text' => t('Hele oppsettet går i kurven i ett trykk, med antallene.')],
+            ['title' => t('Videre til kassen'), 'text' => t('Oppsettet ligger i kurven. Bestill i kassen, så dukker bestillingen opp i Kontrolltårnet.')],
+        ],
+    ],
     'lanes' => array_map(fn($l) => t($l), $lanes),
     'status' => ['dokumentert' => t('Dokumentert'), 'regel' => t('Regelutledet'), 'ukjent' => t('Ukjent'), 'ikke' => t('Passer ikke')],
     'statusLong' => ['dokumentert' => t('Dokumentert kompatibel'), 'regel' => t('Regelutledet kompatibel'), 'ukjent' => t('Ukjent'), 'ikke' => t('Dokumentert ikke kompatibel')],
@@ -25,7 +41,9 @@ $L = [
     'download' => t('Last ned rapport'),
     'empty' => t('Dra produkter hit, eller velg et eksempel over.'), 'search' => t('Søk i {n} produkter'), 'all' => t('Alle'),
     'noHits' => t('Ingen treff i denne kategorien.'), 'history' => t('Historikk'), 'historyNone' => t('Ingen endringer ennå.'),
-    'hAdd' => t('La til {name}'), 'hRemove' => t('Fjernet {name}'), 'hQty' => t('{name}: antall {n}'), 'hPreset' => t('Eksempel: {name}'), 'hLoad' => t('Åpnet {name}'), 'hClear' => t('Tømte oppsettet'),
+    'hAdd' => t('La til {name}'), 'hRemove' => t('Fjernet {name}'), 'hQty' => t('{name}: antall {n}'), 'hPreset' => t('Eksempel: {name}'), 'hLoad' => t('Åpnet {name}'), 'hClear' => t('Tømte oppsettet'), 'hMove' => t('Flyttet {name}'),
+    'menuRemove' => t('Fjern fra oppsettet'), 'menuMore' => t('Ett til'), 'menuLess' => t('Ett mindre'), 'menu' => t('Valg for {name}'),
+    'dragHint' => t('Dra et produkt for å flytte det, eller ut av benken for å fjerne det. Høyreklikk for flere valg.'),
     'saved' => t('Lagrede oppsett'), 'savedNone' => t('Ingen lagrede oppsett i denne nettleseren.'), 'saveDone' => t('Lagret som «{name}».'), 'open' => t('Åpne'),
     'cartDone' => t('{n} varer lagt i handlekurven.'), 'cartFail' => t('Kunne ikke legge i handlekurven.'), 'checkFail' => t('Sjekken feilet. Prøv igjen.'),
     'ask' => t('Jeg setter sammen dette i Byggelab: {names}. Passer delene sammen, og mangler det noe?'),
@@ -73,8 +91,9 @@ $cfg = ['theme' => $theme, 'builder' => t($builderName), 'csrf' => csrf(), 'inve
         </ul>
       </div>
       <div class="lab-view" id="lab-view" aria-describedby="lab-view-desc">
-        <p class="sr" id="lab-view-desc"><?= t('Tredimensjonal visning av oppsettet. Det samme innholdet står i panelet til høyre.') ?></p>
+        <p class="sr" id="lab-view-desc"><?= t('Tredimensjonal visning av oppsettet. Det samme innholdet står i panelet til høyre.') ?> <?= h($L['dragHint']) ?></p>
         <div class="lab-labels" id="lab-labels" aria-hidden="true"></div>
+        <div class="lab-menu" id="lab-menu" role="menu" hidden></div>
         <p class="lab-empty" id="lab-empty" hidden><?= icon('box') ?><span><?= h($L['empty']) ?></span></p>
         <p class="lab-runbar" id="lab-runbar" hidden></p>
       </div>
@@ -105,6 +124,7 @@ $cfg = ['theme' => $theme, 'builder' => t($builderName), 'csrf' => csrf(), 'inve
         <ul class="lab-pop-body" id="lab-saved"></ul>
       </details>
       <button type="button" class="lab-btn" data-act="export"><?= icon('download') ?><span><?= t('Eksporter handleliste') ?></span></button>
+      <button type="button" class="lab-btn" id="lab-tour"><?= icon('circle-help') ?><span><?= t('Omvisning') ?></span></button>
       <a href="#" class="lab-btn" data-open-soren id="lab-ask"><span data-soren="leaf"></span><span><?= t('Spør Søren') ?></span></a>
     </div>
     <div class="lab-bar-group lab-bar-main">
@@ -116,4 +136,5 @@ $cfg = ['theme' => $theme, 'builder' => t($builderName), 'csrf' => csrf(), 'inve
 </section>
 <script type="importmap">{"imports":{"three":"/assets/vendor/three.module.min.js"}}</script>
 <script type="application/json" id="lab-cfg"><?= json_encode($cfg, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<link rel="stylesheet" href="/assets/tour.css?v=<?= $v('tour.css') ?>">
 <script type="module" src="/assets/byggelab.js?v=<?= $v('byggelab.js') ?>"></script>

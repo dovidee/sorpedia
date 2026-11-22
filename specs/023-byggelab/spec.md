@@ -35,9 +35,11 @@ Category rules (only stored values, never names or guesses):
 
 `POST /api/byggelab/{theme}/sjekk` with `test: true` returns the same report plus six steps: inspect products, validate specifications, check compatibility, look for missing information, the category step, result. The workbench animates each step (light: beam cones sized from stated lumen and labelled as an illustration; lifting: the weakest link ring). The report says in text that it reads catalogue data only and is not a physical test. It can be downloaded as text.
 
-## Control Tower
+## Channel view and the Control Tower
 
-`lab_test` (test run) ends at a new station "Byggelab"; `lab_cart` (whole setup to the cart) ends at Handel. Payload fields `builder` and `verdict` are shown to staff.
+Byggelab is a channel view on the same site: no shop header, category bar or footer. One quiet bar holds the way back to the store, the demo marker and the cart. The floating chat launcher stays, so the chat can be opened again after it is closed, without a prefilled question. "Spør Søren" in the action bar opens it with a question about the setup.
+
+Byggelab is a customer tool and is not a station in the Control Tower. A test run is not tracked. `lab_cart` (whole setup to the cart) is an ordinary cart event and ends at Handel.
 
 ## Rules
 
@@ -48,9 +50,9 @@ Category rules (only stored values, never names or guesses):
 
 ## Acceptance
 
-1. "Hjelp" in the category bar opens a menu with Produktguide and Byggelab on every page.
+1. "Hjelp" in the category bar opens a menu with Produktguide and Byggelab on every shop page (not inside the Byggelab channel view).
 2. Every builder page loads with an example and no horizontal scroll at 390, 820 and 1440 px.
 3. H5R Core with the MH cable shows "Dokumentert ikke kompatibel" and the verdict Konflikt.
 4. Fokus 500 and Fokus 700 without D batteries list the missing D batteries; adding AAA shows the rule pair.
-5. A test run writes one `lab_test` row that appears at the Byggelab station in the Control Tower; adding the setup to the cart writes `lab_cart` and updates the cart counter.
+5. The page shows no shop header, category bar or footer; the back link returns to the front page. Adding the setup to the cart writes `lab_cart` and updates the cart counter in the channel bar.
 6. Without WebGL the setup and the connections are listed as text.

@@ -1,0 +1,1339 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Sørpedia product knowledge API",
+    "version": "1.0.0",
+    "description": "REST API over the product knowledge layer. Everything is read-only except asking the product assistant a question: specifications with source and level, related products with level and reason, and reviews from verified buyers. Product IDs are the web shop's own IDs, so a shop system can call the API with the IDs it already has. Internal tables, user IDs, stock and orders are not part of the API.\n\nRules the data keeps: a value is `confirmed` only when it is the verified version from the store or staff; a relation is `certain` only when it is documented. Unknown values are listed under `unknown`, never guessed.",
+    "license": {
+      "name": "Demo"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "This server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Entry"
+    },
+    {
+      "name": "Products"
+    },
+    {
+      "name": "Catalogue"
+    },
+    {
+      "name": "Assistant"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Entry"
+        ],
+        "operationId": "getRoot",
+        "summary": "Entry point with links to every collection",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Links to the collections and the documentation.",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Root"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "operationId": "listProducts",
+        "summary": "List, search and filter products",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Free text search. Tolerates typos and use cases (\"henge opp bilde\").",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": "hodelykt"
+          },
+          {
+            "name": "theme",
+            "in": "query",
+            "description": "Only products in this theme. See /themes.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "lys",
+                "bygg",
+                "maling",
+                "balkong",
+                "kjetting",
+                "skog",
+                "tur"
+              ]
+            }
+          },
+          {
+            "name": "sku",
+            "in": "query",
+            "description": "Exact SKU lookup.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of products. Navigation is also in the Link header.",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/Link"
+              },
+              "X-Total-Count": {
+                "$ref": "#/components/headers/XTotalCount"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPage"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "operationId": "getProduct",
+        "summary": "One product",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product ID. The same ID as in the store's web shop.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 291445
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The product with links to its specifications, relations and reviews.",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/products/{id}/specifications": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "operationId": "getSpecifications",
+        "summary": "Specifications with source, level and both versions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product ID. The same ID as in the store's web shop.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 291445
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every known specification and the filterable keys that are still unknown.",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Specifications"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/products/{id}/relations": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "operationId": "getRelations",
+        "summary": "Related products with level and reason",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product ID. The same ID as in the store's web shop.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 291445
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "goes_with",
+                "does_not_fit",
+                "alternative",
+                "bought_together"
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "At most 50 relations, documented first.",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Relations"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/products/{id}/reviews": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "operationId": "getReviews",
+        "summary": "Reviews from verified buyers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product ID. The same ID as in the store's web shop.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 291445
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first. Authors are shown by alias.",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "X-Total-Count": {
+                "$ref": "#/components/headers/XTotalCount"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reviews"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/products/{id}/questions": {
+      "post": {
+        "tags": [
+          "Assistant"
+        ],
+        "operationId": "askQuestion",
+        "summary": "Ask the product assistant a question about one product",
+        "description": "Runs the same pipeline as the shop's chat: blocked input gets a fixed answer before the model, facts come from the database, product names, prices and stock are filled in by the server, and when the language model (a local Ollama model) does not answer, the catalogue's rule-based answer is returned with a notice. Greetings, thanks and questions about what the assistant can do get a fixed answer without the model. Factual questions (price, stock, specifications, fit, rankings) are answered by the server from the catalogue. For every other product, cart or order question the language model only reads the question into fixed fields (intent, product type, requirements, budget), which the server checks against the question and the catalogue; the server then chooses, filters and ranks the products and writes the whole answer from the catalogue. Small talk gets a fixed answer; the model writes no answer text. Answers are never cached. At most 60 questions per 10 minutes from one client; of those, at most 10 are read by the language model, and the rest are read by rules (`notice` says so).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product ID. The same ID as in the store's web shop.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 291445
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Question"
+              },
+              "example": {
+                "question": "Hvilke batterier passer i denne lykta?"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The answer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Answer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is not a valid question.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "415": {
+            "description": "The body is not application/json.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many questions from this client. Retry-After says how many seconds to wait.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until a new question is accepted.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/themes": {
+      "get": {
+        "tags": [
+          "Catalogue"
+        ],
+        "operationId": "listThemes",
+        "summary": "Product themes",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All themes with product counts.",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "X-Total-Count": {
+                "$ref": "#/components/headers/XTotalCount"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeList"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          }
+        }
+      }
+    },
+    "/themes/{key}": {
+      "get": {
+        "tags": [
+          "Catalogue"
+        ],
+        "operationId": "getTheme",
+        "summary": "One theme",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "lys"
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The theme.",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Theme"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/specification-keys": {
+      "get": {
+        "tags": [
+          "Catalogue"
+        ],
+        "operationId": "listSpecificationKeys",
+        "summary": "The specification vocabulary",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every specification key. New keys are added as rows, so this list can grow without a new API version.",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "X-Total-Count": {
+                "$ref": "#/components/headers/XTotalCount"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyList"
+                }
+              }
+            }
+          },
+          "304": {
+            "$ref": "#/components/responses/NotModified"
+          },
+          "406": {
+            "$ref": "#/components/responses/NotAcceptable"
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "tags": [
+          "Entry"
+        ],
+        "operationId": "getOpenApi",
+        "summary": "This document",
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1",
+            "content": {
+              "application/vnd.oai.openapi+json": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "IfNoneMatch": {
+        "name": "If-None-Match",
+        "in": "header",
+        "description": "An ETag from an earlier response. If the resource is unchanged the answer is 304 with no body.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "headers": {
+      "ETag": {
+        "description": "Entity tag of the body.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "CacheControl": {
+        "description": "public, max-age=60",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Link": {
+        "description": "RFC 8288 links: self, first, prev, next, last.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "XTotalCount": {
+        "description": "Number of items in the whole collection.",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    },
+    "responses": {
+      "NotModified": {
+        "description": "Unchanged since the ETag in If-None-Match. No body."
+      },
+      "BadRequest": {
+        "description": "A query parameter is invalid.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "No such resource.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "NotAcceptable": {
+        "description": "The Accept header rules out JSON.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Links": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "href": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "href"
+          ]
+        },
+        "description": "Links to related resources, keyed by relation name (self, up, next, ...)."
+      },
+      "Problem": {
+        "type": "object",
+        "description": "RFC 9457 problem details.",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status"
+        ]
+      },
+      "Root": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "Price": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "regular": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "currency": {
+            "const": "NOK"
+          },
+          "includes_vat": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProductSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "sku": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "theme": {
+            "type": "string"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rating": {
+            "type": "object",
+            "properties": {
+              "average": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "count": {
+                "type": "integer"
+              }
+            }
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "price"
+        ]
+      },
+      "Product": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProductSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "ProductPage": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "corrected": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The spelling the search used, if it corrected the query."
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductSummary"
+            }
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "SpecValue": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "number": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "store",
+              "derived",
+              "buyer",
+              "staff"
+            ],
+            "description": "store: from the shop's own product data. derived: a rule read it from the product text. buyer: a verified buyer entered it. staff: approved by staff."
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "True only for the verified version from the store or staff."
+          },
+          "basis": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The text or reason the value rests on."
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "Specification": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effective": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "verified",
+              "open",
+              null
+            ],
+            "description": "Which version a shop should display: verified if it exists, else open."
+          },
+          "verified": {
+            "$ref": "#/components/schemas/SpecValue"
+          },
+          "open": {
+            "$ref": "#/components/schemas/SpecValue"
+          }
+        }
+      },
+      "Specifications": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "type": "object"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Specification"
+            }
+          },
+          "unknown": {
+            "type": "array",
+            "description": "Filterable keys with no value for this product. Unknown is a valid answer.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "Relation": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "goes_with",
+              "does_not_fit",
+              "alternative",
+              "bought_together"
+            ]
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "documented",
+              "rule_based",
+              "assumed"
+            ]
+          },
+          "certain": {
+            "type": "boolean",
+            "description": "True only when the level is documented."
+          },
+          "reason": {
+            "type": "string"
+          },
+          "product": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "_links": {
+                "$ref": "#/components/schemas/Links"
+              }
+            }
+          }
+        }
+      },
+      "Relations": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Relation"
+            }
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": "string",
+            "description": "Alias, never a full name."
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "verified_buyer": {
+            "type": "boolean"
+          },
+          "demo": {
+            "type": "boolean",
+            "description": "Seeded demo review."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Reviews": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "integer"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "average": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Review"
+            }
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "Theme": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "product_count": {
+            "type": "integer"
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "ThemeList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Theme"
+            }
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "Key": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "datatype": {
+            "type": "string",
+            "enum": [
+              "text",
+              "number"
+            ]
+          },
+          "filterable": {
+            "type": "boolean"
+          },
+          "themes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Question": {
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "history": {
+            "type": "array",
+            "maxItems": 6,
+            "description": "Earlier turns, oldest first. Only the last six are used.",
+            "items": {
+              "type": "object",
+              "required": [
+                "role",
+                "content"
+              ],
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "content": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              }
+            }
+          }
+        }
+      },
+      "Answer": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "integer"
+          },
+          "question": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "reasoning": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The model's reasoning when the model answered, cleaned like the answer (no product references or links). It can be in another language than the answer."
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "used": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "notice": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Set when the answer is fixed or rule based rather than from the model."
+          },
+          "products": {
+            "type": "array",
+            "description": "Products the answer names. Cards the answer does not mention are left out.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "_links": {
+                  "$ref": "#/components/schemas/Links"
+                }
+              }
+            }
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      },
+      "KeyList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Key"
+            }
+          },
+          "_links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        }
+      }
+    }
+  }
+}

@@ -53,3 +53,9 @@ The guide pages and the PDFs now use the exact category banner colors (spec 021)
 Run in the app: all five `/veiledning/*` pages returned 200; File sagkjedet (#101C12) and Male tak (#F3B7CD) captured at 1366 px. All ten PDFs printed again with `php scripts/manual_pdfs.php`; page 1 of `hodelykt-lading.pdf` (#CB020F) and `file-sagkjede-en.pdf` (#101C12) checked by eye.
 
 Page 1 of all ten PDFs checked by eye afterwards: Lys og lykter #CB020F, Skog og ved #101C12, Maling og sparkel #F3B7CD, Balkong og levegg #17559B, Kjetting og løft #C0C5C9, in both languages. Not verified: dark mode on the site, inner pages of the PDFs.
+
+## Step drawings act out their step (2026-11-22)
+
+The moving parts of each step drawing carry motion classes in `scripts/manuals.php`; the CSS in `app.css` and a small observer in `app.js` play the step in the middle of the screen, or the step chosen in the index from the start, and set the steps above it to their end state. The markup is the end state, so the PDFs, print, reduced motion and pages without JavaScript show the still drawing. `php scripts/manual_svgs.php` wrote the new drawings to the five guides in the database without touching anything else.
+
+Run in headless Chromium on `/veiledning/hodelykt-lading`: after clicking «Bytt batteri» in the index, steps 1 and 2 were `done` and step 3 `play`, with the old cell's `m-out-r` and the new cell's `m-in-l` animations running. The first attempt ran no animation at all (the shorthand rule outranked the motion names); fixed by raising the motion rules' specificity and checked again. Not verified: the other four guides by eye, phone width, and the dark view of the drawings.

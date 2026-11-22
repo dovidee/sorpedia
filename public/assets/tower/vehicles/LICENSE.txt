@@ -1,0 +1,11 @@
+Vehicle images for the Control Tower transport view.
+
+varebil.svg    OpenMoji 1F69A (delivery truck), unchanged.
+lastebil.svg   OpenMoji 1F69B (articulated lorry), unchanged.
+trekkvogn.svg  Derived from OpenMoji 1F69B: the cab is kept, a semitrailer is drawn behind it.
+tilhenger.svg  Derived from OpenMoji 1F69B: the trailer drawn for trekkvogn.svg, without the cab.
+
+OpenMoji, the open-source emoji and icon project (https://openmoji.org).
+Source: https://github.com/hfg-gmuend/openmoji (color/svg).
+License: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
+The derived files are shared under the same license.

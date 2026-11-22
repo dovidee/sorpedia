@@ -7,6 +7,7 @@
     <label><?= t('Passord') ?> <input name="password" type="password" required autocomplete="current-password"></label>
     <button class="btn"><?= t('Logg inn') ?></button>
   </form>
+  <p class="small"><a href="/glemt-passord"><?= t('Glemt passordet?') ?></a></p>
   <p class="small"><?= t('Ingen konto?') ?> <a href="/registrer"><?= t('Registrer deg') ?></a></p>
   <h2><?= t('Testbrukere') ?></h2>
   <p class="muted"><?= t('Alle har passordet <code>admin</code>. Klikk for å fylle inn.') ?></p>

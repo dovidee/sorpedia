@@ -45,18 +45,94 @@ final class CatalogIntent
     private static function scope(string $kind, string $q, array $page): array
     {
         $rest = trim((string) preg_replace(self::PATTERNS[$kind], ' ', $q));
-        $rest = trim((string) preg_replace('/\b(hvilke|hvilken|hvilket|produkter|produktene|varer|har|med|som|finnes|dere|du|vis|meg|what|which|products?|items?|have|has|with|do|you|show|me|the|are|is|there|any|og|and|i|in|på|en|et|a|an|of|for|til|alle|all)\b/iu', ' ', $rest));
-        $rest = trim((string) preg_replace('/[^\p{L}\d ]+/u', ' ', $rest));
+        $rest = self::strip($rest);
         if (mb_strlen($rest) >= 3) {
+            // The product type the customer named («hodelykten») limits the list before it is ranked, so «billigste hodelykt»
+            // can never be an S-hook (feature 039). Accessories made for that type («batteripakke for … hodelykt») don't count.
+            $typed = self::ofType($rest);
+            if ($typed !== null) {
+                return $typed;
+            }
             $r = Search::run($rest, 80, false, true);
+            // An English word («headlamp») is matched on the Norwegian word the search translated it to
+            if (!empty($r['translated']) && ($typed = self::ofType((string) $r['translated'])) !== null) {
+                return $typed;
+            }
             if ($r['ids']) {
                 return [$r['ids'], $r['translated'] ?? $rest];
+            }
+            // A product word was named but nothing matches: no list, never the whole store
+            if (preg_match('/\p{L}{4,}/u', $rest)) {
+                return [[], $rest];
             }
         }
         if (($page['kind'] ?? '') === 'tema' && !empty($page['theme'])) {
             return [Catalog::themeIds($page['theme']), Catalog::THEMES[$page['theme']][0]];
         }
         return [null, null];
+    }
+
+    /** The question without question words, small words and follow-up words («passer», «forslagene», «forskjellen»), so what is left names the product. */
+    private static function strip(string $q): string
+    {
+        $q = trim((string) preg_replace('/\b(hva|hvem|er|den|det|de|dem|kan|jeg|vil|ha|kjøpe|selger|hvilke|hvilken|hvilket|produkter|produktene|varer|har|med|som|finnes|dere|du|vis|meg|what|which|products?|items?|have|has|with|do|you|show|me|the|are|is|there|any|og|and|i|in|på|en|et|a|an|of|for|til|alle|all|sine|deres|your|anbefal\w*|recommend\w*|egner\w*|suggest\w*|passer|passe|forslag\w*|alternativ\w*|forskjell\w*|disse|hvorfor|sammenlign\w*|fortell|forklar|beskriv|tenke|bør|kort|difference|why|these|those|compare\w*)\b/iu', ' ', $q));
+        return trim((string) preg_replace('/[^\p{L}\d ]+/u', ' ', $q));
+    }
+
+    /**
+     * The product type a question names («Hvilken hodelykt anbefaler du?»): the products of that type and the word, or null
+     * (feature 040: a recommendation must stay within the type).
+     * @return array{0: int[], 1: string}|null
+     */
+    public static function typeOf(string $q): ?array
+    {
+        return self::ofType(self::strip($q));
+    }
+
+    /**
+     * Products whose name contains a word from the question, in its base form («hodelykten» is «hodelykt»), without
+     * products made for that type, and the word that matched. Null when no word of four letters or more is in a name.
+     * @return array{0: int[], 1: string}|null
+     */
+    private static function ofType(string $rest): ?array
+    {
+        // A word that names a product type the usage rules know («hodelykt») wins over a describing word in a name («vanntett»)
+        $found = [];
+        foreach (preg_split('/\s+/u', mb_strtolower($rest)) ?: [] as $w) {
+            if (mb_strlen($w) < 4) {
+                continue;
+            }
+            $stems = [$w];
+            $single = null;
+            if (preg_match('/^(.{4,}?)(ene|ane|en|et|er|ar|a|ne|e)$/u', $w, $m)) {
+                $stems[] = $m[1];
+            }
+            foreach ($stems as $stem) {
+                $like = db()->quote('%' . addcslashes($stem, '%_\\') . '%');
+                $rows = db()->query("SELECT id, name FROM products WHERE LOWER(name) LIKE $like")->fetchAll();
+                $ids = [];
+                foreach ($rows as $r) {
+                    if (!preg_match('/\b(for|til)\b.*' . preg_quote($stem, '/') . '/iu', (string) $r['name'])) {
+                        $ids[] = (int) $r['id'];
+                    }
+                }
+                // The word as written, unless only one name holds it («batterier» in «inkl. batterier»): then its base form
+                if ($ids && (count($ids) > 1 || count($stems) === 1 || ($stem !== $w && $single === null))) {
+                    $found[] = [$ids, $stem];
+                    continue 2;
+                }
+                $single ??= $ids ? [$ids, $stem] : null;
+            }
+            if ($single !== null) {
+                $found[] = $single;
+            }
+        }
+        foreach ($found as $f) {
+            if (Usage::rule($f[1]) !== null) {
+                return $f;
+            }
+        }
+        return $found[0] ?? null;
     }
 
     private static function manuals(?array $within, ?string $scope): array

@@ -11,5 +11,10 @@ if (manual_pdf_browser() === '') {
     fwrite(STDERR, "No headless Chrome or Chromium found. Set CHROME_BIN.\n");
     exit(1);
 }
+$pdfFailed = []; // filled by manuals.php
 $n = require __DIR__ . '/manuals.php';
+if ($pdfFailed) {
+    fwrite(STDERR, count($pdfFailed) . ' PDF(s) failed to print: ' . implode(', ', $pdfFailed) . "\n");
+    exit(1);
+}
 echo "$n guides printed to public/media/manuals\n";

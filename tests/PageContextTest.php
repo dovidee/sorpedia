@@ -8,7 +8,7 @@ $slug = fn() => (string) db()->query('SELECT slug FROM products ORDER BY id LIMI
 
 return [
     'private pages give no context' => function () {
-        foreach (['/', '/logg-inn', '/handlekurv', '/kasse', '/innstillinger', '/ordrer', '/support', '/admin', '/innboks'] as $url) {
+        foreach (['/', '/logg-inn', '/handlekurv', '/kasse', '/innstillinger', '/ordrer', '/ansatt/tarn', '/innboks'] as $url) {
             $p = PageContext::resolve($url);
             check($p['kind'] === 'ingen' && $p['ids'] === [] && $p['text'] === '', "$url gave context {$p['kind']}");
         }

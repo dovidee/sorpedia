@@ -7,18 +7,18 @@ declare(strict_types=1);
  */
 final class Floor
 {
-    /** Stations in floor order. The client positions them; the server only says where each parcel goes. */
+    /** Stations in floor order, named for what lands there. The client positions them; the server only says where each parcel goes. */
     public const STATIONS = [
-        'sok' => 'Søk',
-        'avvik' => 'Avvik',
-        'guide' => 'Guide',
-        'byggelab' => 'Byggelab',
-        'soren' => 'Søren',
-        'kundeservice' => 'Kundeservice',
-        'kvalitet' => 'Kvalitet',
-        'handel' => 'Handel',
-        'ukjent' => 'Ukjent',
-        'mottak' => 'Mottak',
+        'sok' => 'Søk med treff',
+        'avvik' => 'Søk uten treff',
+        'guide' => 'Guider',
+        'lab' => 'Byggelab',
+        'soren' => 'Spørsmål til Søren',
+        'kundeservice' => 'Til kundeservice',
+        'kvalitet' => 'Data å rette',
+        'handel' => 'Kjøp',
+        'ukjent' => 'Ukjent hendelse',
+        'mottak' => 'Varemottak',
     ];
 
     /** Event type => stations the parcel passes, in order. Producers: track() calls in public/index.php. */
@@ -30,7 +30,11 @@ final class Floor
         'guide_done' => ['guide'],
         'guide_feedback' => ['guide'],
         'manual_view' => ['guide'],
-        'lab_test' => ['byggelab'],
+        'guide_step' => ['guide'],
+        'lab_check' => ['lab'],
+        'lab_test' => ['lab'],
+        'lab_save' => ['lab'],
+        'lab_list' => ['lab'],
         'lab_cart' => ['handel'],
         'chat' => ['soren'],
         'escalate' => ['soren', 'kundeservice'],
@@ -43,7 +47,7 @@ final class Floor
     public const WINDOWS = ['time', 'dag', '7d', '30d'];
 
     /** Payload fields shown to staff. Session and user are never sent (track() stores no user ID). */
-    public const FIELDS = ['q', 'n', 'product', 'ticket', 'ids', 'key', 'via', 'manual', 'page', 'found', 'llm', 'intent', 'lang', 'field', 'order', 'lines', 'wanted', 'builder', 'verdict'];
+    public const FIELDS = ['q', 'n', 'product', 'ticket', 'ids', 'key', 'via', 'manual', 'page', 'found', 'llm', 'intent', 'lang', 'field', 'order', 'lines', 'wanted', 'builder', 'verdict', 'conflicts', 'unknown', 'missing', 'question', 'answered'];
 
     /** Open items at one station before it is flagged as congested. */
     public const CONGESTED = 5;

@@ -32,6 +32,12 @@ final class Drafts
         return $this->ask(DraftPrompt::report($r['label'], $r['unit'], $r['reports'], $r['facts']));
     }
 
+    /** Answer to a staff question from facts the server gathered (StaffBrief), or null. */
+    public function staff(string $question, string $facts): ?string
+    {
+        return $this->ask(DraftPrompt::staff($question, $facts));
+    }
+
     /** @param array{0: string, 1: string} $prompt */
     private function ask(array $prompt): ?string
     {

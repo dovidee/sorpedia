@@ -75,6 +75,11 @@ def facts():
     m = re.search(r"explode\(',', \(string\) \(\$_GET\['ids'\] \?\? ''\)\)\)\), 0, (\d+)\)", read("public/index.php"))
     f["compare_max"] = int(m.group(1)) if m else None
     f["routes"] = re.findall(r"route\('(?:GET|POST)', '([^']+)'\)", read("public/index.php"))
+    # paths answered before routing (API, webhooks) are compared with $apiPath
+    f["routes"] += re.findall(r"\$apiPath === '([^']+)'", read("public/index.php"))
+    # The public API keeps its paths in PublicApi::PATHS (regular expressions, PHP single-quoted)
+    m = re.search(r"const PATHS = \[(.*?)\];", read("src/PublicApi.php"), re.S)
+    f["routes"] += [r.replace("\\\\", "\\") for r in re.findall(r"=> '([^']+)'", m.group(1))] if m else []
     return f
 
 
@@ -100,7 +105,10 @@ def check():
             for m in re.finditer(NUM + r" themes\b", line, re.I):
                 if "themes" in f and num(m.group(1)) != f["themes"]:
                     out.append(f"{w}: says {m.group(1)} themes; Catalog::THEMES has {f['themes']}")
-            for m in re.finditer(NUM + r" (?:assembly guides|manuals)\b", line, re.I):
+            for m in re.finditer(r"(?<![\d])" + NUM + r" (?:assembly guides|manuals)\b", line, re.I):
+                # "020 assembly guides" is a feature number (specs/020-...), not a count; counts never start with 0
+                if m.group(1).startswith("0"):
+                    continue
                 if num(m.group(1)) != f["manuals"]:
                     out.append(f"{w}: says {m.group(1)} assembly guides; public/media/manuals has {f['manuals']} PDFs")
             # backticked repo paths must exist
@@ -108,11 +116,13 @@ def check():
                 # spec.md and verification.md name the files each feature folder specs/NNN-name/ gets
                 if "NNN" in p or p.startswith(("http", "/")) or "*" in p or p in TEMPLATES:
                     continue
-                if not os.path.exists(os.path.join(ROOT, p)) and not p.startswith(("specs/", "src/Foo")):
+                # A bare file name ("tower.js") is found by name anywhere under public/assets/, as the docs use it
+                bare = "/" not in p and glob.glob(os.path.join(ROOT, "public/assets/**", p), recursive=True)
+                if not bare and not os.path.exists(os.path.join(ROOT, p)) and not p.startswith(("specs/", "src/Foo")):
                     out.append(f"{w}: `{p}` does not exist in the repo")
             # backticked site routes must exist in public/index.php
             for p in re.findall(r"`(/[a-z][\w/-]*)`", line):
-                if p.startswith(("/var", "/etc", "/usr")) or "." in p:
+                if p.startswith(("/var", "/etc", "/usr", "/wp-json")) or "." in p:  # /wp-json is the shop's own WordPress API
                     continue
                 if not route_exists(p.rstrip("/") or "/", f["routes"]):
                     out.append(f"{w}: route {p} is not in public/index.php")

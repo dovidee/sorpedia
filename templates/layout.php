@@ -18,6 +18,9 @@ if (preg_match('#^/tema/([a-z0-9_-]+)#', $path, $mm)) {
 // Light or dark: a personal setting. Guests and "Som enheten" (match device) follow the operating system.
 $themeAttr = match ($u['theme'] ?? 'system') { 'lys' => ' data-theme="light"', 'mork' => ' data-theme="dark"', default => '' };
 $en = lang() === 'en';
+// Byggelab is a channel view: same site and session, but no shop header, theme bar or footer (feature 023). The chat
+// launcher stays, so Søren can be opened again without a prefilled question after the chat is closed
+$channel = str_starts_with($path, '/byggelab');
 // The flag shows the language you switch TO
 $flag = $en
     ? '<svg viewBox="0 0 22 16" aria-hidden="true"><rect width="22" height="16" fill="oklch(50.3% .193 27)"/><rect x="6" width="4" height="16" fill="oklch(100% 0 0)"/><rect y="6" width="22" height="4" fill="oklch(100% 0 0)"/><rect x="7" width="2" height="16" fill="oklch(32% .12 264)"/><rect y="7" width="22" height="2" fill="oklch(32% .12 264)"/></svg>'
@@ -39,8 +42,18 @@ $flag = $en
 <link rel="stylesheet" href="/assets/app.css?v=<?= filemtime(APP_ROOT . '/public/assets/app.css') ?>">
 <script src="/assets/soren.js?v=<?= filemtime(APP_ROOT . '/public/assets/soren.js') ?>" defer></script>
 <script src="/assets/app.js?v=<?= filemtime(APP_ROOT . '/public/assets/app.js') ?>" defer></script>
+<script src="/assets/autodemo.js?v=<?= filemtime(APP_ROOT . '/public/assets/autodemo.js') ?>" defer></script>
 </head>
-<body<?= $activeTheme ? ' data-tema="' . h($activeTheme) . '"' : '' ?>>
+<body<?= $activeTheme ? ' data-tema="' . h($activeTheme) . '"' : '' ?><?= $channel ? ' class="channel"' : '' ?>>
+<?php if ($channel): ?>
+<header class="channel-bar">
+  <a class="channel-exit" href="/"><?= icon('arrow-left') ?><span><?= t('Tilbake til butikken') ?></span></a>
+  <span class="channel-demo" title="<?= t('Varene og bildene er fra sor-tre.no. Lager, kunder, anmeldelser og ordrer er laget for demoen, og du betaler ingenting.') ?>"><?= t('Demo') ?></span>
+  <a class="ico cart-link" href="/handlekurv" title="<?= t('Handlekurv') ?>"><?= icon('shopping-basket') ?><span class="sr"><?= t('Handlekurv') ?>,</span><b id="cart-count"><?= cart_count() ?></b><span class="sr"><?= t('varer') ?></span></a>
+</header>
+<?php if ($msg): ?><div class="flash channel-flash"><?= h(t($msg)) ?></div><?php endif ?>
+<main class="channel-main"><?= $content ?></main>
+<?php else: ?>
 <div class="demo-bar"><span><?= t('Varene og bildene er fra sor-tre.no. Lager, kunder, anmeldelser og ordrer er laget for demoen, og du betaler ingenting.') ?></span>
   <a class="lang-flag" href="/sprak/<?= $en ? 'no' : 'en' ?>?back=<?= urlencode($here) ?>" hreflang="<?= $en ? 'nb' : 'en' ?>" lang="<?= $en ? 'nb' : 'en' ?>" title="<?= $en ? 'Bytt til norsk' : 'Switch to English' ?>"><?= $flag ?><span><?= $en ? 'Norsk' : 'English' ?></span></a></div>
 <header class="top">
@@ -76,9 +89,8 @@ $flag = $en
             <a href="/innstillinger"><?= icon('settings') ?><?= t('Innstillinger') ?></a>
             <?php if (has_role('ansatt', 'support', 'admin')): ?>
               <div class="menu-group" role="group" aria-label="<?= t('Arbeid') ?>" data-label="<?= t('Arbeid') ?>">
-                <?php if (has_role('ansatt', 'admin')): ?><a href="/ansatt"><?= icon('git-merge') ?>Flettekø</a><?php endif ?>
-                <?php if (has_role('support', 'ansatt', 'admin')): ?><a href="/support"><?= icon('headset') ?>Kundeservice</a><?php endif ?>
-                <?php if (has_role('admin')): ?><a href="/admin"><?= icon('chart-column') ?>Måltall</a><?php endif ?>
+                <a href="/ansatt/tarn"><?= icon('compass') ?><?= t('Kontrolltårn') ?></a>
+                <?php if (has_role('admin')): ?><a href="/admin"><?= icon('shield-check') ?><?= t('Admin') ?></a><?php endif ?>
               </div>
             <?php endif ?>
             <form method="post" action="/logg-ut" data-logout><?= csrf_field() ?><button class="menu-item"><?= icon('log-out') ?><?= t('Logg ut') ?></button></form>
@@ -106,7 +118,9 @@ $flag = $en
 <div class="compare-bar" id="compare-bar" hidden></div>
 <footer class="wrap foot">
   <p><?= t('Sørpedia er en prototype og er ikke tilknyttet Sør-Tre AS. Spesifikasjoner merket «Utledet» eller «Kjøper» er ikke kontrollert av Sør-Tre.') ?></p>
+  <nav class="foot-links" aria-label="<?= t('Vilkår og personvern') ?>"><a href="/vilkar#vilkar"><?= t('Vilkår') ?></a><a href="/vilkar#personvern"><?= t('Personvern') ?></a></nav>
 </footer>
+<?php endif ?>
 <button class="soren-fab" id="soren-open" aria-label="<?= t('Spør Søren') ?>"><span class="av" data-soren="head"></span></button>
 </body>
 </html>

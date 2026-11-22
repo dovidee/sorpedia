@@ -9,3 +9,6 @@ tools/
 
 # Working files from scripts/manuals.php (LibreOffice PDF export)
 data/manuals-tmp/
+
+# Request traces from the chat and the public API (src/Trace.php), local only
+data/traces/

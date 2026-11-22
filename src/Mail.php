@@ -15,9 +15,21 @@ final class Mail
         }
     }
 
-    public static function send(string $to, string $subject, string $html): void
+    /** @return int the message ID */
+    public static function send(string $to, string $subject, string $html): int
     {
         db()->prepare('INSERT INTO mail_outbox (to_email, subject, body_html) VALUES (?,?,?)')->execute([$to, $subject, $html]);
+        return (int) db()->lastInsertId();
+    }
+
+    /** Given messages by ID, for a visitor who is not logged in (the reset mail they just asked for in this session). */
+    public static function byIds(array $ids): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if (!$ids) {
+            return [];
+        }
+        return db()->query('SELECT * FROM mail_outbox WHERE id IN (' . implode(',', $ids) . ') ORDER BY id DESC')->fetchAll();
     }
 
     public static function unread(string $to): int
