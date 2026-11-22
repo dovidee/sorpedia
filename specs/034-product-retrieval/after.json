@@ -1,0 +1,1226 @@
+{
+    "date": "2026-11-22 01:03",
+    "report": {
+        "legacy": {
+            "summary": {
+                "cases": 28,
+                "recall_at_5": 0.631,
+                "precision_at_5": 0.47,
+                "exact_match": "7/12",
+                "followup_resolution": "0/4",
+                "compatibility": "1/4",
+                "irrelevant_hit_rate": 0.611,
+                "card_consistency": "24/28",
+                "ms_per_question": 6.4,
+                "queries_per_question": 4.1
+            },
+            "cases": [
+                {
+                    "id": "modell-h5r",
+                    "scenario": "Exact model",
+                    "recall": 1,
+                    "precision": 0.2,
+                    "first": true,
+                    "ids": [
+                        291482,
+                        291385,
+                        291433,
+                        291434,
+                        291435
+                    ],
+                    "irrelevant": [
+                        "291385 Ledlenser Ladekabel USB/magnetisk lading",
+                        "291433 Ledlenser HF4R Core – 300 Lumen – Opplad",
+                        "291434 Ledlenser HF6R Core – 500 Lumen – Opplad",
+                        "291435 Ledlenser HF8R Core – 900 Lumen – Opplad"
+                    ],
+                    "cards": [
+                        291482,
+                        291385,
+                        291433,
+                        291434
+                    ],
+                    "cards_consistent": true,
+                    "ms": 19.7,
+                    "queries": 5
+                },
+                {
+                    "id": "sku-h7r",
+                    "scenario": "Exact SKU",
+                    "recall": 0,
+                    "precision": 0,
+                    "first": false,
+                    "ids": [],
+                    "irrelevant": [],
+                    "cards": [],
+                    "cards_consistent": true,
+                    "ms": 4.1,
+                    "queries": 4
+                },
+                {
+                    "id": "side-denne",
+                    "scenario": "Current page reference",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 3.8,
+                    "queries": 4
+                },
+                {
+                    "id": "oppfolging-de-to",
+                    "scenario": "Two product follow-up",
+                    "recall": 0,
+                    "precision": 0,
+                    "first": null,
+                    "ids": [
+                        266956,
+                        267406,
+                        267103,
+                        267107,
+                        267380
+                    ],
+                    "irrelevant": [
+                        "266956 1852 Stor sammenleggbar undervannskikker",
+                        "267406 Grill sammenleggbar",
+                        "267103 Omnia Miniovn",
+                        "267107 Omnia Maxiform",
+                        "267380 1852 Vannsport kikkert vanntett"
+                    ],
+                    "cards": [
+                        266956,
+                        267406,
+                        267103,
+                        267107
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5.3,
+                    "queries": 4
+                },
+                {
+                    "id": "oppfolging-billigst",
+                    "scenario": "Two product follow-up",
+                    "recall": 0,
+                    "precision": 0,
+                    "first": false,
+                    "ids": [
+                        290864,
+                        290865,
+                        290866
+                    ],
+                    "irrelevant": [
+                        "290864 CAL S-krok – Galvanisert – 3×25 mm",
+                        "290865 CAL S-krok – Galvanisert – 4×35 mm",
+                        "290866 CAL S-krok – Galvanisert – 5×40 mm"
+                    ],
+                    "cards": [
+                        290864,
+                        290865,
+                        290866,
+                        290867
+                    ],
+                    "cards_consistent": false,
+                    "ms": 5.8,
+                    "queries": 4
+                },
+                {
+                    "id": "oppfolging-den",
+                    "scenario": "Two product follow-up",
+                    "recall": 0,
+                    "precision": 0,
+                    "first": false,
+                    "ids": [
+                        296394,
+                        267405,
+                        291859,
+                        291860,
+                        294666
+                    ],
+                    "irrelevant": [
+                        "296394 FORLENGERSKAFT ULTIMATE 115-270cm (3/24)",
+                        "267405 1852 Brødrister/Toaster for gassbluss",
+                        "291859 Osean Arbeidslys LED strip – 15m 180w – ",
+                        "291860 Osean Arbeidslys LED strip – 25m 300w – ",
+                        "294666 SKRAPESKJÆR RETT 65mm 451 BAHCO"
+                    ],
+                    "cards": [
+                        296394,
+                        267405,
+                        291859,
+                        291860
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5.3,
+                    "queries": 4
+                },
+                {
+                    "id": "billigste-batteri",
+                    "scenario": "Cheapest product",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        268748,
+                        268749,
+                        268747
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        268748,
+                        268749,
+                        268747,
+                        291445
+                    ],
+                    "cards_consistent": false,
+                    "ms": 5.3,
+                    "queries": 5
+                },
+                {
+                    "id": "komplett-sagkjede",
+                    "scenario": "Complete product setup",
+                    "recall": 0.5,
+                    "precision": 0.4,
+                    "first": true,
+                    "ids": [
+                        311290,
+                        315193,
+                        292307,
+                        292314,
+                        292317
+                    ],
+                    "irrelevant": [
+                        "292307 VindFix stender, 80,1cm komplett – sort",
+                        "292314 VindFix stender, 70,1cm komplett – sort",
+                        "292317 VindFix stender, 50,1cm komplett – sort"
+                    ],
+                    "cards": [
+                        315193,
+                        292307,
+                        292314,
+                        292317
+                    ],
+                    "cards_consistent": true,
+                    "ms": 10,
+                    "queries": 4
+                },
+                {
+                    "id": "kompat-lader",
+                    "scenario": "Compatibility question",
+                    "recall": 1,
+                    "precision": 0.4,
+                    "first": null,
+                    "ids": [
+                        291385,
+                        291483,
+                        291485,
+                        291431,
+                        291433
+                    ],
+                    "irrelevant": [
+                        "291485 Ledlenser Batteri – 21700 – H7R Core og ",
+                        "291431 Oppladbar batteripakke for H7R2 – Ledlen",
+                        "291433 Ledlenser HF4R Core – 300 Lumen – Opplad"
+                    ],
+                    "cards": [
+                        291483,
+                        291485,
+                        291385,
+                        291431
+                    ],
+                    "cards_consistent": true,
+                    "ms": 9.9,
+                    "queries": 4
+                },
+                {
+                    "id": "lignende",
+                    "scenario": "Similar products",
+                    "recall": 0.5,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 3.1,
+                    "queries": 4
+                },
+                {
+                    "id": "generisk-sett",
+                    "scenario": "Generic words",
+                    "recall": 0,
+                    "precision": 0,
+                    "first": null,
+                    "ids": [
+                        289285,
+                        295384,
+                        297774,
+                        267388,
+                        267389
+                    ],
+                    "irrelevant": [
+                        "289285 Osean Krabbekoker – Sett – 9.5kW – 40 Li",
+                        "295384 BAKELITTSPARKEL sett 60-80-100mm (10/100",
+                        "297774 JAPANSPARKEL SETT 3stk 50-75-100mm (10/1",
+                        "267388 Grytesett m/avtakbare håndtak",
+                        "267389 Grytesett 3 stk, gass/induksjon"
+                    ],
+                    "cards": [
+                        289285,
+                        295384,
+                        297774,
+                        267388
+                    ],
+                    "cards_consistent": true,
+                    "ms": 4.2,
+                    "queries": 4
+                },
+                {
+                    "id": "temabytte",
+                    "scenario": "Topic change",
+                    "recall": 1,
+                    "precision": 0.5,
+                    "first": true,
+                    "ids": [
+                        267100,
+                        267095
+                    ],
+                    "irrelevant": [
+                        "267095 Magma Original Marine Kettle gassgrill"
+                    ],
+                    "cards": [
+                        267100,
+                        267095
+                    ],
+                    "cards_consistent": true,
+                    "ms": 7,
+                    "queries": 4
+                },
+                {
+                    "id": "utenfor-siden",
+                    "scenario": "Product outside the current page",
+                    "recall": 1,
+                    "precision": 0.67,
+                    "first": null,
+                    "ids": [
+                        291483,
+                        267100,
+                        267095
+                    ],
+                    "irrelevant": [
+                        "267095 Magma Original Marine Kettle gassgrill"
+                    ],
+                    "cards": [
+                        267100,
+                        267095
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5.6,
+                    "queries": 4
+                },
+                {
+                    "id": "flere-krav",
+                    "scenario": "Multiple product requirements",
+                    "recall": 0.67,
+                    "precision": 0.4,
+                    "first": false,
+                    "ids": [
+                        291485,
+                        291431,
+                        291483,
+                        268744,
+                        268745
+                    ],
+                    "irrelevant": [
+                        "291431 Oppladbar batteripakke for H7R2 – Ledlen",
+                        "268744 GP Lithium batteri CR123A 4-pk",
+                        "268745 GP Super Alkaline batteri AAA 20-pk"
+                    ],
+                    "cards": [
+                        291485,
+                        291431,
+                        291483,
+                        268744
+                    ],
+                    "cards_consistent": true,
+                    "ms": 11.9,
+                    "queries": 4
+                },
+                {
+                    "id": "ukjent-modell",
+                    "scenario": "Unknown model",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [],
+                    "irrelevant": [],
+                    "cards": [],
+                    "cards_consistent": true,
+                    "ms": 8.7,
+                    "queries": 4
+                },
+                {
+                    "id": "tvetydig-cs720",
+                    "scenario": "Ambiguous model",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        289228,
+                        290518,
+                        290519
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        289228,
+                        290518,
+                        290519
+                    ],
+                    "cards_consistent": true,
+                    "ms": 4.1,
+                    "queries": 4
+                },
+                {
+                    "id": "byggelab-komplett",
+                    "scenario": "Current page reference",
+                    "recall": 1,
+                    "precision": 0.8,
+                    "first": null,
+                    "ids": [
+                        291483,
+                        291482,
+                        291385,
+                        291485,
+                        292307
+                    ],
+                    "irrelevant": [
+                        "292307 VindFix stender, 80,1cm komplett – sort"
+                    ],
+                    "cards": [
+                        292307,
+                        292314,
+                        292317,
+                        292324
+                    ],
+                    "cards_consistent": false,
+                    "ms": 6,
+                    "queries": 6
+                },
+                {
+                    "id": "sammenlign-urelatert",
+                    "scenario": "Generic words",
+                    "recall": 1,
+                    "precision": 0.4,
+                    "first": null,
+                    "ids": [
+                        298381,
+                        291483,
+                        267405,
+                        289285,
+                        295384
+                    ],
+                    "irrelevant": [
+                        "267405 1852 Brødrister/Toaster for gassbluss",
+                        "289285 Osean Krabbekoker – Sett – 9.5kW – 40 Li",
+                        "295384 BAKELITTSPARKEL sett 60-80-100mm (10/100"
+                    ],
+                    "cards": [
+                        267405,
+                        289285,
+                        295384,
+                        297774
+                    ],
+                    "cards_consistent": false,
+                    "ms": 6.3,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-modell-hf6r",
+                    "scenario": "Exact model",
+                    "recall": 1,
+                    "precision": 0.2,
+                    "first": true,
+                    "ids": [
+                        291434,
+                        291385,
+                        291433,
+                        291435,
+                        291481
+                    ],
+                    "irrelevant": [
+                        "291385 Ledlenser Ladekabel USB/magnetisk lading",
+                        "291433 Ledlenser HF4R Core – 300 Lumen – Opplad",
+                        "291435 Ledlenser HF8R Core – 900 Lumen – Opplad",
+                        "291481 Ledlenser H5 Core – 300 Lumen – 2xAA bat"
+                    ],
+                    "cards": [
+                        291434,
+                        291385,
+                        291433,
+                        291435
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-temres",
+                    "scenario": "Ambiguous model",
+                    "recall": 1,
+                    "precision": 0.8,
+                    "first": null,
+                    "ids": [
+                        290511,
+                        290512,
+                        290513,
+                        290514,
+                        289228
+                    ],
+                    "irrelevant": [
+                        "289228 Showa CS720 – Hanske Nitril – Str 9 / L"
+                    ],
+                    "cards": [
+                        290511,
+                        290512,
+                        290513,
+                        290514
+                    ],
+                    "cards_consistent": true,
+                    "ms": 10.4,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-den-vekt",
+                    "scenario": "Two product follow-up",
+                    "recall": 0,
+                    "precision": 0,
+                    "first": false,
+                    "ids": [],
+                    "irrelevant": [],
+                    "cards": [],
+                    "cards_consistent": true,
+                    "ms": 2.9,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-temabytte-cs720",
+                    "scenario": "Topic change",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        289228,
+                        290518,
+                        290519
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        289228,
+                        290518,
+                        290519
+                    ],
+                    "cards_consistent": true,
+                    "ms": 4.2,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-ukjent-merke",
+                    "scenario": "Unknown model",
+                    "recall": 0,
+                    "precision": 0,
+                    "first": null,
+                    "ids": [
+                        315193,
+                        315196,
+                        315199
+                    ],
+                    "irrelevant": [
+                        "315193 Filsett for motorsagkjede med filemal – ",
+                        "315196 Rundfil for motorsagkjede Ø4,0 mm – 2 st",
+                        "315199 Rundfil for motorsagkjede Ø4,8 mm"
+                    ],
+                    "cards": [
+                        315193,
+                        315196,
+                        315199
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5.2,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-generisk-sammen",
+                    "scenario": "Generic words",
+                    "recall": 0,
+                    "precision": 0,
+                    "first": null,
+                    "ids": [
+                        266956,
+                        267406,
+                        267103,
+                        267107,
+                        267380
+                    ],
+                    "irrelevant": [
+                        "266956 1852 Stor sammenleggbar undervannskikker",
+                        "267406 Grill sammenleggbar",
+                        "267103 Omnia Miniovn",
+                        "267107 Omnia Maxiform",
+                        "267380 1852 Vannsport kikkert vanntett"
+                    ],
+                    "cards": [
+                        266956,
+                        267406,
+                        267103,
+                        267107
+                    ],
+                    "cards_consistent": true,
+                    "ms": 4.3,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-sammenlign-regn",
+                    "scenario": "Current page reference",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        291482,
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291482,
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 3.1,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-ekstra-batteri",
+                    "scenario": "Multiple product requirements",
+                    "recall": 0.5,
+                    "precision": 0.2,
+                    "first": true,
+                    "ids": [
+                        291483,
+                        268744,
+                        268745,
+                        268746,
+                        268747
+                    ],
+                    "irrelevant": [
+                        "268744 GP Lithium batteri CR123A 4-pk",
+                        "268745 GP Super Alkaline batteri AAA 20-pk",
+                        "268746 GP Super Alkaline batteri AA 20-pk",
+                        "268747 GP Ultra Alkaline batteri D 2-pk"
+                    ],
+                    "cards": [
+                        268744,
+                        268745,
+                        268746,
+                        268747
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5.2,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-lignende-grill",
+                    "scenario": "Similar products",
+                    "recall": 0.5,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        267100
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        267100
+                    ],
+                    "cards_consistent": true,
+                    "ms": 3.1,
+                    "queries": 4
+                },
+                {
+                    "id": "holdout-bruksomrade",
+                    "scenario": "Generic words",
+                    "recall": 1,
+                    "precision": 0.2,
+                    "first": null,
+                    "ids": [
+                        302564,
+                        291447,
+                        291709,
+                        289283,
+                        291431
+                    ],
+                    "irrelevant": [
+                        "291447 Osean Fokus 7000 – LED Lommelykt – 7000 ",
+                        "291709 Aqiila Lightbird G1 – Campinglykt – Oppl",
+                        "289283 Osean Arbeidslampe LED 7000 m/ stativ – ",
+                        "291431 Oppladbar batteripakke for H7R2 – Ledlen"
+                    ],
+                    "cards": [
+                        302564,
+                        291447,
+                        291709,
+                        289283
+                    ],
+                    "cards_consistent": true,
+                    "ms": 9.7,
+                    "queries": 4
+                }
+            ]
+        },
+        "retriever": {
+            "summary": {
+                "cases": 28,
+                "recall_at_5": 1,
+                "precision_at_5": 0.993,
+                "exact_match": "12/12",
+                "followup_resolution": "4/4",
+                "compatibility": "4/4",
+                "irrelevant_hit_rate": 0.019,
+                "card_consistency": "28/28",
+                "ms_per_question": 3.7,
+                "queries_per_question": 1.9
+            },
+            "cases": [
+                {
+                    "id": "modell-h5r",
+                    "scenario": "Exact model",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        291482
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291482
+                    ],
+                    "cards_consistent": true,
+                    "ms": 7.4,
+                    "queries": 3
+                },
+                {
+                    "id": "sku-h7r",
+                    "scenario": "Exact SKU",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 0.4,
+                    "queries": 0
+                },
+                {
+                    "id": "side-denne",
+                    "scenario": "Current page reference",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 0.2,
+                    "queries": 0
+                },
+                {
+                    "id": "oppfolging-de-to",
+                    "scenario": "Two product follow-up",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        291482,
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291482,
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 0.2,
+                    "queries": 0
+                },
+                {
+                    "id": "oppfolging-billigst",
+                    "scenario": "Two product follow-up",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        291482,
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291482,
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 0.2,
+                    "queries": 0
+                },
+                {
+                    "id": "oppfolging-den",
+                    "scenario": "Two product follow-up",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 0.2,
+                    "queries": 0
+                },
+                {
+                    "id": "billigste-batteri",
+                    "scenario": "Cheapest product",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        268748,
+                        268749,
+                        268747
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        268748,
+                        268749,
+                        268747
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5.6,
+                    "queries": 5
+                },
+                {
+                    "id": "komplett-sagkjede",
+                    "scenario": "Complete product setup",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        311290,
+                        315193,
+                        315196
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        311290,
+                        315193,
+                        315196
+                    ],
+                    "cards_consistent": true,
+                    "ms": 8.9,
+                    "queries": 4
+                },
+                {
+                    "id": "kompat-lader",
+                    "scenario": "Compatibility question",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        291483,
+                        291385
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483,
+                        291385
+                    ],
+                    "cards_consistent": true,
+                    "ms": 4.3,
+                    "queries": 3
+                },
+                {
+                    "id": "lignende",
+                    "scenario": "Similar products",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        291483,
+                        291435,
+                        291482,
+                        291484,
+                        291434
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483,
+                        291435,
+                        291482,
+                        291484,
+                        291434
+                    ],
+                    "cards_consistent": true,
+                    "ms": 1.4,
+                    "queries": 2
+                },
+                {
+                    "id": "generisk-sett",
+                    "scenario": "Generic words",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [],
+                    "irrelevant": [],
+                    "cards": [],
+                    "cards_consistent": true,
+                    "ms": 0.2,
+                    "queries": 0
+                },
+                {
+                    "id": "temabytte",
+                    "scenario": "Topic change",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        267100
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        267100
+                    ],
+                    "cards_consistent": true,
+                    "ms": 6,
+                    "queries": 2
+                },
+                {
+                    "id": "utenfor-siden",
+                    "scenario": "Product outside the current page",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        267100,
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        267100,
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5.9,
+                    "queries": 2
+                },
+                {
+                    "id": "flere-krav",
+                    "scenario": "Multiple product requirements",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        291483,
+                        291485,
+                        291385
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483,
+                        291485,
+                        291385
+                    ],
+                    "cards_consistent": true,
+                    "ms": 10.2,
+                    "queries": 5
+                },
+                {
+                    "id": "ukjent-modell",
+                    "scenario": "Unknown model",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [],
+                    "irrelevant": [],
+                    "cards": [],
+                    "cards_consistent": true,
+                    "ms": 4.5,
+                    "queries": 2
+                },
+                {
+                    "id": "tvetydig-cs720",
+                    "scenario": "Ambiguous model",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        289228,
+                        290518,
+                        290519
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        289228,
+                        290518,
+                        290519
+                    ],
+                    "cards_consistent": true,
+                    "ms": 2.2,
+                    "queries": 2
+                },
+                {
+                    "id": "byggelab-komplett",
+                    "scenario": "Current page reference",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        291483,
+                        291482,
+                        291385,
+                        291485
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483,
+                        291482,
+                        291385,
+                        291485
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5.2,
+                    "queries": 3
+                },
+                {
+                    "id": "sammenlign-urelatert",
+                    "scenario": "Generic words",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        298381,
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        298381,
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 4,
+                    "queries": 2
+                },
+                {
+                    "id": "holdout-modell-hf6r",
+                    "scenario": "Exact model",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        291434
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291434
+                    ],
+                    "cards_consistent": true,
+                    "ms": 2.9,
+                    "queries": 2
+                },
+                {
+                    "id": "holdout-temres",
+                    "scenario": "Ambiguous model",
+                    "recall": 1,
+                    "precision": 0.8,
+                    "first": null,
+                    "ids": [
+                        290511,
+                        290512,
+                        290513,
+                        290514,
+                        289228
+                    ],
+                    "irrelevant": [
+                        "289228 Showa CS720 – Hanske Nitril – Str 9 / L"
+                    ],
+                    "cards": [
+                        290511,
+                        290512,
+                        290513,
+                        290514,
+                        289228
+                    ],
+                    "cards_consistent": true,
+                    "ms": 5.7,
+                    "queries": 2
+                },
+                {
+                    "id": "holdout-den-vekt",
+                    "scenario": "Two product follow-up",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        267100
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        267100
+                    ],
+                    "cards_consistent": true,
+                    "ms": 2.7,
+                    "queries": 2
+                },
+                {
+                    "id": "holdout-temabytte-cs720",
+                    "scenario": "Topic change",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        289228,
+                        290518,
+                        290519
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        289228,
+                        290518,
+                        290519
+                    ],
+                    "cards_consistent": true,
+                    "ms": 2.1,
+                    "queries": 2
+                },
+                {
+                    "id": "holdout-ukjent-merke",
+                    "scenario": "Unknown model",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [],
+                    "irrelevant": [],
+                    "cards": [],
+                    "cards_consistent": true,
+                    "ms": 4.5,
+                    "queries": 2
+                },
+                {
+                    "id": "holdout-generisk-sammen",
+                    "scenario": "Generic words",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [],
+                    "irrelevant": [],
+                    "cards": [],
+                    "cards_consistent": true,
+                    "ms": 0.2,
+                    "queries": 0
+                },
+                {
+                    "id": "holdout-sammenlign-regn",
+                    "scenario": "Current page reference",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        291482,
+                        291483
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291482,
+                        291483
+                    ],
+                    "cards_consistent": true,
+                    "ms": 3.7,
+                    "queries": 2
+                },
+                {
+                    "id": "holdout-ekstra-batteri",
+                    "scenario": "Multiple product requirements",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": true,
+                    "ids": [
+                        291483,
+                        291485
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        291483,
+                        291485
+                    ],
+                    "cards_consistent": true,
+                    "ms": 4,
+                    "queries": 3
+                },
+                {
+                    "id": "holdout-lignende-grill",
+                    "scenario": "Similar products",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        267100,
+                        267095,
+                        267110
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        267100,
+                        267095,
+                        267110
+                    ],
+                    "cards_consistent": true,
+                    "ms": 2.1,
+                    "queries": 2
+                },
+                {
+                    "id": "holdout-bruksomrade",
+                    "scenario": "Generic words",
+                    "recall": 1,
+                    "precision": 1,
+                    "first": null,
+                    "ids": [
+                        302564
+                    ],
+                    "irrelevant": [],
+                    "cards": [
+                        302564
+                    ],
+                    "cards_consistent": true,
+                    "ms": 9.7,
+                    "queries": 2
+                }
+            ]
+        }
+    }
+}

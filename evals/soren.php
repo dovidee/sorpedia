@@ -33,8 +33,9 @@ foreach ($cases as $sc) {
     $page = PageContext::resolve(($sc['page'] ?? '') === 'product' ? $g['product_page'] : null);
     $messages = [['role' => 'user', 'content' => $sc['message']]];
     Chat::$lang = I18n::$force = Lang::question($sc['message'], 'no');
-    $intent = ($kind = CatalogIntent::detect($sc['message'])) ? CatalogIntent::build($kind, $sc['message'], $page) : null;
-    $ids = $intent ? array_slice($intent['ids'], 0, 3) : Chat::context($messages, $page);
+    $found = ProductRetriever::forChat($messages, $page);
+    $intent = $found['intent'];
+    $ids = $found['ids'];
     $facts = ($intent['facts'] ?? '') . "\n" . Chat::facts($ids);
     $promptChars = mb_strlen(json_encode(Chat::prompt($messages, $page, $facts), JSON_UNESCAPED_UNICODE));
 

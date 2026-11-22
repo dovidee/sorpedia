@@ -87,3 +87,21 @@ Tested: 15 sample messages against `Violence::crime` (robbery, theft, breaking i
 7. The use and needs texts on the product page are Norwegian only.
 8. The crime check covers the verbs in its list; other wording reaches the model, which has the safety rule.
 9. The model sometimes wraps a price reference in extra brackets («([1 269 kr])») or writes a product number that is then removed, leaving «varenr.».
+
+## Reasoning always shown, wider deadlines
+
+The reasoning is now always streamed to the customer, in whatever language the model reasons in. Before, reasoning detected as English was replaced by a note, which hid it in two of the three measured runs before the change. The prompt now asks for reasoning in Norwegian bokmål too; DeepSeek-R1 still often reasons in English, and that is shown as it is. Deadlines: `SOREN_FIRST_TOKEN_S` 120 (180 while the model loads), `SOREN_MAX_THINK_S` 90, so a long thought is cut earlier and the answer is written from it, instead of the customer waiting up to four minutes.
+
+Tested against Ollama (`deepseek-r1:8b`) through `/api/chat` with the product guide question «Hvorfor passer disse forslagene for meg, og hva er forskjellen på dem?» on a guide result page: before the change three runs took 61, 81 and 93 s, two had hidden reasoning; after it three runs took 66, 107 and 68 s, all showed the reasoning, none fell back to the catalogue. Measured on the test machine: the model holds 4.2 of 6.6 GB in GPU memory, the rest runs on the CPU, 16 tokens per second; a smaller context (4096) gave only 19. Speed is bound by the GPU, not by the code. Not reproduced: the catalogue fallback seen once with a cold model; the longer first deadline covers model loading.
+
+## Drawn animation replaces the vector figure (2026-11-22)
+
+Søren is the drawn sprite animation again everywhere (`public/assets/soren.js`): the whole figure on pages (empty cart, 404, product guide, empty inbox) and, in the chat and on the Ask Søren button, a face sheet per pose, so thinking, pointing, waving, shrugging and celebrating are his drawn expressions. `scripts/soren_sprites.py` prepares the sheets: frames 55 to 59 carried a fading watermark and are replaced by a crossfade from frame 54 to frame 0; the white left from the art's original backdrop (between arms, legs, leaves and props) is made transparent, keeping the highlights in his eyes; and it writes the 128 px face sheets `soren_head_<pose>.png`. The originals are in git. The vector figure's CSS was removed from `app.css`; `soren-art.js` is no longer loaded.
+
+Run in headless Chromium on `/handlekurv` in the light and dark view: the cart pose animates on the page colour with no plate, and the chat head and the button show the face sheet. Checked frames of the cart, hammer, lumber and default sheets on a dark and a light backdrop: no watermark, no white patch behind the cart. A second pass removes very light crumbs under 40 px at the figure's edge and a light half transparent rim; after it the cart pose on the dark page shows no white specks at the hands or wheels at display size. In the wave, shrug and celebrating sheets the source art has dark blotches between the trunk and the boots; they are cleared and covered with a skirt of Søren's own leaves (copies of one falling leaf from the celebrating animation, fixed size and turn per cell), the same in every frame of the pose. Checked frames of all three poses on a dark backdrop: no blotches left.
+
+## Motion on top of the sprites and the front page figure (2026-11-22)
+
+Without changing the sheets, `soren.js` and `app.css` add a soft squash and stretch loop from his feet, a spring when the expression changes, on hover and on a click, and a short crossfade between frames (two stacked layers). Reduced motion turns all three off. On the front page, the pointing pose stands to the left of «Spør Søren» in the hero and points at it; a click on him opens the chat (`data-open-soren`, hidden from screen readers since the link beside it does the same).
+
+Run in headless Chromium: on `/handlekurv` the box runs `s-breathe` with two frame layers alternating; `/` rendered at 1366 x 768 and 390 x 844 with the figure beside the link. Not verified: the hover spring by eye.

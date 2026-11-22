@@ -1,417 +1,169 @@
-Instead of another boring admin page with 12 KPI cards, imagine opening Sørpedia Control Tower and seeing a miniature, animated warehouse where products physically move through the system.
+SØRPEDIA: CONTROL TOWER
+Product, analytics and logistics operations specification (revised)
+Document type: Implementation specification
+Interface: Control Tower (`/ansatt/tarn`, staff only)
+Companion briefs: CONTROLTOWER-REDESIGN.md (visual hierarchy, theme, charts), CONTROLTOWER-TRIAGE.md (observations, review states and tasks)
+Core principle: make operational data understandable through visuals and direct actions, and never show a value the database does not hold.
 
-Searches arrive at intake. Product matches travel down conveyor belts. Product guides enter an advice station. Questions for Søren go to a support station. Unanswered searches get diverted into a red exception lane.
+---
 
-And the best part: the warehouse represents actual analytics events, not fake operational activity.
+1. PRODUCT VISION
 
-That's a much more interesting way to visualize the data you already have.
-1. The concept: Sør-Tre Logistics Control Tower
-iF Design - Zhejiang Cainiao Supply Chain Management Co., Ltd.
- 
-PITCO Engineering — Industrial Automation Engineering
- 
-iF Design - CAINIAO RFID: Supply Chain Visibility System
- 
+The Control Tower is the staff command centre of Sørpedia. It has its own full-screen shell: no shop header or navigation, one exit arrow at the top left, short headings.
 
-The Dribbble reference by Agemandi is particularly interesting because it isn't just a pretty warehouse illustration. It has:
+It covers three domains that share data but are never mixed:
 
-    An isometric conveyor network.
+Product operations: products, specifications, quality control, improvement tasks, stock and supply.
+Customer intelligence: searches, questions to Søren, Byggelab sessions, guide use, purchases.
+Physical logistics: vehicles, shipments, routes, weather, road messages, ferries, delays and deliveries.
 
-    Moving objects representing individual items.
+The warehouse floor shows products and shipments only. A search, a chat, a Byggelab session or any other analytics event never becomes a parcel. An observation can lead a person to create a task; the product of that task can then appear on the floor.
 
-    Sorting destinations.
+---
 
-    Bottleneck detection.
+2. NAVIGATION
 
-    A selected item's journey and timestamps.
+Section       Purpose
+Oversikt      What needs attention now, operational status, the week's figures
+Gulv          Products and shipments on an isometric floor, goods in, the order list, improvement tasks
+Transport     The map of Norway with every demo vehicle, the simulation clock, ordering and trips
+Kundeservice  Customer cases handed over by Søren, with the conversation, orders and refunds
+Innsikt       Customer behaviour and trends, missing stock, observations for review
+Omvisning     A guided tour through every section
+Spør Søren    A drawer with the staff assistant, opened on purpose
 
-    Throughput graphs.
+A feature lives in one section and is linked from the others. Improvement tasks live only in Gulv, Forbedringsoppgaver.
 
-    Alerts when a lane gets congested.
+---
 
-That's exactly the interaction language I'd borrow. The original designer describes the animation as a simulation with illustrative operational data, so we can use the same visual concept while connecting Sørpedia to real event data. 
-Dribbble
-What the Sørpedia warehouse would look like
-SØRPEDIA / CONTROL TOWER
+3. THEME AND DESIGN
 
-LOGISTICS & DIGITAL COMMERCE INTELLIGENCE
-PROTOTYPE
-2 849
+The tower follows the account's theme setting from Settings. Dark when the account chose dark; light for light, system or no choice. Every colour is a token with a light and a dark value, including the map, the charts and the floor ground. Neutral series use an informational hue; amber means warning or pending; red means error or urgent; green means done or healthy. Status is never colour alone. Details are in CONTROLTOWER-REDESIGN.md.
 
-Produktkoblinger
-16
+---
 
-Brukere
-0
+4. OVERSIKT
 
-Søk uten treff
-3
+Order of importance:
 
-Aktive bidrag
+1. Viktigst nå: the single most urgent thing (the oldest waiting case, else a late shipment, else the most common search without a result) with one action.
+2. Customer cases waiting, the route today (shipments on the road, ferries, closed roads, warnings).
+3. Deliveries on time with numerator and denominator, orders and revenue.
+4. Searches with a result, Søren answered without a person, product data coverage.
+5. Recent activity, warehouses with stock (stock per store is demo data and marked).
 
-WAREHOUSE FLOOR
+A status line above the cards lists only what needs attention. Every card leads to the view or the records behind its number.
 
-LIVE EVENT VISUALIZATION
+---
 
-Normal flyt
+5. GULV
 
-Avvik
+5.1 Floor
+The isometric floor with conveyors and stations stays. Each crate is a real product and each pallet a real shipment. Stations: Varemottak, Sendinger inn, Produktkontroll, Datakvalitet, Varekunnskap, Kompatibilitet, Klargjøring. Clicking a crate shows the product, its specifications with source and level, revisions and reports. Without WebGL the same content is a table.
 
-Sorteringslinje
+5.2 Varemottak
+Shipments on the way in with their ETA. Delivered shipments that are not yet checked in, with their items and Kvitter mottak. Until checked in, their products stand at the Varemottak station.
 
-Illustrative interface mockup — not connected to live events.
+5.3 Bestillingsliste
+The order list from Innsikt: each line with its quantity and state (Venter på bil, Bestilt with shipment and source store, Mottatt). A waiting line can be removed. A link leads to Transport to choose vehicles.
 
-That's the direction. I'd make the actual version more detailed, with conveyor branches, animated packages and interactive sorting stations.
-2. Map your existing KPIs to warehouse stations
+5.4 Forbedringsoppgaver
+The only place for improvement tasks and their lifecycle (Åpen, Under behandling, Klar for kontroll when a check is genuinely needed, Fullført, Avvist, Arkivert).
 
-This is where it gets really good: each station corresponds to a real part of your prototype.
-25+ Copy-Paste AI Isometric Illustration Prompt Pack for Gemini, ChatGPT & Midjourney
- 
+5.5 Lagerflyt
+Units in from arrived shipments, units sold, the net change and units on the way, per day.
 
-01 — INNTAK / Incoming events
+---
 
-Every new analytics event enters the warehouse.
+6. TRANSPORT
 
-    Searches
+6.1 Map
+An SVG map of Norway with roads, counties and towns. The presenter owns the camera: zoom and pan freely; Følg kjøretøy and Tilbakestill visning are explicit choices. Weather, road messages and ferries from the stored conditions are drawn on the map with their source.
 
-    Product views
+6.2 Vehicles
+Every demo vehicle is on the map: on a trip at its simulated position, otherwise at its base. Clicking a vehicle opens its panel.
 
-    Guide starts
+A vehicle on a trip shows where it is (phase, road, from and to), the weather with its source and fetch time, the booked and the new arrival, the delay with each reason and its source, and the notices in time order. Spill av and Pause control the clock; Spill av fra start replays that trip with the current scenario without receiving the goods twice.
 
-    Chat questions
+A free vehicle shows the stores within 60 km, the waiting lines one of them has (store, units there, units it will fetch of units wanted, a red triangle when there are too few), an order button for the ticked lines, and a demo trip without cargo to a point clicked on the map.
 
-    Comparisons
+6.3 Bestill alt
+Assigns every waiting line to the free vehicle with the nearest store that has it. The map marks the vehicles that take part with a count; lines no free vehicle reaches are listed with the stores that hold them, and those stores get a red triangle on the map. Unticking a line or a whole vehicle leaves it out of this order; it stays on the list.
 
-Each event becomes a little parcel.
-BeeVision Depo Otomasyon Sistemleri, Paket ve Palet Hacim Ölçerleri, Hacim, Ağırlık ve Boyut Ölçüm Sistemi,
-    Sorter Sistemleri ve AI Destekli Depo Otomasyonu Yönetim Yazılımı
- 
+6.4 Orders and arrival
+An order takes the units off the source store's shelf, plans the route from the vehicle through its stores to the receiving store and starts the clock. On arrival the units are added to the receiving store once, the lines become Mottatt and the shipment Levert, and it appears in Varemottak.
 
-02 — SORTERING / Product discovery
+6.5 Routes
+Routes follow a road network of towns, quays and roads. The west coast takes the E39 ferries Halhjem to Sandvikvåg and Mortavika to Arsvågen only where the geography requires them. Inland and east routes drive without a ferry.
 
-Events are sorted into different lanes.
+6.6 Clock and scenarios
+One simulated clock drives every trip: play, pause and the rates x60, x240, x600, x1800. It pauses itself when no trip is on the road.
 
-    Search with results
+Ekte forhold: the weather nearest each leg from MET Norway, road messages from Statens vegvesen on the road the leg names, ferry intervals and cancellations from Entur, all stored by the scheduled job `scripts/conditions.php`. Rows the job could not fetch are demo rows and say so.
 
-    Search without results
+Simulert storm: the coast weather is replaced by a storm labelled as simulated; road messages and timetables stay real.
 
-    Completed product guides
+An event (road works, storm, cancelled departure) becomes known shortly before the vehicle reaches it. The arrival time is recalculated with the known events only; the shipment's status, arrival and reason follow. Every notice and reason names its source.
 
-    Product comparisons
+6.7 Shipments list
+Searchable by reference, vehicle or city, with route, status, progress and arrival. A delivered shipment is never shown with an old position.
 
-Unsuccessful searches get diverted to an exception lane.
-Виртуальный тур - Озон Фармацевтика
- 
+---
 
-03 — VARELAGER / Product intelligence
+7. KUNDESERVICE
 
-This represents the actual product knowledge base.
+Cases Søren handed to a person, with what the customer wrote to Søren before, the thread, the product, the customer's paid orders with images, a draft from Søren that is never sent without a person, refunds with confirmation, and closing.
 
-    1,726 verified specifications
+---
 
-    1,001 derived specifications
+8. INNSIKT
 
-    3 buyer-contributed specifications
+Level 1: six outcome tiles (searches, searches without a result, questions to Søren, handed to a person, purchases, orders with a matching accessory). Each rate shows its numerator and denominator; the change against the previous week is coloured by what it means. A quieter row holds guides, add to cart and time to cart.
 
-    14 documented compatibility matches
+Level 2, Trenger oppmerksomhet: Mangler i butikken (products with an empty shelf in the receiving store, best sellers first, with stock elsewhere, a quantity and Legg i bestilling), searches without a result, days of stock left.
 
-    2,849 rule-derived compatibility matches
+Level 3, Utvikling: searches per day with a forecast only when there are enough days, the funnel from search to purchase, orders per day, order values with mean and median explained.
 
-Different package colours represent verification levels.
-icograms (@icograms) on X
- 
+Folded: observations for review, Byggelab and guide use, data quality and sources.
 
-04 — KUNDESERVICE / Søren station
+---
 
-    Questions answered by Søren
+9. OMVISNING
 
-    Questions escalated to humans
+A guided tour of every section in order, with a step for the clock and the conditions, for choosing a vehicle, and for Mangler i butikken. Steps that need an action wait for it.
 
-    Completed product guides
+---
 
-    Unresolved customer needs
+10. SPØR SØREN
 
-Escalated questions physically move to the human support bay.
-[성공 사례] AI 비전 검사로 수율 극대화: 글로벌 소재 기업의 스마트 제조 혁신
- 
+A drawer opened from the header and closed with Escape or its close button; no view docks it. Søren answers from counted figures with the same rules as in the shop and never changes data.
 
-05 — KVALITETSKONTROLL / Data integrity
+---
 
-    Verified vs inferred specifications
+11. DATA INTEGRITY
 
-    Documented vs rule-derived compatibility
+1. Price, stock, product name and ID come from the database.
+2. Every specification shows its source and level; unknown is a valid answer.
+3. Stock per store, vehicles, drivers, the clock and the speed are demo data and marked so.
+4. No external call during a page request. Weather, roads and ferries come from the scheduled job only.
+5. No fabricated live events: the floor and the feeds read stored rows.
 
-    Synthetic seed data
+---
 
-    Active contributions
+12. TECHNICAL ARCHITECTURE
 
-This station is particularly important because your prototype explicitly distinguishes verified information from assumptions.
-3. The really cool part: click individual parcels
+Plain PHP and JavaScript, no build step. Routes under `/api/tarn/*`; writes require the staff or admin role and a CSRF token.
 
-Don't make this just a looping animation. Make it an actual dashboard interaction.
+Road network and routing: `src/Roads.php`. Plans, phases, events, notices: `src/DemoSim.php`. Trips, clock, conditions per leg, arrival: `src/DemoDelivery.php`. Order list, reach and assignment, orders: `src/Supply.php`. Floor data: `src/Gulv.php`. Insights: `src/Insight.php`. Tables: `sim_clock`, `shipment_plans`, `supply_list`, plus the shipment tables.
 
-Imagine clicking a red parcel on the conveyor.
-Enhancing Passenger Experience with Baggage Tracking - PropVR
- 
-iF Design - Zhejiang Cainiao Supply Chain Management Co., Ltd.
- 
-Top 5 Benefits of Daifuku’s Digital Twin Solution – Sym3 | Daifuku Airport Solutions
- 
+---
 
-A side panel opens:
+13. ACCEPTANCE
 
-Parcel #SR-00291
-
-Property
-	
-
-Value
-
-Type
-	
-
-Search event
-
-Search term
-	
-
-Takrenne
-
-Result
-	
-
-No matching result
-
-Source
-	
-
-Website
-
-Timestamp
-	
-
-Actual event timestamp
-
-Status
-	
-
-Unresolved
-
-Then you can click:
-
-    View event details
-
-    View related searches
-
-    Mark as reviewed
-
-    Add product mapping
-
-    Create a product improvement task
-
-This turns analytics into something you can actually operate.
-4. Add warehouse management controls
-
-I'd add five modes above the warehouse:
-
-CONTROL MODE
-
-Event flowWatch incoming events travel through the warehouse. Filter by time period and event type.
-
-Illustrative interaction showing how the dashboard modes could work.
-
-I'd also add a time selector: Last hour, Today, 7 days, 30 days.
-
-And a playback feature:
-
-     Play event history
-
-     Pause
-
-     Replay a particular period
-
-     Filter event types
-
-Imagine replaying a busy period and watching the warehouse fill up. That's a fantastic demo.
-5. Technical implementation
-
-I'd avoid building an actual 3D game engine. You don't need one.
-
-Technology
-	
-
-Purpose
-
-SVG
-	
-
-Isometric warehouse geometry
-
-CSS transforms
-	
-
-Conveyor perspective
-
-Framer Motion / Motion
-	
-
-Moving parcels
-
-React
-	
-
-Interactive stations
-
-Existing analytics_events
-	
-
-Real event feed
-
-Existing database
-	
-
-Product and order data
-
-Recharts
-	
-
-Throughput and trend graphs
-
-The important architecture:
-
-    Read actual analytics events.
-
-    Convert each event into a warehouse item.
-
-    Map its event type to a conveyor destination.
-
-    Animate it through the warehouse.
-
-    Update the corresponding KPIs.
-
-    Allow clicking it to inspect its underlying record.
-
-Important data distinction: Your 130 cart lines and 70,008 kr turnover, invented orders/reviews, and seed data should be visually distinguished from actual user-generated activity. The warehouse should have a clear prototype/demo-data indicator. Never animate synthetic orders as if they were live customer orders.
-FEATURE: SØRPEDIA WAREHOUSE CONTROL TOWER
-
-Build an interactive isometric warehouse simulation as the centerpiece of the Sørpedia analytics dashboard.
-
-Reference: https://dribbble.com/shots/27815427-Baggage-Control-Airport-Baggage-Handling-Dashboard
-
-Core concept
-
-Replace the traditional static KPI dashboard with an interactive warehouse conveyor system.
-
-The warehouse represents the flow of actual events through Sørpedia.
-
-Design inspiration:
-
-Airport baggage handling systems.
-Automated parcel sorting facilities.
-Industrial logistics control towers.
-Dark premium operations dashboards.
-Visual design
-
-Create an isometric warehouse viewed from above at an angle.
-
-Use:
-
-Dark pine-charcoal background.
-Muted industrial green conveyor belts.
-Warm birch/amber package accents.
-Sør-Tre red for exceptions and warnings.
-Subtle glowing active conveyor paths.
-Small moving packages representing events.
-Detailed sorting stations with labels.
-
-The warehouse should feel like a sophisticated industrial control room.
-
-Warehouse stations
-INNTAK Receives analytics events.
-SØK & SORTERING Separates successful searches, unsuccessful searches and product discovery.
-VAREKUNNSKAP Visualizes product specifications and compatibility relationships.
-SØREN / KUNDESERVICE Handles chat questions, product guides and escalations.
-KVALITETSKONTROLL Shows verified specifications, derived specifications, buyer contributions and data integrity.
-Event simulation
-
-Connect the animation to actual analytics_events.
-
-Each event becomes a visual parcel.
-
-Map event types to their appropriate warehouse stations.
-
-Use different package colours for different event categories.
-
-Implement:
-
-Smooth conveyor movement.
-Package arrival animations.
-Sorting and branching.
-Station activity indicators.
-Clickable packages.
-Selected-item detail panel.
-Event history.
-Throughput visualization.
-
-The warehouse must not simply loop an arbitrary animation.
-
-Its state must reflect the underlying event data.
-
-If there are no events, show an empty/idle warehouse rather than manufacturing activity.
-
-Dashboard controls
-
-Add:
-
-Live event mode.
-Historical replay mode.
-Time filters.
-Event type filters.
-Search without results.
-Product intelligence.
-Support activity.
-Data quality.
-Existing Sørpedia KPIs
-
-Preserve and integrate all existing metrics:
-
-Søk.
-Søk uten treff.
-Fullførte produktguider.
-Spørsmål til Søren.
-Sendt videre til menneske.
-Sammenligninger.
-Søkeord uten treff.
-Cart lines and turnover by source.
-Specifications by source and verification status.
-Compatibility relationships.
-User roles and contributions.
-Data integrity
-
-CRITICAL:
-
-Distinguish actual user activity from fictional prototype seed data.
-
-Orders, reviews and other synthetic records must never be presented as live operational activity.
-
-Use the existing data model and event timestamps.
-
-Do not invent analytics events.
-
-Technical requirements
-
-First inspect the existing repository and database schema.
-
-Preserve existing functionality, authentication, routes and APIs.
-
-Use SVG and CSS transforms for the isometric warehouse rather than introducing an unnecessary 3D engine.
-
-Use the existing framework and animation libraries where possible.
-
-Ensure responsive behaviour, accessible controls and good performance.
-
-Build the warehouse as reusable components.
-
-The result should look like a professional logistics control tower, not a generic admin dashboard.
-
---
+1. A product added in Innsikt appears in Gulv, Bestillingsliste, and in Transport under Bestill alt.
+2. Bestill alt marks the vehicles with counts, lists uncovered lines with their stores, and orders only the ticked lines.
+3. A pickup in Bergen crosses at Halhjem and Mortavika, with the Entur source on ferry notices and the MET source on the weather.
+4. A delivered order appears in Varemottak; Kvitter mottak removes it and the lines read Mottatt.
+5. The theme follows the account setting on every view.
+6. A search without a result can be reviewed or ignored without a task.
+7. Any vehicle can be selected and its trip played or replayed.

@@ -1,5 +1,7 @@
 FROM php:8.4-apache
-RUN docker-php-ext-install pdo_mysql \
+# mariadb-client gives mariadb-dump for scripts/backup.php
+RUN apt-get update && apt-get install -y --no-install-recommends mariadb-client && apt-get clean \
+ && docker-php-ext-install pdo_mysql \
  && sed -ri 's#/var/www/html#/var/www/app/public#g' /etc/apache2/sites-available/000-default.conf \
  && printf '<Directory /var/www/app/public>\n  AllowOverride None\n  Require all granted\n  FallbackResource /index.php\n</Directory>\n' > /etc/apache2/conf-enabled/sorpedia.conf \
  && printf 'output_buffering=Off\nzlib.output_compression=Off\nmax_execution_time=300\nexpose_php=Off\n' > /usr/local/etc/php/conf.d/sorpedia.ini \

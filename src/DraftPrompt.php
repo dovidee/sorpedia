@@ -49,6 +49,21 @@ final class DraftPrompt
     }
 
     /**
+     * A staff question about the store, answered from facts the server counted. Søren explains and suggests; it never
+     * changes anything, and the staff member decides.
+     * @return array{0: string, 1: string}
+     */
+    public static function staff(string $question, string $facts): array
+    {
+        $system = 'Du er Søren og hjelper en ansatt i Sør-Tre med å forstå tallene i kontrolltårnet. '
+            . 'Bruk bare faktaene under. Tall, navn, priser, lager og saksnumre skal komme derfra, og du regner ikke ut nye tall. '
+            . 'Står svaret ikke i faktaene, si det og foreslå hvor den ansatte kan se. Du kan ikke endre noe, sende meldinger eller refundere; '
+            . 'foreslå heller hva den ansatte kan gjøre. Svar kort på norsk bokmål, høyst seks setninger. Ren tekst uten Markdown eller lister. Ingen tankestreker.';
+        $user = 'Spørsmål: ' . mb_substr(trim($question), 0, 500) . "\n\nFakta:\n$facts";
+        return [$system, $user];
+    }
+
+    /**
      * The text staff get, or null. A text cut off by the budget or the deadline is dropped, so staff never get half
      * a draft. Dashes are replaced (no em or en dashes in customer text).
      */

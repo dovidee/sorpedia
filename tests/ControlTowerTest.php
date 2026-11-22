@@ -173,7 +173,7 @@ return [
         check($t->one(7, true)['vehicle']['registration'] === 'AB 12345', 'allowed role lost the registration');
         check($t->one(99, true) === null, 'a missing shipment was found');
     },
-    'stale shipments are counted only while still on the way' => function () use ($at, $shipment) {
+    'a position goes stale only while the shipment is still on the way' => function () use ($at, $shipment) {
         $old = ['positions' => [['lat' => 60.0, 'lng' => 10.0, 'heading' => 0, 'observed_at' => $at - 3600, 'received_at' => $at - 3600, 'source' => 'demo']]];
         $t = new Transport(new InMemoryShipmentStore([
             1 => $shipment(1, 'underveis', $old),
@@ -181,7 +181,7 @@ return [
             3 => $shipment(3, 'underveis'),
         ]), new FixedClock($at));
         $rows = array_column($t->list()['rows'], 'stale', 'id');
-        check($rows === [1 => true, 3 => false, 2 => true], 'list staleness or order is wrong');
+        check($rows === [1 => true, 3 => false, 2 => false], 'a delivered shipment has stopped on purpose and is never shown as stale');
         check($t->staleUnderway() === 1, 'a delivered shipment counted as stale');
     },
 

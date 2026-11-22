@@ -1,0 +1,384 @@
+{
+  "about": "Product retrieval for the chat (feature 034). Expected products were chosen by hand from the catalogue and checked against the database (names, SKUs, prices and the relations table), before the retriever existed. 'expect' must be in the result, 'first' must be first, 'allowed' and 'allowed_like' (a regular expression on the product name) are acceptable extras, anything else counts as an irrelevant hit. 'history' is the products of the previous answer. Read only: nothing is written. Cases with 'holdout': true were written after the first version of the retriever was tuned on the others, and were not used to tune it.",
+  "cases": [
+    {
+      "id": "modell-h5r",
+      "scenario": "Exact model",
+      "page": null,
+      "history": [],
+      "question": "Hva koster H5R Core?",
+      "first": 291482,
+      "expect": [
+        291482
+      ],
+      "allowed": []
+    },
+    {
+      "id": "sku-h7r",
+      "scenario": "Exact SKU",
+      "page": null,
+      "history": [],
+      "question": "Har dere varenummer 600796 på lager?",
+      "first": 291483,
+      "expect": [
+        291483
+      ],
+      "allowed": []
+    },
+    {
+      "id": "side-denne",
+      "scenario": "Current page reference",
+      "page": "/produkt/ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+      "history": [],
+      "question": "Hva koster denne?",
+      "first": 291483,
+      "expect": [
+        291483
+      ],
+      "allowed": []
+    },
+    {
+      "id": "oppfolging-de-to",
+      "scenario": "Two product follow-up",
+      "page": null,
+      "history": [
+        291482,
+        291483
+      ],
+      "previous": "Hva koster H5R Core og H7R Core?",
+      "question": "Hva koster de to sammen?",
+      "followup": true,
+      "expect": [
+        291482,
+        291483
+      ],
+      "allowed": []
+    },
+    {
+      "id": "oppfolging-billigst",
+      "scenario": "Two product follow-up",
+      "page": null,
+      "history": [
+        291482,
+        291483
+      ],
+      "previous": "Hva koster H5R Core og H7R Core?",
+      "question": "Hvilken av dem er billigst?",
+      "followup": true,
+      "first": 291482,
+      "expect": [
+        291482,
+        291483
+      ],
+      "allowed": []
+    },
+    {
+      "id": "oppfolging-den",
+      "scenario": "Two product follow-up",
+      "page": null,
+      "history": [
+        291483
+      ],
+      "previous": "Hva koster H7R Core?",
+      "question": "Hvor lenge lyser den på full styrke?",
+      "followup": true,
+      "first": 291483,
+      "expect": [
+        291483
+      ],
+      "allowed": []
+    },
+    {
+      "id": "billigste-batteri",
+      "scenario": "Cheapest product",
+      "page": null,
+      "history": [],
+      "question": "Hva er det billigste batteriet dere har?",
+      "first": 268748,
+      "expect": [
+        268748
+      ],
+      "allowed_like": "batteri"
+    },
+    {
+      "id": "komplett-sagkjede",
+      "scenario": "Complete product setup",
+      "page": "/produkt/cutfix-sagkjede-12-3-8-lp-11-mm-44-drivlenker",
+      "history": [],
+      "question": "Finn en komplett løsning med fil som passer til denne sagkjeden.",
+      "compat": true,
+      "first": 311290,
+      "expect": [
+        311290,
+        315196
+      ],
+      "allowed": [
+        315193
+      ]
+    },
+    {
+      "id": "kompat-lader",
+      "scenario": "Compatibility question",
+      "page": "/produkt/ledlenser-ladekabel-usb-magnetisk-lading-h-hf-og-p-core",
+      "history": [],
+      "question": "Passer denne laderen til H7R Core?",
+      "compat": true,
+      "expect": [
+        291385,
+        291483
+      ],
+      "allowed": []
+    },
+    {
+      "id": "lignende",
+      "scenario": "Similar products",
+      "page": "/produkt/ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+      "history": [],
+      "question": "Vis meg noe lignende",
+      "expect": [],
+      "min_allowed": 2,
+      "allowed": [
+        291483
+      ],
+      "allowed_like": "hodelykt"
+    },
+    {
+      "id": "generisk-sett",
+      "scenario": "Generic words",
+      "page": null,
+      "history": [],
+      "question": "Jeg vil ha et sett",
+      "expect": [],
+      "allowed": []
+    },
+    {
+      "id": "temabytte",
+      "scenario": "Topic change",
+      "page": null,
+      "history": [
+        291482,
+        291483
+      ],
+      "previous": "Hva koster H5R Core og H7R Core?",
+      "question": "Hva koster Magma Cabo gassgrill?",
+      "first": 267100,
+      "expect": [
+        267100
+      ],
+      "allowed": []
+    },
+    {
+      "id": "utenfor-siden",
+      "scenario": "Product outside the current page",
+      "page": "/produkt/ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+      "history": [],
+      "question": "Har dere Magma Cabo gassgrill?",
+      "expect": [
+        267100
+      ],
+      "allowed": [
+        291483
+      ]
+    },
+    {
+      "id": "flere-krav",
+      "scenario": "Multiple product requirements",
+      "page": null,
+      "history": [],
+      "question": "Jeg trenger H7R Core, et ekstra batteri og en ladekabel til den.",
+      "compat": true,
+      "first": 291483,
+      "expect": [
+        291483,
+        291485,
+        291385
+      ],
+      "allowed": []
+    },
+    {
+      "id": "ukjent-modell",
+      "scenario": "Unknown model",
+      "page": null,
+      "history": [],
+      "question": "Har dere H9R Signature?",
+      "expect": [],
+      "allowed": []
+    },
+    {
+      "id": "tvetydig-cs720",
+      "scenario": "Ambiguous model",
+      "page": null,
+      "history": [],
+      "question": "Har dere CS720-hanskene?",
+      "expect": [
+        289228,
+        290518,
+        290519
+      ],
+      "allowed": []
+    },
+    {
+      "id": "byggelab-komplett",
+      "scenario": "Current page reference",
+      "page": "/byggelab/lys?c=291483,291482,291385,291485",
+      "history": [],
+      "question": "Er dette oppsettet komplett, eller trenger jeg en egen lader til begge lyktene?",
+      "expect": [
+        291483,
+        291482,
+        291385,
+        291485
+      ],
+      "allowed": []
+    },
+    {
+      "id": "sammenlign-urelatert",
+      "scenario": "Generic words",
+      "page": "/sammenlign?ids=298381,291483",
+      "history": [],
+      "question": "Passer hammeren og hodelykten sammen? Kan jeg kjøpe dem som et sett?",
+      "expect": [
+        298381,
+        291483
+      ],
+      "allowed": []
+    },
+    {
+      "id": "holdout-modell-hf6r",
+      "scenario": "Exact model",
+      "holdout": true,
+      "page": null,
+      "history": [],
+      "question": "Hva koster HF6R Core?",
+      "first": 291434,
+      "expect": [
+        291434
+      ],
+      "allowed": []
+    },
+    {
+      "id": "holdout-temres",
+      "scenario": "Ambiguous model",
+      "holdout": true,
+      "page": null,
+      "history": [],
+      "question": "Har dere Showa Temres 282 hansker?",
+      "expect": [
+        290511,
+        290512,
+        290513,
+        290514
+      ],
+      "allowed": []
+    },
+    {
+      "id": "holdout-den-vekt",
+      "scenario": "Two product follow-up",
+      "holdout": true,
+      "page": null,
+      "history": [
+        267100
+      ],
+      "previous": "Hva koster Magma Cabo gassgrill?",
+      "question": "Hva veier den?",
+      "followup": true,
+      "first": 267100,
+      "expect": [
+        267100
+      ],
+      "allowed": []
+    },
+    {
+      "id": "holdout-temabytte-cs720",
+      "scenario": "Topic change",
+      "holdout": true,
+      "page": null,
+      "history": [
+        291482,
+        291483
+      ],
+      "previous": "Hva koster H5R Core og H7R Core?",
+      "question": "Hva koster CS720-hanskene?",
+      "expect": [
+        289228,
+        290518,
+        290519
+      ],
+      "allowed": []
+    },
+    {
+      "id": "holdout-ukjent-merke",
+      "scenario": "Unknown model",
+      "holdout": true,
+      "page": null,
+      "history": [],
+      "question": "Har dere Makita DUC254 motorsag?",
+      "expect": [],
+      "allowed": []
+    },
+    {
+      "id": "holdout-generisk-sammen",
+      "scenario": "Generic words",
+      "holdout": true,
+      "page": null,
+      "history": [],
+      "question": "Har dere noe som passer sammen?",
+      "expect": [],
+      "allowed": []
+    },
+    {
+      "id": "holdout-sammenlign-regn",
+      "scenario": "Current page reference",
+      "holdout": true,
+      "page": "/sammenlign?ids=291482,291483",
+      "history": [],
+      "question": "Hvilken av disse er best i regnvær?",
+      "expect": [
+        291482,
+        291483
+      ],
+      "allowed": []
+    },
+    {
+      "id": "holdout-ekstra-batteri",
+      "scenario": "Multiple product requirements",
+      "holdout": true,
+      "page": "/produkt/ledlenser-h7r-core-1000-lumen-oppladbar-hodelykt",
+      "history": [],
+      "question": "Trenger jeg et ekstra batteri til denne?",
+      "compat": true,
+      "first": 291483,
+      "expect": [
+        291483,
+        291485
+      ],
+      "allowed": []
+    },
+    {
+      "id": "holdout-lignende-grill",
+      "scenario": "Similar products",
+      "holdout": true,
+      "page": "/produkt/magma-cabo-gassgrill",
+      "history": [],
+      "question": "Har dere noe lignende?",
+      "expect": [],
+      "min_allowed": 2,
+      "allowed": [
+        267100
+      ],
+      "allowed_like": "grill"
+    },
+    {
+      "id": "holdout-bruksomrade",
+      "scenario": "Generic words",
+      "holdout": true,
+      "page": null,
+      "history": [],
+      "question": "Jeg skal henge opp et bilde på veggen",
+      "expect": [],
+      "min_allowed": 1,
+      "allowed": [],
+      "allowed_like": "bildehempe|bildekrok|spiker"
+    }
+  ]
+}

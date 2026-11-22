@@ -45,6 +45,12 @@ return [
             check($ip === $want, "«{$text}» gave " . ($ip ?? 'nothing'));
         }
     },
+    'a weight that counts the batteries is not read as what is in the box' => function () {
+        $with = fn(string $text) => array_column(Extract::specs('Lommelykt', "<p>$text</p>", 'lys'), 'text', 'key')['folger_med'] ?? null;
+        check($with('Bruker 3 stk AAA batterier.(NB! Ikke inkludert)Vekt: 102gr inkl. batterierDim: 35x28x120mm') === null, 'weight read as contents');
+        check($with('Leveres inkl. batterierDim: 35x28x120mm') === 'batterier', 'the next field was glued on');
+        check($with('Lykten selges inkl. ladekabel og veske.') === 'ladekabel og veske', 'plain contents lost');
+    },
     'the product page gets the needs with store products' => function () use ($id) {
         $u = Usage::needs($id('1852 Brødrister%'), '1852 Brødrister/Toaster for gassbluss');
         check($u !== null && $u['has'] && $u['has'][0]['cards'] && in_array('lighter eller fyrstikker hvis brenneren ikke tenner selv', $u['not'], true), 'needs missing');

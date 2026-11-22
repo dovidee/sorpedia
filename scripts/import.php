@@ -348,7 +348,7 @@ foreach ($ids as $a) {
             $da = $num($a, 'dimensjon_mm');
             $db = $num($b, 'dimensjon_mm');
             if ($da && $db && $db >= $da && $db <= $da + 2) {
-                $addRel($a, $b, 'passer_sammen', 'regelutledet', "Kjetting {$spec($a, 'dimensjon_mm')} mm passer {$spec($b, 'dimensjon_mm')} mm (samme eller én størrelse opp)", 0.85);
+                $addRel($a, $b, 'passer_sammen', 'regelutledet', "Kjetting {$spec($a, 'dimensjon_mm')} mm passer {$spec($b, 'dimensjon_mm')} mm (samme eller en størrelse opp)", 0.85);
                 $addRel($b, $a, 'passer_sammen', 'regelutledet', "{$spec($b, 'dimensjon_mm')} mm passer kjetting på {$spec($a, 'dimensjon_mm')} mm", 0.85);
             }
         }
@@ -425,20 +425,16 @@ foreach ($syn as $s) {
 }
 done(count($syn) . ' stk');
 
-// 12. Demo of the two-version system: open contributions from verified buyers
-step('Åpne bidrag (demo)');
+// 12. Demo of the two-version system: exactly one open contribution from a verified buyer (email confirmed and a paid
+// order), so the Control Tower tour has one buyer edit to merge or reject. The value shows as "from a verified buyer",
+// never as Sør-Tre's, until staff merge it.
+step('Åpent bidrag (demo)');
 $ingrid = $userIds['kunde@sorpedia.test'];
-$arne = $userIds['arne@sorpedia.test'];
 $contrib = [];
 foreach ($products as $p) {
-    if (str_contains($p['name'], 'H7R Core')) {
-        // The value is a demo contribution. The point is that it shows as "from a verified buyer", not as Sør-Tre's.
+    if (str_contains($p['name'], 'H7R Core') && str_contains(mb_strtolower($p['name']), 'hodelykt')) {
         $contrib[] = [$p['id'], $ingrid, 'rekkevidde_m', '220', 220.0, 'Målte selv på en skogsvei i mørket, omtrent 220 meter før lyset ble for svakt. (demo-bidrag, ikke kontrollert)'];
-    }
-}
-foreach ($products as $p) {
-    if ($p['subcat'] === 7504 && count($contrib) < 3) {
-        $contrib[] = [$p['id'], $arne, 'materiale', 'Varmgalvanisert stål', null, 'Står varmforsinket på emballasjen. (demo-bidrag)'];
+        break;
     }
 }
 $insRev = $pdo->prepare('INSERT INTO spec_revisions (product_id, user_id, diff, comment, status, created_at) VALUES (?,?,?,?,?,?)');
@@ -451,6 +447,22 @@ foreach ($contrib as [$pid, $uid, $key, $txt, $numv, $why]) {
     $upS->execute([$pid, $key, $txt, $numv, $why, (int) $pdo->lastInsertId()]);
 }
 done(count($contrib) . ' stk');
+
+// 12b. One customer service case (demo) for the Control Tower: the same verified buyer asks about the headlamp she bought,
+// Søren hands over, and the case has her paid orders beside it, so reply, Søren's draft and refund can all be shown
+step('Kundeservicesak (demo)');
+$lamp = $contrib[0][0] ?? null;
+if ($lamp !== null) {
+    $chat = [
+        ['role' => 'user', 'content' => 'Hodelykten min lader ikke lenger. Lampen på kabelen lyser ikke når jeg kobler den til. (demo)'],
+        ['role' => 'assistant', 'content' => 'Det kan være kabelen eller kontakten på lykta. Jeg kan ikke sjekke selve lykta herfra, så jeg sender saken til kundeservice med produktet du bekreftet.'],
+    ];
+    $pdo->prepare("INSERT INTO support_tickets (session_id, user_id, status, summary, chat_log, product_id, created_at) VALUES (?,?,'apen',?,?,?,?)")
+        ->execute([bin2hex(random_bytes(16)), $ingrid, '(demo) Hodelykten lader ikke', json_encode($chat, JSON_UNESCAPED_UNICODE), $lamp, date('Y-m-d H:i:s', strtotime('-3 hours'))]);
+    $pdo->prepare("INSERT INTO support_messages (ticket_id, sender, user_id, body, created_at) VALUES (?,'kunde',?,?,?)")
+        ->execute([(int) $pdo->lastInsertId(), $ingrid, 'Jeg har prøvd en annen USB-lader også. Kan jeg få pengene tilbake? (demo)', date('Y-m-d H:i:s', strtotime('-2 hours'))]);
+}
+done($lamp !== null ? '1 stk' : '0 stk');
 
 // 13. Assembly guides (demo) with PDF
 step('Veiledninger (demo)');

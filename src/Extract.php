@@ -453,9 +453,18 @@ final class Extract
             $add('folger_ikke_med', trim($m[1][0]), null, 'sortre', $text, $m[0][1], strlen($m[0][0]), 'Følger ikke med', null);
         }
         if (preg_match("/(?:leveres|levert|kommer|selges)\s+(?:komplett\s+)?(?:med|i)\s+([^.!?•:]{3,70})/u", $text, $m, PREG_OFFSET_CAPTURE)
-            || preg_match("/(?<!\()\b(?:inkl\.?|inkludert|inkluderer)\s+([^.!?–•:()]{3,70})/u", $text, $m, PREG_OFFSET_CAPTURE)
+            // "102gr inkl. batterier" is a weight that counts the batteries, not a list of what is in the box
+            || preg_match("/(?<!\()(?<!\dg\s)(?<!\dgr\s)(?<!\dkg\s)(?<!\dkr\s)(?<!,-\s)\b(?:inkl\.?|inkludert|inkluderer)\s+([^.!?–•:()]{3,70})/u", $text, $m, PREG_OFFSET_CAPTURE)
             || preg_match("/([A-ZÆØÅ]$sent{2,70}?)\s+(?:medfølger|følger med)(?!\s+ikke)/u", $text, $m, PREG_OFFSET_CAPTURE)) {
-            $add('folger_med', trim($m[1][0]), null, 'sortre', $text, $m[0][1], strlen($m[0][0]), 'Følger med', null);
+            // Sør-Tre's text often runs two fields together ("batterierDim: 35x28"); stop where the next one starts
+            $with = $m[1][0];
+            if (substr($text, $m[1][1] + strlen($with), 1) === ':') {
+                $with = preg_split('/(?<=\p{Ll})(?=\p{Lu}\p{Ll}+$)/u', $with)[0];
+            }
+            $with = trim($with);
+            if (mb_strlen($with) >= 3) {
+                $add('folger_med', $with, null, 'sortre', $text, $m[0][1], strlen($m[0][0]), 'Følger med', null);
+            }
         }
         // Charging: the sentence that says how it is charged (USB-C, magnetic cable, solar cell)
         if (preg_match("/($sent*\b(?:lades|lading|ladekabel|ladbar|oppladbar)\b$sent*)/iu", $text, $m, PREG_OFFSET_CAPTURE)

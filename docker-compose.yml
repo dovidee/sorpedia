@@ -1,5 +1,5 @@
 # Sørpedia locally: docker compose up -d, then http://localhost:8080
-# Ollama runs on your machine (not in Docker): ollama pull deepseek-r1:8b
+# Ollama runs on your machine (not in Docker): ollama pull qwen2.5:7b-instruct
 services:
   app:
     build: { context: ., dockerfile: docker/Dockerfile }
@@ -12,9 +12,12 @@ services:
       DB_USER: sorpedia
       DB_PASS: sorpedia
       OLLAMA_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-deepseek-r1:8b}
-      SOREN_FIRST_TOKEN_S: 60
-      SOREN_MAX_THINK_S: 240
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct}
+      WC_WEBHOOK_SECRET: ${WC_WEBHOOK_SECRET:-}
+      API_ASK_LIMIT: ${API_ASK_LIMIT:-10}
+      API_QUESTION_LIMIT: ${API_QUESTION_LIMIT:-60}
+      SOREN_FIRST_TOKEN_S: 120
+      SOREN_MAX_THINK_S: 90
       SOREN_MAX_ANSWER_S: 480
       SOREN_NUM_CTX: ${SOREN_NUM_CTX:-8192}
     extra_hosts: ["host.docker.internal:host-gateway"]

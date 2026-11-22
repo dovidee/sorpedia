@@ -30,12 +30,12 @@ final class Search
         return mb_strlen($term) >= 4 ? str_contains($text, $term) : (bool) preg_match('/(^|\P{L})' . preg_quote($term, '/') . '($|\P{L})/u', $text);
     }
 
-    /** @return array{ids:int[], corrected:?string, matched:array, themes:string[]} */
+    /** @return array{ids:int[], corrected:?string, matched:array, themes:string[], translated:?string} */
     public static function run(string $q, int $limit = 60, bool $prefix = false, bool $strict = false): array
     {
         $q = mb_strtolower(trim($q));
         if ($q === '') {
-            return ['ids' => [], 'corrected' => null, 'matched' => [], 'themes' => []];
+            return ['ids' => [], 'corrected' => null, 'matched' => [], 'themes' => [], 'translated' => null];
         }
         $rows = self::rows();
         $vocab = self::vocab($rows);
@@ -106,7 +106,7 @@ final class Search
                 // One word for one word, and the word is in no product name: use the catalog's word, so the customer
                 // sees "hammer", not "hammar". "lommelykt" is in product names and stays.
                 $i = array_search($s['term'], $fixed, true);
-                if ($i !== false && !str_contains($s['expands'], ' ') && !str_starts_with($s['expands'], 'tema:')
+                if ($i !== false && !str_contains($s['expands'], ' ') && !str_starts_with($s['expands'], 'tema:') && !str_starts_with($s['expands'], 'produkt:')
                     && !str_contains(self::names($rows), $s['term'])) {
                     $fixed[$i] = $s['expands'];
                     continue;
@@ -123,7 +123,9 @@ final class Search
                 }
             }
         }
-        $terms = array_merge($fixed, $terms);
+        // produkt:ID is a mapping made by staff in the Control Tower: that product is shown first, it is not a search word
+        $pinned = array_map(fn($e) => (int) substr($e, 8), array_filter($terms, fn($e) => str_starts_with($e, 'produkt:')));
+        $terms = array_merge($fixed, array_values(array_filter($terms, fn($e) => !str_starts_with($e, 'produkt:'))));
 
         // 3. Score per product
         $scores = [];
@@ -163,6 +165,8 @@ final class Search
         // Only those with at least half the top score, so "drill" doesn't drown in random text hits
         $top = $scores ? reset($scores) : 0;
         $ids = array_keys(array_filter($scores, fn($s) => $s >= max(2, $top / 3)));
+        $known = array_column($rows, 'id');
+        $ids = array_values(array_unique(array_merge(array_filter($pinned, fn($id) => in_array($id, $known)), array_map('intval', $ids))));
 
         return [
             'ids' => array_slice(array_map('intval', $ids), 0, $limit),

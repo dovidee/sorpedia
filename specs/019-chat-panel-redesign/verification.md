@@ -4,7 +4,7 @@ Levels used below: run in the app (`php -S` on a separate port, headless Chromiu
 
 ## Run in the app
 
-A product page was loaded at 390, 820 and 1366 px in light and dark color scheme. At every width and scheme the launcher opened the panel, the panel background was pine-charcoal (rgb 24 34 31), focus landed on the message field, the context field showed the product name, `scrollWidth` equalled `clientWidth` for both the page and the panel, and Escape closed the panel and moved focus back to the launcher. No page errors were logged. The header status line stays on one line at every width (about 14 px high); on phones the static part is cut with an ellipsis when it does not fit, and the live status after it is never cut.
+A product page was loaded at 390, 820 and 1366 px in light and dark color scheme. At every width and scheme the launcher opened the panel, the panel background was pine-charcoal (rgb 24 34 31), focus landed on the message field, the context field showed the product name, `scrollWidth` equalled `clientWidth` for both the page and the panel, and Escape closed the panel and moved focus back to the launcher. No page errors were logged. The header status line stays on one line at every width; on phones the static part is cut with an ellipsis when it does not fit, and the live status after it is never cut.
 
 A message was sent on `/tema/lys` at 1366 px with Ollama running (`deepseek-r1:8b`). The answer streamed with the reasoning block, four product cards appeared under «Fra produktkatalogen» with name, price and stock, and the customer message was amber and right aligned. The log had `aria-busy="true"` while the answer streamed and `false` when it was done.
 
@@ -55,3 +55,7 @@ Not verified: the open and close animation from the new launcher position, keybo
 ## Panel size reverted
 
 The panel is back to 360 by 520 px at 112 px from the bottom. The round head launcher stays low in the corner.
+
+## Send button while Søren answers
+
+A question sent while an answer was still streaming was dropped without any sign, so the send button looked broken. The button now shows a waiting state (`aria-disabled`, muted colour, progress cursor, title «Vent til Søren har svart») until the answer ends, and pressing it puts the same line in the status. The text in the field is kept. Run in the app with Playwright: from «Spør Søren om forslagene» a click on the send button posts to `/api/chat` and clears the field; no element covers the button at 1920, 1536 or 1280 px. Not tested on a touch device.

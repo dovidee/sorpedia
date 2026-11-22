@@ -12,7 +12,7 @@ All seven `/tema/*` pages were loaded at 390, 820 and 1366 px. On every page and
 
 The band products had opacity 1 after 1.8 s at every width. With `prefers-reduced-motion: reduce` emulated, the band products had no animation (`animation-name: none`) and opacity 1. With `prefers-color-scheme: dark` emulated, Maling og sparkel kept its paper band.
 
-Figures read from the page, for example: Lys og lykter 65 products, 11 filters, 14 with a guide; Maling og sparkel 102, 7, 102; Bygg og feste 118, 8, 0. The product count matched the result count under the band with no filters on all seven pages. With `?v[merke][]=Ledlenser` on `/tema/lys` the result count was 16 products. `/guide?oppgave=kjetting` returned 200.
+Figures read from the page, for example: Lys og lykter, products: 65, 11 filters, 14 with a guide; Maling og sparkel 102, 7, 102; Bygg og feste 118, 8, 0. The product count matched the result count under the band with no filters on all seven pages. With `?v[merke][]=Ledlenser` on `/tema/lys` the result count was 16. `/guide?oppgave=kjetting` returned 200.
 
 Captures checked by eye: Lys og lykter, Kjetting og løft and Maling og sparkel at 1366 px, Tur og friluft at 820 px, Bygg og feste at 390 px in dark mode. Each showed its world, the red primary action and three linked products with image and name, no price or stock.
 
@@ -44,7 +44,7 @@ Not verified: Bygg og feste and Balkong og levegg were not captured, only loaded
 
 Run in the app: `/tema/lys`, `/tema/maling` and `/tema/bygg` render the name as "X og" / "Y" at one size and show three best rated products with image and name, no placeholder slots. Checked at 1366 and 390 px with headless Chromium screenshots, no sideways scroll. PHP lint passed on `public/index.php` and `templates/theme.php`; `src/I18nEn.php` regenerated and linted. English names now all read "X and Y".
 
-Not verified: the English band in the browser, and a category where fewer than three products exist.
+Not verified: the English band in the browser, and a category with fewer than three items in it.
 
 ## Category photos in the band
 
@@ -56,7 +56,7 @@ Known weakness: the photos are 2 to 3 MB PNG files. Not verified: English band, 
 
 ## Low band: photo half, text half, no product slots
 
-The three product slots and their query are removed. The band is now about 380 px high at 1366 px (was about 780), with the category photo on the left half fading into the band color and the text on the right half. On phones the photo comes first. Lys og lykter uses #CB020F with lighter secondary text for contrast.
+The three product slots and their query are removed. The band is now `clamp(300px, 28vw, 400px)` high, 382 px at 1366 px (it was more than twice as high before), with the category photo on the left half fading into the band color and the text on the right half. On phones the photo comes first. Lys og lykter uses #CB020F with lighter secondary text for contrast.
 
 Run in the app (`php -S 127.0.0.1:8099 -t public`, curl and headless Chromium captures). All seven `/tema/*` pages returned 200. Captures checked by eye: Lys og lykter at 1366 px (filters, sort bar and first product row visible without scrolling), Tur og friluft at 390 px. PHP lint passed on `public/index.php` and `templates/theme.php`.
 

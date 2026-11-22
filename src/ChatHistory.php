@@ -23,10 +23,19 @@ final class ChatHistory
     public const MAX_MESSAGES = 40;      // stored per conversation, the oldest are deleted
     public const TTL_HOURS = 24;         // a conversation expires this long after its last message
 
-    /** Creates the tables in databases built before feature 015. */
+    /** At most this many products are remembered per answer (ProductRetriever::LIMIT). */
+    public const PRODUCTS_MAX = 5;
+
+    /**
+     * Creates the tables in databases built before feature 015, and the product memory column in those built before 034.
+     * The column is additive and nullable: old rows mean "no memory". Rollback: ALTER TABLE chat_messages DROP COLUMN product_ids.
+     */
     public static function ensure(): void
     {
         if (db()->query("SHOW TABLES LIKE 'chat_messages'")->fetch()) {
+            if (!db()->query("SHOW COLUMNS FROM chat_messages LIKE 'product_ids'")->fetch()) {
+                db()->exec('ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS product_ids JSON NULL AFTER for_model');
+            }
             return;
         }
         $sql = (string) file_get_contents(__DIR__ . '/../db/schema.sql');
@@ -103,6 +112,29 @@ final class ChatHistory
         return array_reverse($st->fetchAll());
     }
 
+    /**
+     * The products of the last answer in this conversation, for a follow-up question. Only the owner's conversation, only
+     * while it hasn't expired, only the latest answer (an answer about no product ends the memory), and only IDs that are
+     * still in the catalogue. Another conversation's products can never come back here.
+     * @return int[]
+     */
+    public static function lastProducts(int $conv, string $owner): array
+    {
+        $st = db()->prepare("SELECT m.product_ids FROM chat_messages m JOIN chat_conversations c ON c.id = m.conversation_id
+            WHERE m.conversation_id = ? AND c.owner = ? AND c.expires_at > NOW() AND m.role = 'assistant' AND m.for_model = 1 ORDER BY m.seq DESC LIMIT 1");
+        $st->execute([$conv, $owner]);
+        $ids = json_decode((string) $st->fetchColumn(), true);
+        if (!is_array($ids)) {
+            return [];
+        }
+        $ids = array_slice(array_values(array_unique(array_filter(array_map('intval', array_filter($ids, 'is_numeric')), fn($id) => $id > 0))), 0, self::PRODUCTS_MAX);
+        if (!$ids) {
+            return [];
+        }
+        $known = array_map('intval', db()->query('SELECT id FROM products WHERE id IN (' . implode(',', $ids) . ')')->fetchAll(PDO::FETCH_COLUMN));
+        return array_values(array_filter($ids, fn($id) => in_array($id, $known, true)));
+    }
+
     /** The whole stored conversation, for customer service. Only the owner's. */
     public static function log(int $conv, string $owner): array
     {
@@ -116,8 +148,9 @@ final class ChatHistory
      * Saves a question and its answer as the next two messages. The conversation row is locked, so two requests at the
      * same time get separate, ordered sequence numbers. Returns false if the conversation isn't the owner's.
      */
-    public static function record(int $conv, string $owner, string $question, string $answer, bool $forModel = true): bool
+    public static function record(int $conv, string $owner, string $question, string $answer, bool $forModel = true, array $productIds = []): bool
     {
+        $productIds = array_slice(array_values(array_unique(array_filter(array_map('intval', $productIds), fn($id) => $id > 0))), 0, self::PRODUCTS_MAX);
         $question = mb_substr($question, 0, self::USER_MAX);
         $answer = mb_substr($answer, 0, self::ASSISTANT_MAX);
         if ($question === '' || $answer === '') {
@@ -135,9 +168,9 @@ final class ChatHistory
             $st = $pdo->prepare('SELECT COALESCE(MAX(seq), 0) FROM chat_messages WHERE conversation_id = ?');
             $st->execute([$conv]);
             $seq = (int) $st->fetchColumn();
-            $ins = $pdo->prepare('INSERT INTO chat_messages (conversation_id, seq, role, content, for_model) VALUES (?,?,?,?,?)');
-            $ins->execute([$conv, $seq + 1, 'user', $question, (int) $forModel]);
-            $ins->execute([$conv, $seq + 2, 'assistant', $answer, (int) $forModel]);
+            $ins = $pdo->prepare('INSERT INTO chat_messages (conversation_id, seq, role, content, for_model, product_ids) VALUES (?,?,?,?,?,?)');
+            $ins->execute([$conv, $seq + 1, 'user', $question, (int) $forModel, null]);
+            $ins->execute([$conv, $seq + 2, 'assistant', $answer, (int) $forModel, $productIds ? json_encode($productIds) : null]);
             $pdo->prepare('DELETE FROM chat_messages WHERE conversation_id = ? AND seq <= ?')->execute([$conv, $seq + 2 - self::MAX_MESSAGES]);
             $pdo->prepare('UPDATE chat_conversations SET expires_at = NOW() + INTERVAL ' . self::TTL_HOURS . ' HOUR WHERE id = ?')->execute([$conv]);
             $pdo->commit();

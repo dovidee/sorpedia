@@ -5,7 +5,7 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS shipment_route_points, shipment_positions, shipment_items, shipments, drivers, vehicles,
-  chat_messages, chat_conversations, spec_reports, analytics_events, mail_outbox, events, support_messages, support_tickets,
+  audit_log, improvement_tasks, event_reviews, chat_messages, chat_conversations, spec_reports, analytics_events, mail_outbox, events, support_messages, support_tickets,
   manual_steps, manuals, relations, reviews, order_items, orders, cart_items, users,
   stock, warehouses, spec_values, spec_revisions, spec_keys, product_images,
   product_categories, categories, search_synonyms, products;
@@ -132,11 +132,14 @@ CREATE TABLE users (
   password_hash     VARCHAR(255) NOT NULL,
   role              ENUM('bruker','ansatt','support','admin') NOT NULL DEFAULT 'bruker',
   email_verified_at TIMESTAMP NULL,
+  terms_at          TIMESTAMP NULL,                -- terms of use accepted at registration (feature 046)
   verify_token      CHAR(32) NULL,
   warehouse_id      SMALLINT UNSIGNED NULL,
   is_demo_seed      TINYINT(1) NOT NULL DEFAULT 0,
   failed_logins     TINYINT UNSIGNED NOT NULL DEFAULT 0, -- wrong passwords in a row
   locked_until      TIMESTAMP NULL,                 -- locked after five failures, for 15 minutes (src/Auth.php)
+  reset_hash        CHAR(64) NULL,                  -- SHA-256 of the password reset token, never the token itself
+  reset_until       TIMESTAMP NULL,                 -- the reset link works until this time, once
   created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   deleted_at        TIMESTAMP NULL                  -- account deleted: personal data removed, orders kept (Norwegian Bookkeeping Act)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -155,7 +158,7 @@ CREATE TABLE orders (
   warehouse_id SMALLINT UNSIGNED NULL,
   total_ore    INT UNSIGNED NOT NULL,
   payment      ENUM('vipps','klarna','kort') NOT NULL,
-  status       ENUM('betalt','kansellert') NOT NULL DEFAULT 'betalt',
+  status       ENUM('betalt','kansellert','refundert') NOT NULL DEFAULT 'betalt', -- refundert: every unit refunded
   is_demo_seed TINYINT(1) NOT NULL DEFAULT 0,
   created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id)
@@ -168,6 +171,20 @@ CREATE TABLE order_items (
   price_ore  INT UNSIGNED NOT NULL,
   added_via  VARCHAR(32) NULL,
   PRIMARY KEY (order_id, product_id),
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Refunds from a customer service ticket, one row per refunded line (feature 022). Demo payment: no money moves.
+CREATE TABLE order_refunds (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  order_id   INT UNSIGNED NOT NULL,
+  product_id INT UNSIGNED NOT NULL,
+  qty        SMALLINT UNSIGNED NOT NULL,
+  amount_ore INT UNSIGNED NOT NULL,
+  ticket_id  INT UNSIGNED NULL,
+  user_id    INT UNSIGNED NULL,                     -- staff member who refunded
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY (order_id),
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -218,6 +235,20 @@ CREATE TABLE manual_steps (
   FOREIGN KEY (manual_id) REFERENCES manuals(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Audit log for the admin page (src/Audit.php): security events, staff actions, backups. No IP address, only a daily hash.
+CREATE TABLE audit_log (
+  id      BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  kind    ENUM('sikkerhet','admin','drift') NOT NULL,
+  action  VARCHAR(40) NOT NULL,
+  user_id INT UNSIGNED NULL,
+  target  VARCHAR(120) NULL,
+  ip_hash CHAR(12) NULL,
+  detail  JSON NULL,
+  KEY (kind, at),
+  KEY (action, at)
+) ENGINE=InnoDB;
+
 CREATE TABLE support_tickets (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   session_id  VARCHAR(64) NOT NULL,
@@ -227,6 +258,7 @@ CREATE TABLE support_tickets (
   summary     VARCHAR(300) NULL,
   chat_log    JSON NULL,                            -- the conversation with the mascot before escalation
   product_id  INT UNSIGNED NULL,                    -- the product the customer confirmed the case is about (feature 022)
+  conversation_id INT UNSIGNED NULL,                -- the Søren conversation the case was raised from (feature 032)
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   KEY (product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -249,11 +281,15 @@ CREATE TABLE chat_conversations (
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   expires_at  TIMESTAMP NOT NULL,
+  reviewed_at TIMESTAMP NULL,                       -- read by staff in the Control Tower (feature 032)
+  reviewed_by INT UNSIGNED NULL,
   KEY (owner),
   KEY (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- for_model = 0: answered by a fixed safety reply. Kept for customer service, never sent to the model.
+-- product_ids: on an answer, the products it was about (ProductRetriever, feature 034), so a follow-up such as
+-- «hva koster de to sammen?» means the same products. NULL on questions and on answers about no product.
 CREATE TABLE chat_messages (
   id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   conversation_id INT UNSIGNED NOT NULL,
@@ -261,6 +297,7 @@ CREATE TABLE chat_messages (
   role            ENUM('user','assistant') NOT NULL,
   content         TEXT NOT NULL,
   for_model       TINYINT(1) NOT NULL DEFAULT 1,
+  product_ids     JSON NULL,                            -- [291482, 291483]
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY in_order (conversation_id, seq),
   FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE
@@ -287,7 +324,7 @@ CREATE TABLE mail_outbox (
 
 CREATE TABLE search_synonyms (
   term     VARCHAR(80) NOT NULL,
-  expands  VARCHAR(300) NOT NULL,                   -- search term or kategori:ID / tema:navn
+  expands  VARCHAR(300) NOT NULL,                   -- search terms, kategori:ID, tema:navn or produkt:ID (space separated)
   kind     ENUM('synonym','bruksomrade') NOT NULL,
   PRIMARY KEY (term, kind)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -329,4 +366,72 @@ CREATE TABLE spec_reports (
   UNIQUE KEY once (product_id, `key`, session_id),
   KEY (status, created_at),
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Control Tower: an analytics event that staff have looked at. One row per event.
+CREATE TABLE event_reviews (
+  event_id    BIGINT UNSIGNED PRIMARY KEY,
+  user_id     INT UNSIGNED NOT NULL,
+  outcome     ENUM('vurdert','ignorert') NOT NULL DEFAULT 'vurdert',
+  reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Control Tower: a product improvement task (specs/032). Raised from a search, an error report, a product, a
+-- relationship, an opportunity or a buyer change. origin names what raised it, so the same thing is not raised twice.
+-- Control Tower transport simulation (specs/043, DemoDelivery): one accelerated clock for every demo vehicle. Simulated
+-- unix time at the anchor, the real time of the anchor, the rate, pause state and the scenario (real conditions or storm).
+CREATE TABLE sim_clock (
+  id          TINYINT UNSIGNED PRIMARY KEY,
+  sim_anchor  DOUBLE NOT NULL,
+  real_anchor DOUBLE NOT NULL,
+  rate        SMALLINT UNSIGNED NOT NULL,
+  paused      TINYINT(1) NOT NULL DEFAULT 1,
+  scenario    VARCHAR(8) NOT NULL DEFAULT 'ekte'
+) ENGINE=InnoDB;
+
+-- One planned trip per demo shipment: departure on the simulated clock and the route with what was known about each leg
+-- (weather, road works, ferry timetable). stocked = the goods have been put on the shelf once.
+CREATE TABLE shipment_plans (
+  shipment_id INT UNSIGNED PRIMARY KEY,
+  t0          DOUBLE NOT NULL,
+  points      MEDIUMTEXT NOT NULL,
+  scenario    VARCHAR(8) NOT NULL DEFAULT 'ekte',
+  stocked     TINYINT(1) NOT NULL DEFAULT 0,
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- The order list (specs/043, Supply): products picked in Innsikt to fetch from another store, then ordered with a vehicle.
+CREATE TABLE supply_list (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  product_id     INT UNSIGNED NOT NULL,
+  qty            SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+  status         ENUM('valgt','bestilt','mottatt','fjernet') NOT NULL DEFAULT 'valgt',
+  shipment_id    INT UNSIGNED NULL,
+  from_warehouse SMALLINT UNSIGNED NULL,
+  created_by     INT UNSIGNED NOT NULL,
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at     TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  KEY (status), KEY (product_id), KEY (shipment_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE improvement_tasks (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  event_id    BIGINT UNSIGNED NULL,
+  product_id  INT UNSIGNED NULL,
+  source      VARCHAR(24) NOT NULL DEFAULT 'sok',
+  spec_key    VARCHAR(48) NULL,
+  revision_id INT UNSIGNED NULL,
+  origin      VARCHAR(160) NULL,
+  title       VARCHAR(200) NOT NULL,
+  note        VARCHAR(500) NULL,
+  outcome     VARCHAR(300) NULL,
+  status      ENUM('apen','under_behandling','klar_for_kontroll','fullfort','avvist','arkivert') NOT NULL DEFAULT 'apen',
+  created_by  INT UNSIGNED NOT NULL,
+  closed_by   INT UNSIGNED NULL,
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  KEY (status, created_at),
+  KEY (event_id),
+  KEY product_id (product_id),
+  KEY origin (origin)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

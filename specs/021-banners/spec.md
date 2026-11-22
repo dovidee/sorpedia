@@ -10,7 +10,7 @@ Approved and locked. Every page banner (home and all `/tema/*` category pages) u
 2. Two equal halves on screens wider than 767 px: the photo first on the left half, the text on the right half. Text never sits on the photo.
 3. The photo fills its half with `object-fit: cover` and fades into the banner background with a horizontal mask (solid to 55 %, transparent at the inner edge). Cropping the photo is fine as long as the subject stays recognizable.
 4. The right edge of the text half lines up with the right edge of the centered page column.
-5. Height: `min-height: clamp(300px, 28vw, 400px)`, about 380 px at 1366 px. It stays low so the content below (filters and products on category pages) is visible without scrolling.
+5. Height: `min-height: clamp(300px, 28vw, 400px)`, 382 px at 1366 px (28vw). It stays low so the content below (filters and products on category pages) is visible without scrolling.
 6. At 767 px and below the banner stacks: the photo first (aspect 16 / 8, fading downward into the background), then the text.
 7. No mascot, no product slots, no overlays, no extra decoration in any banner. The mascot appears only in the chat.
 

@@ -1,0 +1,81 @@
+/* Søren as the earlier vector figure (soren-vector.js), loaded instead of the sprite only when Settings > Appearance > Mascot is set to the vector figure. All motion is transforms. */
+.soren { width: 100%; height: 100%; display: block; overflow: visible; }
+.soren .skin { fill: #ECE8E0; stroke: #B9B3A9; stroke-width: 5; stroke-linejoin: round; }
+.soren .skin.flat { stroke: none; }
+.soren .shade { fill: #DCD7CE; }
+.soren .outline { fill: none; stroke: #B9B3A9; stroke-width: 5; stroke-linejoin: round; }
+.soren .bark { fill: none; stroke: #C9C3B8; stroke-width: 4; stroke-linecap: round; }
+.soren .lv { stroke: #F7D9D6; stroke-width: 6; stroke-linejoin: round; paint-order: stroke; }
+.soren .dk { fill: #B51E24; opacity: .55; }
+.soren .rib { fill: none; stroke: #F4B7B5; stroke-width: 3; stroke-linecap: round; }
+.soren .stem { fill: none; stroke: #B51E24; stroke-width: 4; stroke-linecap: round; }
+.soren .boot { fill: #DD2B2F; stroke: #A3191E; stroke-width: 5; stroke-linejoin: round; }
+.soren .rim { fill: #C82227; }
+.soren .shine { fill: none; stroke: #F5848A; stroke-width: 7; stroke-linecap: round; }
+.soren .shadow { fill: #000; opacity: .18; }
+.soren .open ellipse { fill: #231E3B; stroke: #4A4560; stroke-width: 2; }
+.soren .hi { fill: #fff; }
+.soren .happy { fill: none; stroke: #231E3B; stroke-width: 8; stroke-linecap: round; opacity: 0; }
+.soren .wood { fill: #C98E55; stroke: #8A5A2E; stroke-width: 5; }
+.soren .cut { fill: #E2B57F; stroke: #8A5A2E; stroke-width: 3; }
+.soren .grain { fill: none; stroke: #9C6A38; stroke-width: 3; stroke-linecap: round; }
+.soren .nail { fill: none; stroke: #7B8088; stroke-width: 5; stroke-linecap: round; }
+.soren .handle { stroke: #9C6A38; stroke-width: 14; stroke-linecap: round; }
+.soren .hammer .head { fill: #8A9099; stroke: #50555D; stroke-width: 4; }
+.soren .hat path { fill: #F6C324; stroke: #C7911A; stroke-width: 6; stroke-linejoin: round; }
+.soren .hat .ridge { fill: none; stroke: #E2AC1E; stroke-width: 10; stroke-linecap: round; }
+.soren .metal { fill: none; stroke: #9DA3AA; stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; }
+.soren .tyre { fill: #3B3B40; } .soren .hub { fill: #C9CDD2; }
+/* Props only show in their own pose */
+.soren .cart, .soren .stump, .soren .hammer, .soren .hat, .soren .plank { display: none; }
+.soren[data-pose="cart"] .cart, .soren[data-pose="hammer"] .stump, .soren[data-pose="hammer"] .hammer, .soren[data-pose="hammer"] .hat, .soren[data-pose="lumber"] .plank { display: inline; }
+/* Moving parts and their pivots */
+.soren .lf { transform-box: fill-box; transform-origin: 50% 100%; animation: s-rustle var(--t) ease-in-out var(--d) infinite alternate; }
+.soren .crown { transform-box: view-box; transform-origin: 487px 620px; animation: s-sway 6s ease-in-out infinite alternate; }
+.soren .all { transform-box: view-box; transform-origin: 487px 940px; }
+.soren .arm, .soren .arm-in, .soren .look, .soren .eyes { transform-box: view-box; }
+.soren .arm-l, .soren .arm-l .arm-in { transform-origin: 392px 640px; }
+.soren .arm-r, .soren .arm-r .arm-in { transform-origin: 582px 640px; }
+.soren .arm, .soren .look { transition: transform .6s cubic-bezier(.4, 0, .2, 1); }
+.soren .eyes { transform-origin: 487px 438px; transition: transform .07s; }
+.soren.blink .eyes { transform: scaleY(.1); }
+/* Poses */
+.soren[data-pose="wave"] .arm-l { transform: rotate(104deg) rotate(111deg) scaleY(-1) rotate(-111deg); } /* mirrored along the arm so the palm faces out */
+.soren[data-pose="wave"] .arm-l .arm-in { animation: s-wave .5s ease-in-out infinite alternate; }
+.soren[data-pose="thinking"] .arm-r { transform: rotate(158deg); }
+.soren[data-pose="thinking"] .arm-l { transform: rotate(-58deg); }
+.soren[data-pose="thinking"] .arm-r .arm-in { animation: s-tap 1.6s ease-in-out infinite alternate; }
+.soren[data-pose="thinking"] .look { transform: translate(-6px, -8px); }
+.soren[data-pose="pointing"] .arm-r { transform: rotate(-68deg); }
+.soren[data-pose="pointing"] .arm-l { transform: rotate(-22deg); }
+.soren[data-pose="pointing"] .look { transform: translate(8px, 0); }
+.soren[data-pose="pointing"] .all { animation: s-bob 1.6s ease-in-out infinite; }
+.soren[data-pose="shrug"] .arm-l .arm-in { animation: s-shrug-l 4.5s ease-in-out infinite; }
+.soren[data-pose="shrug"] .arm-r .arm-in { animation: s-shrug-r 4.5s ease-in-out infinite; }
+.soren[data-pose="celebrating"] .arm-l { transform: rotate(118deg); }
+.soren[data-pose="celebrating"] .arm-r { transform: rotate(-118deg); }
+.soren[data-pose="celebrating"] .arm-in { animation: s-wave .35s ease-in-out infinite alternate; }
+.soren[data-pose="celebrating"] .all { animation: s-hop .9s ease-in-out infinite; }
+.soren[data-pose="celebrating"] .open { opacity: 0; }
+.soren[data-pose="celebrating"] .happy { opacity: 1; }
+.soren[data-pose="cart"] .arm-r { transform: rotate(-38deg); }
+.soren[data-pose="cart"] .look { transform: translate(8px, 2px); }
+.soren[data-pose="cart"] .all { animation: s-bob 1.2s ease-in-out infinite; }
+.soren[data-pose="hammer"] .arm-r .arm-in { animation: s-strike 1.4s infinite; }
+.soren[data-pose="hammer"] .look { transform: translate(8px, 6px); }
+.soren[data-pose="lumber"] .arm-l { transform: rotate(4deg); }
+.soren[data-pose="lumber"] .arm-r { transform: rotate(-10deg); }
+.soren[data-pose="lumber"] .all { animation: s-bob 2.4s ease-in-out infinite; }
+@keyframes s-rustle { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+@keyframes s-sway { from { transform: rotate(-1.2deg); } to { transform: rotate(1.2deg); } }
+@keyframes s-wave { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+@keyframes s-tap { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+@keyframes s-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes s-hop { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-40px); } }
+@keyframes s-shrug-l { 0%, 18%, 82%, 100% { transform: rotate(0); } 38%, 62% { transform: rotate(50deg); } }
+@keyframes s-shrug-r { 0%, 18%, 82%, 100% { transform: rotate(0); } 38%, 62% { transform: rotate(-50deg); } }
+@keyframes s-strike { 0% { transform: rotate(-40deg); } 55% { transform: rotate(-42deg); } 72% { transform: rotate(16deg); } 80% { transform: rotate(12deg); } 100% { transform: rotate(-40deg); } }
+.soren.still *, .soren.still { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .soren *, .soren { animation: none !important; transition: none !important; } }
+.hero-soren, .empty-mascot, .guide-mascot { aspect-ratio: 820 / 960; }
+.hero-soren { width: 72px; margin-top: 0; margin-bottom: 0; }

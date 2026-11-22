@@ -17,7 +17,7 @@ final class Byggelab
     /** One builder per category: name and what it checks. */
     public const BUILDERS = [
         'lys' => ['Lysbygger', 'Lykter, batterier, lading og pærer, sjekket mot hverandre.'],
-        'bygg' => ['Byggbenk', 'Festemidler og verktøy til én jobb, med antall og mål samlet.'],
+        'bygg' => ['Byggbenk', 'Festemidler og verktøy til en jobb, med antall og mål samlet.'],
         'maling' => ['Overflateplan', 'Ruller, pensler og slipepapir, med bredder og slipeorden.'],
         'balkong' => ['Utebygger', 'Glass, stendere og lister med samlet bredde og glasstykkelse.'],
         'kjetting' => ['Løfteoppsett', 'Kjetting, sjakler og kroker som ett lastkjede med svakeste ledd.'],
@@ -44,7 +44,10 @@ final class Byggelab
         'tur' => ['volum_l', 'vekt_g', 'materiale'],
     ];
 
-    /** Ready made examples for the light builder. Sør-Tre product IDs; missing products are skipped. */
+    /**
+     * Ready made examples for the light builder. The IDs are real Sør-Tre products (listed as allowed in
+     * .claude/hooks/check_code.py). Name, price and stock are read from the database; missing products are skipped.
+     */
     private const PRESETS = [
         'lys' => [
             ['Hodelykt med reserve', [291483 => 1, 291485 => 1, 291385 => 1, 291482 => 1]],
@@ -120,14 +123,24 @@ final class Byggelab
             $partners[(int) $r['product_a']][] = (int) $r['product_b'];
         }
         uasort($partners, fn($a, $b) => count($b) <=> count($a));
-        foreach (array_slice($partners, 0, 2, true) as $hub => $ids) {
+        $name = db()->prepare('SELECT name FROM products WHERE id = ?');
+        $used = [];
+        foreach ($partners as $hub => $ids) {
+            $name->execute([$hub]);
+            $short = self::short(['name' => (string) $name->fetchColumn()]);
+            // Size variants share a short name; two buttons with the same label cannot be told apart
+            if (isset($used[$short])) {
+                continue;
+            }
+            $used[$short] = true;
             $lines = [$hub => 1];
             foreach (array_slice(array_unique($ids), 0, 3) as $id) {
                 $lines[$id] = 1;
             }
-            $name = db()->prepare('SELECT name FROM products WHERE id = ?');
-            $name->execute([$hub]);
-            $out[] = ['name' => t('Rundt {name}', ['name' => self::short(['name' => (string) $name->fetchColumn()])]), 'lines' => $lines];
+            $out[] = ['name' => t('Rundt {name}', ['name' => $short]), 'lines' => $lines];
+            if (count($out) === 2) {
+                break;
+            }
         }
         if (!$out && ($top = Catalog::popular(3, $theme))) {
             $out[] = ['name' => t('Populært nå'), 'lines' => array_fill_keys($top, 1)];
@@ -198,6 +211,14 @@ final class Byggelab
         foreach ($module['links'] as $l) {
             self::addLink($links, $l);
         }
+        // A pair with neither a relation nor a rule is unknown, never silently fine
+        $ids = array_keys($items);
+        foreach ($ids as $x => $a) {
+            foreach (array_slice($ids, $x + 1) as $b) {
+                self::addLink($links, ['a' => $a, 'b' => $b, 'status' => 'ukjent', 'basis' => 'ingen',
+                    'reason' => t('Ingen dokumentert kobling og ingen regel som dekker paret.')]);
+            }
+        }
         $r['links'] = array_values($links);
         $r['stats'] = $module['stats'];
         $r['missing'] = $module['missing'];
@@ -208,7 +229,7 @@ final class Byggelab
 
         $count = array_count_values(array_column($r['links'], 'status')) + ['dokumentert' => 0, 'regel' => 0, 'ukjent' => 0, 'ikke' => 0];
         $r['counts'] = $count;
-        $r['verdict'] = !$items ? 'tom' : ($count['ikke'] > 0 ? 'konflikt' : (($r['missing'] || $r['warnings']) ? 'mangler' : 'klar'));
+        $r['verdict'] = !$items ? 'tom' : ($count['ikke'] > 0 ? 'konflikt' : (($r['missing'] || $r['warnings'] || $count['ukjent'] > 0) ? 'mangler' : 'klar'));
 
         // Items go to the browser with the specifications they carry, each with source
         foreach ($items as $it) {
@@ -354,7 +375,8 @@ final class Byggelab
                 $r['kind'] === 'passer_sammen' && $r['level'] === 'regelutledet' => 'regel',
                 default => 'ukjent', // assumed is never shown as certain
             };
-            $reason = $status === 'ukjent' ? t('Antatt, ikke dokumentert: {r}', ['r' => $r['reason']]) : $r['reason'];
+            $why = I18n::reason((string) $r['reason']);
+            $reason = $status === 'ukjent' ? t('Antatt, ikke dokumentert: {r}', ['r' => $why]) : $why;
             self::addLink($links, ['a' => (int) $r['product_a'], 'b' => (int) $r['product_b'], 'status' => $status, 'reason' => $reason,
                 'basis' => 'relasjon', 'level' => $r['level']]);
         }
@@ -477,11 +499,11 @@ final class Byggelab
             if (!$h) {
                 $m['missing'][] = ['kind' => 'komponent', 'text' => t('Ingen {type}-batterier i oppsettet. {names} bruker {n} stk.', ['type' => $type, 'names' => $names, 'n' => $n['n']])];
             } elseif (!$h['unknown'] && $h['n'] < $n['n']) {
-                $m['missing'][] = ['kind' => 'komponent', 'text' => t('Oppsettet har {have} {type}-batterier. Lyktene trenger {n} for én fylling.', ['have' => $h['n'], 'type' => $type, 'n' => $n['n']])];
+                $m['missing'][] = ['kind' => 'komponent', 'text' => t('Oppsettet har {have} {type}-batterier. Lyktene trenger {n} for en fylling.', ['have' => $h['n'], 'type' => $type, 'n' => $n['n']])];
             }
             $m['stats'][] = ['label' => t('Batterier {type}', ['type' => $type]),
                 'value' => t('{have} stk, trenger {n}', ['have' => $h ? ($h['unknown'] ? '?' : $h['n']) : 0, 'n' => $n['n']]),
-                'note' => t('I oppsettet, mot det lyktene trenger for én fylling.')];
+                'note' => t('I oppsettet, mot det lyktene trenger for en fylling.')];
             // Runtime: only from a stored burn time, multiplied by whole fillings
             if ($h && !$h['unknown'] && $h['n'] >= $n['n']) {
                 $fills = intdiv($h['n'], $n['n']);
@@ -574,22 +596,38 @@ final class Byggelab
                 $dims[self::num($v)][] = $i;
             }
         }
+        // Derived or buyer values are never shown as confirmed: the weakest link is only named when every value is confirmed
+        $confirmed = fn(?array $s) => $s && in_array($s['source'], ['sortre', 'ansatt'], true);
+        $unconfirmed = array_map(fn($id) => self::short($items[$id]), array_keys(array_filter($wll, fn($v, $id) => !$confirmed($items[$id]['specs']['arbeidslast_kg']), ARRAY_FILTER_USE_BOTH)));
         if ($wll) {
             $min = array_keys($wll, min($wll))[0];
-            $m['stats'][] = ['label' => $unknown ? t('Laveste kjente arbeidslast') : t('Svakeste ledd (arbeidslast)'),
-                'value' => self::num($wll[$min]) . ' kg', 'note' => self::short($items[$min]), 'weakest' => $min];
+            $src = $items[$min]['specs']['arbeidslast_kg'];
+            $m['stats'][] = ['label' => $unknown || $unconfirmed ? t('Laveste kjente arbeidslast') : t('Svakeste ledd (arbeidslast)'),
+                'value' => self::num($wll[$min]) . ' kg', 'note' => self::short($items[$min]) . ' (' . t(SOURCE_LABEL[$src['source']][0] ?? $src['source']) . ')', 'weakest' => $min];
+        }
+        if ($unconfirmed) {
+            $m['warnings'][] = ['text' => t('Arbeidslast for {names} er ikke bekreftet av Sør-Tre eller ansatt. Sjekk merkingen på delen før løft.', ['names' => implode(', ', $unconfirmed)])];
         }
         if ($unknown) {
             $m['missing'][] = ['kind' => 'data', 'text' => t('Arbeidslast er ikke oppgitt for {names}. Svakeste ledd kan ikke fastslås for hele kjeden.', ['names' => implode(', ', $unknown)])];
         }
         if ($break) {
             $min = array_keys($break, min($break))[0];
-            $m['stats'][] = ['label' => t('Laveste bruddstyrke'), 'value' => self::num($break[$min]) . ' kg', 'note' => self::short($items[$min])];
+            $m['stats'][] = ['label' => t('Laveste bruddstyrke'), 'value' => self::num($break[$min]) . ' kg', 'note' => self::short($items[$min]) . ' (' . t(SOURCE_LABEL[$items[$min]['specs']['bruddstyrke_kg']['source']][0] ?? $items[$min]['specs']['bruddstyrke_kg']['source']) . ')'];
         }
         if ($dims) {
             $m['stats'][] = ['label' => t('Dimensjoner'), 'value' => implode(', ', array_map(fn($d) => "$d mm", array_keys($dims))), 'note' => ''];
             if (count($dims) > 1) {
-                $m['warnings'][] = ['text' => t('Delene har ulike dimensjoner ({d} mm). Sjekk at sjakkel og krok passer kjettingen.', ['d' => implode(', ', array_keys($dims))])];
+                // Which selected part has which value, and where the value comes from (CONTROLTOWER-TRIAGE.md 5): the parts
+                // differ in this setup; that says nothing about either catalogue value being wrong
+                $who = [];
+                foreach ($dims as $d => $list) {
+                    foreach ($list as $i) {
+                        $who[] = self::short($i) . " $d mm (" . t(SOURCE_LABEL[$i['specs']['dimensjon_mm']['source']][0] ?? $i['specs']['dimensjon_mm']['source']) . ')';
+                    }
+                }
+                $m['warnings'][] = ['text' => t('Delene har ulike dimensjoner ({d} mm). Sjekk at sjakkel og krok passer kjettingen.', ['d' => implode(', ', array_keys($dims))])
+                    . ' ' . t('Valgte deler: {list}.', ['list' => implode('; ', $who)])];
             }
         }
         // Same dimension is a rule; different dimension leaves the pair unknown
@@ -610,9 +648,11 @@ final class Byggelab
             }
         }
         $m['notes'][] = t('Arbeidslast gjelder rett løft. Vinkel, stropp og rykk er ikke regnet med.');
-        $m['step'] = ['title' => t('Lastkjede'), 'text' => $wll && !$unknown
-            ? t('Lasten går gjennom {n} ledd. Svakeste ledd tåler {kg} kg arbeidslast.', ['n' => count($load), 'kg' => self::num(min($wll))])
-            : t('Lasten går gjennom {n} ledd. Arbeidslast mangler for {u} av dem.', ['n' => count($load), 'u' => count($unknown)])];
+        $m['step'] = ['title' => t('Lastkjede'), 'text' => match (true) {
+            $wll && !$unknown && !$unconfirmed => t('Lasten går gjennom {n} ledd. Svakeste ledd tåler {kg} kg arbeidslast.', ['n' => count($load), 'kg' => self::num(min($wll))]),
+            !$unknown && (bool) $unconfirmed => t('Lasten går gjennom {n} ledd. Arbeidslast er ikke bekreftet for {u} av dem.', ['n' => count($load), 'u' => count($unconfirmed)]),
+            default => t('Lasten går gjennom {n} ledd. Arbeidslast mangler for {u} av dem.', ['n' => count($load), 'u' => count($unknown)]),
+        }];
         return $m;
     }
 

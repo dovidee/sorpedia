@@ -22,16 +22,23 @@ function config(): array
         'db_pass' => env('DB_PASS', 'sorpedia'),
         'ollama_url' => rtrim(env('OLLAMA_URL', 'http://127.0.0.1:11434'), '/'),
         // Small model that fits in 6 GB of GPU memory. Søren writes his reasoning himself, in Norwegian.
-        'ollama_model' => env('OLLAMA_MODEL', 'deepseek-r1:8b'),
+        'ollama_model' => env('OLLAMA_MODEL', 'qwen2.5:7b-instruct'),
         // Deadlines: first character within SOREN_FIRST_TOKEN_S, the whole answer within SOREN_MAX_ANSWER_S (a guard against a hung model), otherwise a rule-based answer
         // Does the model reason on its own? Empty = guess from the name (r1, qwen3 ...)
         'native_think' => env('SOREN_NATIVE_THINK', '') === '' ? null : env('SOREN_NATIVE_THINK', '') === '1',
-        'first_token_s' => (float) env('SOREN_FIRST_TOKEN_S', '60'),
+        'first_token_s' => (float) env('SOREN_FIRST_TOKEN_S', '120'),
         // Thinking longer than SOREN_MAX_THINK_S is stopped, and the answer is written from the thoughts so far
-        'max_think_s' => (float) env('SOREN_MAX_THINK_S', '240'),
+        'max_think_s' => (float) env('SOREN_MAX_THINK_S', '90'),
         'max_answer_s' => (float) env('SOREN_MAX_ANSWER_S', '480'),
         // The model's working memory in tokens. 8192 leaves room for long thoughts. Lower it to 6144 if the GPU runs out of memory.
         'num_ctx' => (int) env('SOREN_NUM_CTX', '8192'),
+        // Shared secret for WooCommerce webhooks (feature 025). Empty = the webhook endpoint answers 503
+        'wc_webhook_secret' => env('WC_WEBHOOK_SECRET', ''),
+        // Questions per client per 10 minutes on the public API. A shop that proxies its visitors calls from one address, so raise it there
+        'api_ask_limit' => max(1, (int) env('API_ASK_LIMIT', '10')),
+        'api_question_limit' => max(1, (int) env('API_QUESTION_LIMIT', '60')),
+        // A trace per chat and API question in data/traces (feature 039): Ollama request and response, guard changes, answer
+        'trace' => env('SOREN_TRACE', '1') === '1',
         'mascot' => 'Søren',
     ];
 }

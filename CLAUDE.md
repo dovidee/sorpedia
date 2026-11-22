@@ -20,7 +20,11 @@ Digital product guide and knowledge base ("Wikipedia for products") built as a d
 5. Only verified users (confirmed email AND at least one paid purchase) can edit the open version or write reviews.
 6. Customer-facing text is in Norwegian bokmål, with English through the language toggle. No em or en dashes in UI text.
 7. Demo data (stock per store, reviews, assembly guides, users) is clearly marked as demo.
-8. No external calls at runtime except Ollama (`OLLAMA_URL`). Images are stored locally.
+8. No external calls during a page request except Ollama (`OLLAMA_URL`). The only other fetch is the scheduled `scripts/conditions.php` (MET Norway weather and warnings, Statens vegvesen traffic messages, Entur ferry departures and positions), which writes to the database and falls back to rows marked demo (ferries are never simulated; they show as unknown). Images are stored locally.
+
+## Agent reply style (caveman)
+
+`.caveman.json` pins the caveman plugin to `caveman` mode for this repository, so agent replies in the terminal are terse to save tokens. The terse style applies only to the agent's chat replies to the developer. It never applies to anything the product shows or stores: Søren's prompts, persona and answers (`src/Chat.php`), customer-facing UI text, code, comments, docs, specs, commit messages or test data. Those stay in full, natural sentences.
 
 ## Sources of truth
 
@@ -40,6 +44,8 @@ Digital product guide and knowledge base ("Wikipedia for products") built as a d
 php scripts/scrape.php          # fetches products from sor-tre.no into data/raw/
 php scripts/import.php          # builds the database from data/raw + seed data
 php scripts/transport-demo.php  # replaces only the demo shipments (Control Tower map)
+php scripts/conditions.php      # weather and route conditions for the map (MET Norway, Statens vegvesen, Entur ferries, else demo)
+php scripts/backup.php          # database dump to data/backups (gzip, newest 14 kept; nightly in Docker)
 php -S localhost:8080 -t public # development server
 php tests/run.php               # unit tests (needs the database)
 php evals/run.php               # golden dataset and the chat's fixed safety replies

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   registration VARCHAR(16) NULL,                    -- restricted: admin and support only
   capacity_kg INT UNSIGNED NULL,                    -- gross vehicle weight rating
   payload_kg  INT UNSIGNED NULL,                    -- permitted payload
+  base_city   VARCHAR(40) NULL,                     -- where the vehicle stands when it has no trip (a Roads node)
   is_demo     TINYINT(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -44,6 +45,7 @@ CREATE TABLE IF NOT EXISTS shipments (
   eta_calculated_at  DATETIME NULL,
   planned_arrival    DATETIME NULL,
   actual_arrival     DATETIME NULL,
+  checked_in_at      DATETIME NULL,                -- goods in: staff confirmed the delivery was received
   weight_declared_kg INT UNSIGNED NULL,
   weight_measured_kg INT UNSIGNED NULL,
   delay_reason       VARCHAR(200) NULL,

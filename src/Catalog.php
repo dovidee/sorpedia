@@ -95,6 +95,7 @@ final class Catalog
         foreach ($st as $r) {
             $k = $map[$r['kind']] ?? null;
             if ($k && count($out[$k]) < $limit) {
+                $r['reason'] = I18n::reason((string) $r['reason']);
                 $out[$k][$r['id']] = $r;
             }
         }

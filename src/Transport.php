@@ -18,7 +18,12 @@ final class Transport
         $rows = [];
         foreach ($this->store->all() as $r) {
             $at = $r['observed_at'] !== null ? (int) $r['observed_at'] : null;
-            $rows[] = $r + ['stale' => ShipmentRules::stale($at, $now), 'age_min' => ShipmentRules::ageMinutes($at, $now)];
+            // Progress along the estimated route, the same figure the shipment inspector shows; null when there is no position
+            $progress = ShipmentRules::progress($r['route'], $r['lat'] !== null ? (float) $r['lat'] : null, $r['lng'] !== null ? (float) $r['lng'] : null, $r['actual_arrival'] !== null);
+            // A position from the simulation clock is the vehicle's place at the simulated time, never a feed that went quiet
+            $sim = ($r['pos_source'] ?? null) === DemoDelivery::SOURCE;
+            // A delivered shipment has stopped on purpose: its last position is its final place, never a stale one
+            $rows[] = $r + ['stale' => !$sim && $r['actual_arrival'] === null && ShipmentRules::stale($at, $now), 'age_min' => ShipmentRules::ageMinutes($at, $now), 'progress' => $progress, 'sim' => $sim];
         }
         return ['rows' => $rows, 'now' => $now, 'stale_min' => ShipmentRules::STALE_MIN];
     }
@@ -43,6 +48,7 @@ final class Transport
         [$vehicle, $driver] = ShipmentRules::redact($f['vehicle'], $f['driver'], $restricted);
         $last = $f['positions'] ? $f['positions'][count($f['positions']) - 1] : null;
         $lastAt = $last ? (int) $last['observed_at'] : null;
+        $sim = $last !== null && $last['source'] === DemoDelivery::SOURCE;
         $num = fn($v) => $v === null ? null : (float) $v;
         $int = fn($v) => $v === null ? null : (int) $v;
         $now = $this->clock->now();
@@ -51,7 +57,7 @@ final class Transport
             'weight' => ShipmentRules::weight($num($s['weight_declared_kg']), $num($s['weight_measured_kg']),
                 array_column($f['items'], 'weight_kg'), $num($f['vehicle']['payload_kg'] ?? null)),
             'age_min' => ShipmentRules::ageMinutes($lastAt, $now),
-            'stale' => ShipmentRules::stale($lastAt, $now),
+            'stale' => !$sim && $s['actual_arrival'] === null && ShipmentRules::stale($lastAt, $now), 'sim' => $sim,
             'progress' => ShipmentRules::progress($f['route'], $last ? (float) $last['lat'] : null, $last ? (float) $last['lng'] : null, $s['actual_arrival'] !== null),
             'estimated' => ShipmentRules::estimated($f['route']),
             'variance' => ShipmentRules::variance($int($s['planned_arrival']), $int($s['actual_arrival']), $int($s['eta'])),

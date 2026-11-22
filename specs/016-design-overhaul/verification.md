@@ -45,7 +45,7 @@ Known weaknesses: the compare checkbox stays on cards and the product page until
 
 Run in the app: the home hero shows the text over three faded store photos, readable in light and dark mode at 1366 px and at 390 px, no sideways scroll. The mascot is gone from the hero, and the header category row no longer has the product guide link. The hero keeps the red "Start produktguiden" button and the leaf on "Spør Søren" only.
 
-Not verified: the photo hover with a real pointer. `public/assets/irl/warehouse.png` is about 1.3 MB; no image tool was available to compress it.
+Not verified: the photo hover with a real pointer. `public/assets/irl/warehouse.png` was not compressed; no image tool was available.
 
 ## Back to the split hero, guide link in the header
 
@@ -59,7 +59,7 @@ The spread files were delivered with a light checkerboard painted into the pixel
 
 Run in the app (`php -S 127.0.0.1:8099 -t public`, headless Chromium). The start class is set after load. Captures checked by eye: 1366 px start and end state (low saw, then high saw with no dust left), 390 px end state, and a frozen frame at the dust peak at 1366 and 390 px showing the dust past the banner top and bottom. Horizontal overflow at the peak is limited to the scrollbar width and is clipped by `body { overflow-x: clip }`.
 
-Known weaknesses: the five banner images total about 11 MB of PNG. At the peak the dust briefly covers the headline and buttons. Not verified: playback in a real browser at normal speed, Safari, the English banner.
+Known weaknesses: the five banner images were uncompressed PNG files. At the peak the dust briefly covers the headline and buttons. Not verified: playback in a real browser at normal speed, Safari, the English banner.
 
 ## Home banner: split layout, single slow dust layer
 

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sørpedia API v1</title>
+<link rel="stylesheet" href="/assets/app.css">
+<style>
+  /* API reference: rendered from /api/v1/openapi.json. The console on the right sends real requests. */
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-body); }
+  .ad { display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1.05fr); min-height: 100dvh; }
+  .ad-nav { position: sticky; top: 0; height: 100dvh; overflow: auto; padding: var(--space-5) var(--space-4); border-right: 1px solid var(--line); }
+  .ad-nav b { display: block; font: 400 1.05rem/1.1 var(--font-display); margin-bottom: var(--space-1); }
+  .ad-nav small { color: var(--muted); }
+  .ad-nav h3 { margin: var(--space-5) 0 var(--space-2); font-size: .78rem; color: var(--muted); font-weight: 600; }
+  .ad-nav a { display: flex; gap: var(--space-2); align-items: baseline; padding: 3px 0; color: var(--ink); text-decoration: none; font-size: .86rem; }
+  .ad-nav a:hover { color: var(--brand); }
+  .ad-nav code { font: 600 .82rem var(--font-mono); overflow-wrap: anywhere; }
+  .ad-main { padding: var(--space-6) var(--space-7); min-width: 0; }
+  .ad-main h1 { margin-top: 0; }
+  .ad-lede { max-width: 68ch; color: var(--muted); }
+  .ad-rules { max-width: 68ch; margin: var(--space-5) 0 var(--space-7); padding: 0; list-style: none; display: grid; gap: var(--space-2); }
+  .ad-rules li { display: grid; grid-template-columns: 9.5em 1fr; gap: var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--line); font-size: .9rem; }
+  .ad-rules li b { font-weight: 650; }
+  .ad-op { padding: var(--space-6) 0; border-top: 1px solid var(--line); scroll-margin-top: var(--space-4); }
+  .ad-op h2 { margin: 0 0 var(--space-2); font-size: 1.3rem; }
+  .ad-sig { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font: 600 .95rem var(--font-mono); overflow-wrap: anywhere; }
+  .ad-verb { padding: 1px 7px; border: 1px solid var(--ok); color: var(--ok); font-size: .74rem; letter-spacing: .04em; }
+  .ad-op p { max-width: 68ch; }
+  .ad-params { width: 100%; max-width: 640px; border-collapse: collapse; margin: var(--space-3) 0; font-size: .88rem; }
+  .ad-params th { text-align: left; font-weight: 600; color: var(--muted); font-size: .76rem; padding: 4px var(--space-2) 4px 0; }
+  .ad-params td { padding: var(--space-2) var(--space-2) var(--space-2) 0; border-top: 1px solid var(--line); vertical-align: top; }
+  .ad-params code { font-weight: 650; }
+  .ad-params input, .ad-params select { width: 100%; min-width: 7em; min-height: 36px; padding: 4px var(--space-2); background: var(--surface); color: var(--ink);
+    border: 1px solid var(--color-border-strong); border-radius: var(--radius); font: .88rem var(--font-mono); }
+  .ad-try { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 40px; padding: 0 var(--space-4); border: 0; border-radius: var(--radius);
+    background: var(--ink); color: var(--bg); font: 650 .88rem var(--font-ui); cursor: pointer; transition: transform var(--dur-press) var(--ease-out); }
+  .ad-try:active { transform: scale(.97); }
+  .ad-body { display: grid; gap: 4px; max-width: 640px; margin: var(--space-3) 0; font-size: .76rem; font-weight: 600; color: var(--muted); }
+  .ad-con .ad-body { margin: 0; padding: 0 var(--space-4) var(--space-4); border-bottom: 1px solid var(--line); max-width: none; }
+  .ad-body[hidden] { display: none; }
+  .ad-body textarea { width: 100%; padding: var(--space-2); background: var(--surface); color: var(--ink); border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius); font: .85rem var(--font-mono); resize: vertical; }
+  .ad-body textarea:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+  .ad-try:focus-visible, .ad-con button:focus-visible, .ad-con input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+  .ad-codes { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; font-size: .8rem; color: var(--muted); }
+  .ad-codes li b { color: var(--ink); font-family: var(--font-mono); }
+  .ad-errors dt { font: 650 .95rem var(--font-mono); margin-top: var(--space-3); scroll-margin-top: var(--space-4); }
+  .ad-errors dd { margin: 0; color: var(--muted); max-width: 68ch; }
+
+  /* Console: sticky, always visible, the demo surface */
+  .ad-con { position: sticky; top: 0; height: 100dvh; display: grid; grid-template-rows: auto auto auto 1fr; border-left: 1px solid var(--line); background: var(--surface); min-width: 0; }
+  .ad-bar { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-2); align-items: center; padding: var(--space-4); border-bottom: 1px solid var(--line); }
+  .ad-bar span { font: 650 .78rem var(--font-mono); color: var(--ok); }
+  .ad-bar input { min-width: 0; min-height: 40px; padding: 0 var(--space-3); background: var(--bg); color: var(--ink); border: 1px solid var(--color-border-strong); border-radius: var(--radius); font: .9rem var(--font-mono); }
+  .ad-tools { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
+  .ad-tools button { min-height: 32px; padding: 0 var(--space-3); background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); font: .8rem var(--font-ui); cursor: pointer; }
+  .ad-tools button:hover { border-color: var(--ink); }
+  .ad-tools button:disabled { opacity: .4; }
+  .ad-status { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line); font: .8rem/1.6 var(--font-mono); }
+  .ad-status .code { font-size: 1rem; font-weight: 700; }
+  .ad-status .ok { color: var(--ok); } .ad-status .warn { color: var(--mid); } .ad-status .bad { color: var(--no); }
+  .ad-status dl { display: grid; grid-template-columns: max-content 1fr; gap: 0 var(--space-3); margin: var(--space-1) 0 0; color: var(--muted); }
+  .ad-status dd { margin: 0; overflow-wrap: anywhere; color: var(--ink); }
+  .ad-out { margin: 0; padding: var(--space-4); overflow: auto; font: .8rem/1.55 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
+  .ad-out .k { color: var(--muted); } .ad-out .s { color: var(--sortre); } .ad-out .n { color: var(--bruker); } .ad-out .b { color: var(--ansatt); }
+  .ad-out a { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+  .ad-empty { color: var(--muted); font-family: var(--font-body); white-space: normal; }
+
+  @media (max-width: 1100px) {
+    .ad { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .ad-nav { display: none; }
+  }
+  @media (max-width: 760px) {
+    .ad { grid-template-columns: minmax(0, 1fr); }
+    .ad-main { padding: var(--space-5) var(--space-4); }
+    .ad-con { position: static; height: auto; min-height: 60vh; border-left: 0; border-top: 1px solid var(--line); order: -1; }
+    .ad-rules li { grid-template-columns: 1fr; gap: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="ad">
+  <nav class="ad-nav" aria-label="Endpoints" id="nav"><b>Sørpedia API</b><small>v1, read and ask</small></nav>
+
+  <main class="ad-main" id="main">
+    <h1>Product knowledge API</h1>
+    <p class="ad-lede" id="lede">Loading the API description …</p>
+    <ul class="ad-rules">
+      <li><b>Base URL</b><span><code>/api/v1</code>. Product IDs are the web shop's own IDs, so a shop can call the API with the IDs it already has.</span></li>
+      <li><b>Confirmed</b><span>A specification is <code>confirmed</code> only when it is the verified version from the store or staff. Derived and buyer values are never confirmed.</span></li>
+      <li><b>Certain</b><span>A related product is <code>certain</code> only when the relation is documented. Rule based and assumed relations say so.</span></li>
+      <li><b>Unknown</b><span>Missing values are listed under <code>unknown</code>, never guessed.</span></li>
+      <li><b>Caching</b><span>Every answer has an <code>ETag</code> and <code>Cache-Control: public, max-age=60</code>. Send <code>If-None-Match</code> to get <code>304</code> when nothing changed.</span></li>
+      <li><b>Navigation</b><span>Every body carries <code>_links</code>; collections also send an RFC 8288 <code>Link</code> header and <code>X-Total-Count</code>.</span></li>
+      <li><b>Access</b><span>No key, no cookie, no session. CORS is open. Reading uses <code>GET</code>, <code>HEAD</code> and <code>OPTIONS</code>; the only <code>POST</code> is a question to the product assistant, limited to 60 per 10 minutes per client. Of those, 10 may be read by the language model; the rest are read by rules, and the answer is the same kind.</span></li>
+      <li><b>Assistant</b><span>The server writes every product answer from the catalogue. A local language model only reads the question into fixed fields, which the server checks; it writes no answer text. Greetings and questions about the assistant get a fixed answer. <code>notice</code> says how the question was read.</span></li>
+      <li><b>Not in the API</b><span>Stock, orders, users, internal IDs and staff tools. Prices are the shop's own and included for display.</span></li>
+    </ul>
+    <div id="ops"></div>
+    <section class="ad-op" id="errors">
+      <h2>Errors</h2>
+      <p>Errors are RFC 9457 problem details (<code>application/problem+json</code>) with <code>type</code>, <code>title</code>, <code>status</code> and <code>detail</code>.</p>
+      <dl class="ad-errors">
+        <dt id="error-400">400 Bad request</dt><dd>A query parameter has a value the resource does not accept. <code>detail</code> names the parameter and the allowed values.</dd>
+        <dt id="error-404">404 Not found</dt><dd>No product, theme or path with that name.</dd>
+        <dt id="error-405">405 Method not allowed</dt><dd>The method is not allowed on this path. The <code>Allow</code> header lists the methods that are.</dd>
+        <dt id="error-406">406 Not acceptable</dt><dd>The <code>Accept</code> header rules out JSON.</dd>
+        <dt id="error-415">415 Unsupported media type</dt><dd>A question must be sent as <code>application/json</code>.</dd>
+        <dt id="error-429">429 Too many requests</dt><dd>The question limit for this client is used up. <code>Retry-After</code> says how many seconds to wait.</dd>
+        <dt id="error-500">500 Internal error</dt><dd>Something failed on the server. <code>detail</code> carries a reference for the log.</dd>
+      </dl>
+    </section>
+  </main>
+
+  <aside class="ad-con" aria-label="Request console">
+    <form class="ad-bar" id="bar"><span id="verb">GET</span><label class="tw-sr" for="url" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">Request path</label>
+      <input id="url" value="/api/v1" spellcheck="false" autocomplete="off"><button class="ad-try" type="submit">Send</button></form>
+    <label class="ad-body" id="bodywrap" hidden><span>Request body (JSON)</span><textarea id="body" rows="4" spellcheck="false"></textarea></label>
+    <div class="ad-tools">
+      <button type="button" id="again" disabled>Send again with If-None-Match</button>
+      <button type="button" id="curl" disabled>Copy as curl</button>
+      <button type="button" id="back" disabled>Back</button>
+    </div>
+    <div class="ad-status" id="status" aria-live="polite"></div>
+    <pre class="ad-out" id="out"><span class="ad-empty">Press Send, pick an endpoint on the left, or click any link in a response. Links in the JSON are live, so the API can be walked like a website.</span></pre>
+  </aside>
+</div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  let spec = null, last = null;
+  const history = [];
+
+  // Pretty JSON with colours; every "href" becomes a link that sends a new request
+  function paint(text) {
+    let html = esc(text);
+    html = html.replace(/(&quot;href&quot;: )&quot;([^&]*)&quot;/g, (m, k, url) => url.startsWith('/') || url.startsWith('http')
+      ? `${k}&quot;<a href="${url}" data-go="${url}">${url}</a>&quot;` : m);
+    return html.replace(/^(\s*)&quot;([^&]+)&quot;:/gm, '$1<span class="k">"$2"</span>:')
+      .replace(/: &quot;(.*?)&quot;(,?)$/gm, ': <span class="s">"$1"</span>$2')
+      .replace(/: (-?\d[\d.e+-]*)(,?)$/gm, ': <span class="n">$1</span>$2')
+      .replace(/: (true|false|null)(,?)$/gm, ': <span class="b">$1</span>$2');
+  }
+
+  // body set: POST with that JSON text; the console then shows the method and the body
+  async function send(path, etag, body = null) {
+    $('url').value = path;
+    $('verb').textContent = body === null ? 'GET' : 'POST';
+    $('bodywrap').hidden = body === null;
+    if (body !== null) $('body').value = body;
+    const headers = { Accept: 'application/json' };
+    if (etag) headers['If-None-Match'] = etag;
+    if (body !== null) headers['Content-Type'] = 'application/json';
+    const t0 = performance.now();
+    $('status').innerHTML = '<span class="code">…</span>';
+    let r;
+    try { r = await fetch(path, body === null ? { headers, cache: 'no-store' } : { method: 'POST', headers, body, cache: 'no-store' }); }
+    catch { $('status').innerHTML = '<span class="code bad">Network error</span>'; return; }
+    const ms = Math.round(performance.now() - t0);
+    const text = r.status === 304 ? '' : await r.text();
+    const cls = r.status < 300 ? 'ok' : r.status < 400 ? 'warn' : 'bad';
+    const show = ['content-type', 'etag', 'cache-control', 'link', 'x-total-count', 'allow', 'retry-after'].filter((h) => r.headers.get(h));
+    $('status').innerHTML = `<span class="code ${cls}">${r.status} ${esc(r.statusText || '')}</span> <span>${ms} ms${etag ? ', sent If-None-Match' : ''}</span>
+      <dl>${show.map((h) => `<dt>${h}</dt><dd>${esc(r.headers.get(h))}</dd>`).join('')}</dl>`;
+    $('out').innerHTML = r.status === 304 ? '<span class="ad-empty">304 Not Modified: the resource has not changed since that ETag, so no body was sent. The client keeps its cached copy.</span>'
+      : paint(text.trim());
+    if (!etag && body === null && (history.at(-1) !== path)) history.push(path);
+    last = { path, body, etag: r.headers.get('etag') };
+    $('again').disabled = !last.etag;
+    $('curl').disabled = false;
+    $('back').disabled = history.length < 2;
+  }
+
+  $('bar').addEventListener('submit', (e) => { e.preventDefault(); const p = $('url').value.trim(); if (p) send(p, null, $('verb').textContent === 'POST' ? $('body').value : null); });
+  $('again').addEventListener('click', () => last && send(last.path, last.etag));
+  $('back').addEventListener('click', () => { history.pop(); const p = history.pop(); if (p) send(p); });
+  $('curl').addEventListener('click', async (e) => {
+    const cmd = last.body === null ? `curl -i '${location.origin}${last.path}'`
+      : `curl -i -X POST '${location.origin}${last.path}' -H 'Content-Type: application/json' -d '${last.body.replace(/'/g, "'\\''")}'`;
+    try { await navigator.clipboard.writeText(cmd); e.target.textContent = 'Copied'; } catch { e.target.textContent = cmd; }
+    setTimeout(() => { e.target.textContent = 'Copy as curl'; }, 1600);
+  });
+  $('out').addEventListener('click', (e) => { const a = e.target.closest('[data-go]'); if (a) { e.preventDefault(); send(a.dataset.go); } });
+
+  // Reference from the OpenAPI document: one section per operation, with a form for its parameters
+  function resolve(p) { return p.$ref ? p.$ref.split('/').slice(1).reduce((o, k) => o[k], spec) : p; }
+  function render() {
+    $('lede').textContent = spec.info.description.split('\n\n')[0];
+    const base = spec.servers[0].url;
+    const groups = {};
+    const ops = [];
+    for (const [path, item] of Object.entries(spec.paths)) {
+      const verb = item.get ? 'GET' : item.post ? 'POST' : null; if (!verb) continue;
+      const op = item.get || item.post;
+      const example = op.requestBody?.content?.['application/json']?.example;
+      const id = op.operationId;
+      (groups[op.tags[0]] ??= []).push(`<a href="#${id}"><code>${esc(path)}</code></a>`);
+      const params = (op.parameters || []).map(resolve).filter((p) => p.in !== 'header');
+      const rows = params.map((p) => {
+        const s = p.schema || {};
+        const field = s.enum ? `<select name="${p.name}" data-in="${p.in}"><option value="">${p.required ? '' : 'any'}</option>${s.enum.map((v) => `<option>${esc(v)}</option>`).join('')}</select>`
+          : `<input name="${p.name}" data-in="${p.in}" value="${esc(p.example ?? '')}" placeholder="${esc(s.default ?? '')}" ${p.required ? 'required' : ''}>`;
+        return `<tr><td><code>${esc(p.name)}</code><br><small>${p.in}${p.required ? ', required' : ''}</small></td><td>${esc(p.description || '')}</td><td>${field}</td></tr>`;
+      }).join('');
+      const codes = Object.entries(op.responses).map(([c, r]) => `<li><b>${c}</b> ${esc(resolve(r).description || '')}</li>`).join('');
+      ops.push(`<section class="ad-op" id="${id}"><h2>${esc(op.summary)}</h2>
+        <div class="ad-sig"><span class="ad-verb">${verb}</span>${esc(base + (path === '/' ? '' : path))}</div>
+        <form data-path="${esc(base + (path === '/' ? '' : path))}">
+          ${op.description ? `<p>${esc(op.description)}</p>` : ''}
+          ${rows ? `<table class="ad-params"><tr><th>Parameter</th><th>Meaning</th><th>Value</th></tr>${rows}</table>` : ''}
+          ${example ? `<label class="ad-body"><span>Request body (JSON)</span><textarea name="_body" data-in="body" rows="3" spellcheck="false">${esc(JSON.stringify(example, null, 2))}</textarea></label>` : ''}
+          <p><button class="ad-try" type="submit">Try it</button></p></form>
+        <ul class="ad-codes">${codes}</ul></section>`);
+    }
+    $('ops').innerHTML = ops.join('');
+    $('nav').insertAdjacentHTML('beforeend', Object.entries(groups).map(([g, l]) => `<h3>${esc(g)}</h3>${l.join('')}`).join('')
+      + '<h3>Reference</h3><a href="#errors">Errors</a><a href="/api/v1/openapi.json">OpenAPI 3.1 (JSON)</a>');
+  }
+  $('ops').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = e.target;
+    let path = f.dataset.path;
+    const q = new URLSearchParams();
+    let body = null;
+    for (const el of f.querySelectorAll('[name]')) {
+      if (el.dataset.in === 'body') body = el.value;
+      else if (el.dataset.in === 'path') path = path.replace(`{${el.name}}`, encodeURIComponent(el.value.trim()));
+      else if (el.value.trim() !== '') q.set(el.name, el.value.trim());
+    }
+    send(path + (q.toString() ? `?${q}` : ''), null, body);
+  });
+
+  fetch('/api/v1/openapi.json').then((r) => r.json()).then((s) => { spec = s; render(); if (location.hash) document.querySelector(location.hash)?.scrollIntoView(); })
+    .catch(() => { $('lede').textContent = 'The API description could not be loaded.'; });
+  send('/api/v1');
+})();
+</script>
+</body>
+</html>
